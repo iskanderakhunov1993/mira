@@ -1,0 +1,144 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000001 /* FitFlowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000001 /* FitFlowApp.swift */; };
+		A00000000000000000000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000002 /* Models.swift */; };
+		A00000000000000000000003 /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000003 /* AppStore.swift */; };
+		A00000000000000000000004 /* AIAnalyzing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000004 /* AIAnalyzing.swift */; };
+		A00000000000000000000005 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000005 /* Theme.swift */; };
+		A00000000000000000000006 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000006 /* RootView.swift */; };
+		A00000000000000000000007 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000007 /* DashboardView.swift */; };
+		A00000000000000000000008 /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000008 /* NutritionView.swift */; };
+		A00000000000000000000009 /* TrainingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000009 /* TrainingView.swift */; };
+		A0000000000000000000000A /* ProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000000A /* ProgressView.swift */; };
+		A0000000000000000000000B /* ScanViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000000B /* ScanViews.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B00000000000000000000000 /* FitFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FitFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00000000000000000000001 /* FitFlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitFlowApp.swift; sourceTree = "<group>"; };
+		B00000000000000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B00000000000000000000003 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
+		B00000000000000000000004 /* AIAnalyzing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIAnalyzing.swift; sourceTree = "<group>"; };
+		B00000000000000000000005 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		B00000000000000000000006 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		B00000000000000000000007 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		B00000000000000000000008 /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
+		B00000000000000000000009 /* TrainingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingView.swift; sourceTree = "<group>"; };
+		B0000000000000000000000A /* ProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressView.swift; sourceTree = "<group>"; };
+		B0000000000000000000000B /* ScanViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanViews.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C00000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D00000000000000000000000 = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000001 /* FitFlow */,
+				D00000000000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D00000000000000000000001 /* FitFlow */ = {
+			isa = PBXGroup;
+			path = FitFlow;
+			sourceTree = "<group>";
+			children = (
+				B00000000000000000000001,
+				B00000000000000000000002,
+				B00000000000000000000003,
+				B00000000000000000000004,
+				B00000000000000000000005,
+				B00000000000000000000006,
+				B00000000000000000000007,
+				B00000000000000000000008,
+				B00000000000000000000009,
+				B0000000000000000000000A,
+				B0000000000000000000000B,
+			);
+		};
+		D00000000000000000000002 /* Products */ = {isa = PBXGroup; children = (B00000000000000000000000,); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E00000000000000000000001 /* FitFlow */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F00000000000000000000001;
+			buildPhases = (
+				C00000000000000000000002 /* Sources */,
+				C00000000000000000000001 /* Frameworks */,
+				C00000000000000000000003 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = FitFlow;
+			productName = FitFlow;
+			productReference = B00000000000000000000000;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E00000000000000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; TargetAttributes = {E00000000000000000000001 = {CreatedOnToolsVersion = 16.0;};};};
+			buildConfigurationList = F00000000000000000000000;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = ru;
+			hasScannedForEncodings = 0;
+			knownRegions = (ru, en, Base);
+			mainGroup = D00000000000000000000000;
+			productRefGroup = D00000000000000000000002;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (E00000000000000000000001,);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C00000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C00000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000001,
+				A00000000000000000000002,
+				A00000000000000000000003,
+				A00000000000000000000004,
+				A00000000000000000000005,
+				A00000000000000000000006,
+				A00000000000000000000007,
+				A00000000000000000000008,
+				A00000000000000000000009,
+				A0000000000000000000000A,
+				A0000000000000000000000B,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		110000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_C_LANGUAGE_STANDARD = gnu17; GCC_OPTIMIZATION_LEVEL = 0; GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)"); IPHONEOS_DEPLOYMENT_TARGET = 17.0; MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE; ONLY_ACTIVE_ARCH = YES; SDKROOT = iphoneos; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
+		110000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; ENABLE_NS_ASSERTIONS = NO; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MTL_ENABLE_DEBUG_INFO = NO; SDKROOT = iphoneos; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; VALIDATE_PRODUCT = YES; }; name = Release; };
+		110000000000000000000003 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_NSCameraUsageDescription = "Камера нужна для анализа еды и прогресса."; INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Фото нужны для анализа еды и прогресса."; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks"); MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.fitflow.mvp; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; }; name = Debug; };
+		110000000000000000000004 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_NSCameraUsageDescription = "Камера нужна для анализа еды и прогресса."; INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Фото нужны для анализа еды и прогресса."; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks"); MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.fitflow.mvp; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F00000000000000000000000 = {isa = XCConfigurationList; buildConfigurations = (110000000000000000000001, 110000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		F00000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (110000000000000000000003, 110000000000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = E00000000000000000000000;
+}
