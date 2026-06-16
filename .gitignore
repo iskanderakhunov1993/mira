@@ -31,6 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.local
 .env*.local
 
 # typescript
@@ -39,3 +41,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+DerivedData/
+.build/
+xcuserdata/
+*.xcuserstate
+
+# generated Vite config outputs
+apps/web/vite.config.js
+apps/web/vite.config.d.ts

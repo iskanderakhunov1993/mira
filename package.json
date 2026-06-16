@@ -1,18 +1,24 @@
 {
-  "name": "ayla-app",
-  "version": "1.0.0",
+  "name": "ayla",
+  "private": true,
+  "version": "0.1.0",
   "main": "index.js",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@ayla/web",
+    "build": "npm run build --workspace=@ayla/web",
+    "lint": "npm run lint --workspace=@ayla/web",
+    "expo:start": "expo start",
+    "expo:android": "expo start --android",
+    "expo:ios": "expo start --ios",
+    "expo:web": "expo start --web"
+  },
   "dependencies": {
     "expo": "~56.0.12",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",
     "react-native": "0.85.3"
-  },
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
-  },
-  "private": true
+  }
 }

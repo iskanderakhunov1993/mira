@@ -1,0 +1,7 @@
+project_id = "ayla"
+
+[functions.analyze-meal]
+verify_jwt = true
+
+[functions.analyze-body]
+verify_jwt = true
