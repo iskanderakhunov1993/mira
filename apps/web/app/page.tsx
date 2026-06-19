@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -28,9 +28,28 @@ import {
   type OnboardingState,
   type WorkoutExercise
 } from "@/lib/recommendations";
+import {
+  createEmptyMiraLocalData,
+  localDateKey,
+  readLegacyOnboardingProfile,
+  readMiraLocalData,
+  writeMiraLocalData,
+  type DailyReflection,
+  type MealLog,
+  type MiraLocalData,
+  type WorkoutLog
+} from "@/lib/localStore";
+import { analyzeMealPhoto } from "@/lib/api/mealPhotoClient";
 import { cn } from "@/lib/utils";
+import type { AnalyzeMealOutput } from "../../../shared/ai-contracts";
 
-const goals = ["Похудеть", "Подтянуть тело", "Больше энергии", "Снизить стресс", "Чувствовать баланс"];
+const goals = [
+  "Понимать свой цикл",
+  "Бережно тренироваться",
+  "Беречь энергию",
+  "Замечать свой ритм"
+];
+const focusAreaOptions = ["Энергия", "Сон", "Настроение", "Боль", "Симптомы", "Стресс"];
 const checkInSymptoms = [
   "спазмы",
   "головная боль",
@@ -54,7 +73,8 @@ const nav = [
 ] as const;
 
 const defaultProfile: OnboardingState = {
-  goal: "Подтянуть тело",
+  goal: "Бережно тренироваться",
+  focusAreas: ["Энергия", "Сон", "Стресс"],
   periodStart: new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10),
   cycleLength: 28,
   cycleRegularity: "Регулярный",
@@ -74,7 +94,7 @@ const defaultCheckIn: CheckInState = {
   painLevel: 0,
   painAreas: [],
   workload: "Обычная",
-  symptoms: ["усталость"],
+  symptoms: [],
   note: ""
 };
 
@@ -93,8 +113,86 @@ export default function MiraMvp() {
   const [checkIn, setCheckIn] = useState(defaultCheckIn);
   const [gym, setGym] = useState(defaultGym);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [localData, setLocalData] = useState<MiraLocalData>(createEmptyMiraLocalData);
+  const [isRestoringLocalData, setIsRestoringLocalData] = useState(true);
 
   const plan = useMemo(() => buildDailyPlan(profile, checkIn), [profile, checkIn]);
+
+  useEffect(() => {
+    const saved = readMiraLocalData();
+    const legacyProfile = saved.profile ? undefined : readLegacyOnboardingProfile();
+    const next = legacyProfile ? { ...saved, profile: legacyProfile } : saved;
+
+    if (legacyProfile) {
+      writeMiraLocalData(next);
+      window.localStorage.removeItem("mira:onboarding");
+    }
+
+    setLocalData(next);
+    if (next.profile) {
+      setProfile(next.profile);
+      setCheckIn(next.checkIns[localDateKey()]?.value ?? defaultCheckIn);
+      setOnboarded(true);
+      setStarted(true);
+    }
+    setIsRestoringLocalData(false);
+  }, []);
+
+  const persistLocalData = (next: MiraLocalData) => {
+    setLocalData(next);
+    writeMiraLocalData(next);
+  };
+
+  const saveCheckIn = (value: CheckInState) => {
+    const date = localDateKey();
+    const next: MiraLocalData = {
+      ...localData,
+      checkIns: {
+        ...localData.checkIns,
+        [date]: { date, savedAt: new Date().toISOString(), value }
+      }
+    };
+
+    setCheckIn(value);
+    persistLocalData(next);
+  };
+
+  const saveReflection = (value: Omit<DailyReflection, "date">) => {
+    const date = localDateKey();
+    persistLocalData({
+      ...localData,
+      reflections: {
+        ...localData.reflections,
+        [date]: { date, ...value }
+      }
+    });
+  };
+
+  const saveWorkout = (value: Omit<WorkoutLog, "id" | "date">) => {
+    const next: MiraLocalData = {
+      ...localData,
+      workouts: [
+        { ...value, id: `workout-${Date.now()}`, date: localDateKey() },
+        ...localData.workouts
+      ]
+    };
+    persistLocalData(next);
+  };
+
+  const saveMeal = (value: Omit<MealLog, "id" | "date">) => {
+    const next: MiraLocalData = {
+      ...localData,
+      meals: [
+        { ...value, id: `meal-${Date.now()}`, date: localDateKey() },
+        ...localData.meals
+      ]
+    };
+    persistLocalData(next);
+  };
+
+  if (isRestoringLocalData) {
+    return <MiraLoadingScreen />;
+  }
 
   if (!started) {
     return <Landing onStart={() => setStarted(true)} />;
@@ -107,7 +205,11 @@ export default function MiraMvp() {
         setProfile={setProfile}
         step={step}
         setStep={setStep}
-        onDone={() => setOnboarded(true)}
+        plan={plan}
+        onDone={() => {
+          persistLocalData({ ...localData, profile });
+          setOnboarded(true);
+        }}
       />
     );
   }
@@ -128,6 +230,7 @@ export default function MiraMvp() {
               setStep(0);
               setOnboarded(false);
               setProfileOpen(false);
+              persistLocalData({ ...localData, profile: undefined });
             }}
           />
         ) : (
@@ -143,26 +246,42 @@ export default function MiraMvp() {
                 plan={plan}
                 profile={profile}
                 checkIn={checkIn}
-                setCheckIn={setCheckIn}
+                localData={localData}
+                onSaveCheckIn={saveCheckIn}
+                onSaveReflection={saveReflection}
+                onCalendar={() => setActive("calendar")}
                 onWorkouts={() => setActive("workouts")}
                 onNutrition={() => setActive("nutrition")}
               />
             )}
-            {active === "calendar" && <CalendarScreen profile={profile} plan={plan} />}
+            {active === "calendar" && <CalendarScreen profile={profile} plan={plan} localData={localData} onToday={() => setActive("today")} />}
             {active === "workouts" && (
               <WorkoutScreen
                 profile={profile}
                 checkIn={checkIn}
                 gym={gym}
+                localData={localData}
                 setGym={setGym}
+                onSaveWorkout={saveWorkout}
               />
             )}
-            {active === "nutrition" && <NutritionScreen checkIn={checkIn} plan={plan} />}
-            {active === "analytics" && <AnalyticsScreen plan={plan} checkIn={checkIn} />}
+            {active === "nutrition" && <NutritionScreen checkIn={checkIn} plan={plan} localData={localData} onSaveMeal={saveMeal} />}
+            {active === "analytics" && <AnalyticsScreen profile={profile} plan={plan} checkIn={checkIn} localData={localData} onToday={() => setActive("today")} />}
           </motion.section>
         )}
 
         <BottomNav active={active} setActive={setActive} />
+      </div>
+    </main>
+  );
+}
+
+function MiraLoadingScreen() {
+  return (
+    <main className="flex min-h-screen items-center justify-center px-5 text-mira-text">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <MiraSymbol />
+        <p className="text-sm font-semibold text-mira-muted">Открываем твой день</p>
       </div>
     </main>
   );
@@ -173,7 +292,7 @@ function Landing({ onStart }: { onStart: () => void }) {
     <main className="soft-grid min-h-screen overflow-hidden px-5 py-6 text-mira-text">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-center">
         <section className="pt-6 lg:pt-16">
-          <Badge className="mb-6 border-mira-primary/15 bg-white/80 text-mira-primary">
+          <Badge className="mb-6 border-mira-primary/15 bg-mira-card/80 text-mira-primary">
             ИИ-коуч для тела на каждый день
           </Badge>
           <motion.h1
@@ -189,7 +308,7 @@ function Landing({ onStart }: { onStart: () => void }) {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button size="lg" onClick={onStart}>
-              Начать настройку за 3 минуты <ArrowRight className="h-4 w-4" />
+              Начать за минуту <ArrowRight className="h-4 w-4" />
             </Button>
             <Button size="lg" variant="secondary" onClick={onStart}>
               Посмотреть демо-план
@@ -208,17 +327,17 @@ function Landing({ onStart }: { onStart: () => void }) {
           initial={{ opacity: 0, y: 24, rotate: 2 }}
           animate={{ opacity: 1, y: 0, rotate: 0 }}
           transition={{ duration: 0.5 }}
-          className="phone-shell relative mx-auto w-full max-w-sm rounded-[3rem] border border-white/70 bg-white/70 p-3 backdrop-blur"
+          className="phone-shell relative mx-auto w-full max-w-sm rounded-[3rem] border border-white/70 bg-mira-card/70 p-3 backdrop-blur"
         >
           <div className="rounded-[2.4rem] bg-mira-background p-5">
             <div className="mb-6 flex items-center justify-between">
               <LogoMark />
               <Badge>Сегодня</Badge>
             </div>
-            <Card className="bg-mira-primary p-6 text-white">
-              <p className="text-sm text-white/75">Твоё тело сегодня</p>
+            <Card className="bg-mira-primary p-6 text-mira-ink">
+              <p className="text-sm text-mira-ink/70">Твоё тело сегодня</p>
               <h2 className="mt-3 text-4xl font-black tracking-[-0.05em]">В балансе</h2>
-              <p className="mt-3 text-sm leading-6 text-white/80">
+              <p className="mt-3 text-sm leading-6 text-mira-ink/75">
                 Умеренное движение, белок раньше и более спокойный вечер.
               </p>
             </Card>
@@ -243,36 +362,38 @@ function Onboarding({
   setProfile,
   step,
   setStep,
+  plan,
   onDone
 }: {
   profile: OnboardingState;
   setProfile: (profile: OnboardingState) => void;
   step: number;
   setStep: (step: number) => void;
+  plan: ReturnType<typeof buildDailyPlan>;
   onDone: () => void;
 }) {
-  const progress = ((step + 1) / 4) * 100;
+  const progress = ((step + 1) / 5) * 100;
 
   return (
     <main className="min-h-screen px-5 py-6 text-mira-text">
       <div className="mx-auto max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <LogoMark />
-          <Badge>{step + 1} из 4</Badge>
+          <Badge>{step + 1} из 5</Badge>
         </div>
-        <div className="mb-8 h-2 rounded-full bg-white">
+        <div className="mb-8 h-2 rounded-full bg-mira-card">
           <div
             className="h-full rounded-full bg-mira-primary transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <Card className="min-h-[560px] p-6">
+        <Card className="min-h-[570px] p-6">
           {step === 0 && (
             <StepShell
-              eyebrow="Цель"
-              title="Какая у тебя главная цель?"
-              subtitle="Mira использует это как направление, а не как жёсткий план."
+              eyebrow="Начнём с важного"
+              title="Что ты хочешь получить от Mira?"
+              subtitle="Выбери главное направление. Его всегда можно изменить позже."
             >
               <ChoiceGrid
                 options={goals}
@@ -286,11 +407,11 @@ function Onboarding({
             <StepShell
               eyebrow="Цикл"
               title="Где ты сейчас в своём ритме?"
-              subtitle="Мы спрашиваем только базовое. Это помогает не давать всем одинаковые тренировки."
+              subtitle="Эти данные помогают сделать рекомендации чуть точнее. Можно пропустить и вернуться позже."
             >
               <Field label="Первый день последней менструации">
                 <input
-                  className="w-full rounded-2xl border border-black/5 bg-mira-background px-4 py-3"
+                  className="w-full rounded-2xl border border-white/10 bg-mira-background px-4 py-3"
                   type="date"
                   value={profile.periodStart}
                   onChange={(event) => setProfile({ ...profile, periodStart: event.target.value })}
@@ -298,7 +419,7 @@ function Onboarding({
               </Field>
               <Field label="Средняя длина цикла">
                 <input
-                  className="w-full rounded-2xl border border-black/5 bg-mira-background px-4 py-3"
+                  className="w-full rounded-2xl border border-white/10 bg-mira-background px-4 py-3"
                   type="number"
                   min={21}
                   max={45}
@@ -318,81 +439,22 @@ function Onboarding({
                   })
                 }
               />
+              <Button
+                className="w-full"
+                variant="ghost"
+                onClick={() => setProfile({ ...profile, periodStart: "" })}
+              >
+                Не помню, настрою позже
+              </Button>
             </StepShell>
           )}
 
           {step === 2 && (
             <StepShell
-              eyebrow="Тренировки"
-              title="Как тебе комфортнее тренироваться?"
-              subtitle="Прототип собирает план на сегодня, а не жёсткую программу на месяц."
+              eyebrow="Обычный ритм"
+              title="Как проходит большинство твоих дней?"
+              subtitle="Mira учитывает твой ритм, а не просит соответствовать чужому плану."
             >
-              <Field label="Где тренируешься">
-                <ChoiceGrid
-                  options={["Зал", "Дом"]}
-                  value={profile.trainingPlace}
-                  onChange={(trainingPlace) =>
-                    setProfile({
-                      ...profile,
-                      trainingPlace: trainingPlace as OnboardingState["trainingPlace"]
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Уровень подготовки">
-                <ChoiceGrid
-                  options={["Новичок", "Средний", "Продвинутый"]}
-                  value={profile.level}
-                  onChange={(level) =>
-                    setProfile({ ...profile, level: level as OnboardingState["level"] })
-                  }
-                />
-              </Field>
-              <Field label={`Тренировок в неделю: ${profile.workoutsPerWeek}`}>
-                <input
-                  className="slider w-full"
-                  type="range"
-                  min={1}
-                  max={6}
-                  value={profile.workoutsPerWeek}
-                  onChange={(event) =>
-                    setProfile({ ...profile, workoutsPerWeek: Number(event.target.value) })
-                  }
-                />
-              </Field>
-            </StepShell>
-          )}
-
-          {step === 3 && (
-            <StepShell
-              eyebrow="Образ жизни"
-              title="Как обычно чувствует себя твоё тело?"
-              subtitle="Это помогает Mira сделать первую рекомендацию более персональной."
-            >
-              <Field label="Качество сна">
-                <ChoiceGrid
-                  options={["Плохо", "Нормально", "Хорошо"]}
-                  value={profile.sleepQuality}
-                  onChange={(sleepQuality) =>
-                    setProfile({
-                      ...profile,
-                      sleepQuality: sleepQuality as OnboardingState["sleepQuality"]
-                    })
-                  }
-                />
-              </Field>
-              <Field label={`Уровень стресса: ${profile.stressLevel}/10`}>
-                <input
-                  className="slider w-full"
-                  type="range"
-                  min={1}
-                  max={10}
-                  value={profile.stressLevel}
-                  onChange={(event) =>
-                    setProfile({ ...profile, stressLevel: Number(event.target.value) })
-                  }
-                />
-              </Field>
               <Field label="Активность в течение дня">
                 <ChoiceGrid
                   options={["Низкая", "Средняя", "Высокая"]}
@@ -405,6 +467,68 @@ function Onboarding({
                   }
                 />
               </Field>
+              <Field label="Качество сна">
+                <ChoiceGrid
+                  options={["Плохо", "Нормально", "Хорошо"]}
+                  value={profile.sleepQuality}
+                  onChange={(sleepQuality) =>
+                    setProfile({
+                      ...profile,
+                      sleepQuality: sleepQuality as OnboardingState["sleepQuality"]
+                    })
+                  }
+                />
+              </Field>
+              <Field label={`Стресс обычно: ${profile.stressLevel}/10`}>
+                <input
+                  className="slider w-full"
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={profile.stressLevel}
+                  onChange={(event) =>
+                    setProfile({ ...profile, stressLevel: Number(event.target.value) })
+                  }
+                />
+              </Field>
+            </StepShell>
+          )}
+
+          {step === 3 && (
+            <StepShell
+              eyebrow="Твой фокус"
+              title="Что хочется замечать бережнее?"
+              subtitle="Выбери несколько сигналов. Они сформируют твой быстрый чек-ин."
+            >
+              <MultiChoiceGrid
+                options={focusAreaOptions}
+                values={profile.focusAreas}
+                onChange={(focusAreas) => setProfile({ ...profile, focusAreas })}
+              />
+            </StepShell>
+          )}
+
+          {step === 4 && (
+            <StepShell
+              eyebrow="Твой первый день"
+              title="Mira готова быть рядом сегодня"
+              subtitle="Это стартовый план на основе выбранного ритма. После первого чек-ина он станет точнее."
+            >
+              <div className="rounded-3xl bg-mira-ink p-5 text-white">
+                <p className="text-sm font-semibold text-white/60">Движение</p>
+                <p className="mt-2 text-xl font-black tracking-[-0.04em]">{plan.movement.title}</p>
+                <p className="mt-2 text-sm leading-6 text-white/70">{plan.movement.detail}</p>
+              </div>
+              <div className="grid gap-3 text-sm">
+                <div className="rounded-2xl bg-mira-background p-4">
+                  <p className="font-bold">Питание</p>
+                  <p className="mt-1 text-mira-muted">{plan.nutrition.title}</p>
+                </div>
+                <div className="rounded-2xl bg-mira-background p-4">
+                  <p className="font-bold">Восстановление</p>
+                  <p className="mt-1 text-mira-muted">{plan.recovery.title}</p>
+                </div>
+              </div>
             </StepShell>
           )}
         </Card>
@@ -413,8 +537,8 @@ function Onboarding({
           <Button variant="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>
             Назад
           </Button>
-          <Button onClick={() => (step === 3 ? onDone() : setStep(step + 1))}>
-            {step === 3 ? "Показать мой план" : "Продолжить"}
+          <Button onClick={() => (step === 4 ? onDone() : setStep(step + 1))}>
+            {step === 4 ? "Открыть мой день" : "Продолжить"}
           </Button>
         </div>
       </div>
@@ -426,19 +550,36 @@ function TodayScreen({
   plan,
   profile,
   checkIn,
-  setCheckIn,
+  localData,
+  onSaveCheckIn,
+  onSaveReflection,
+  onCalendar,
   onWorkouts,
   onNutrition
 }: {
   plan: ReturnType<typeof buildDailyPlan>;
   profile: OnboardingState;
   checkIn: CheckInState;
-  setCheckIn: (checkIn: CheckInState) => void;
+  localData: MiraLocalData;
+  onSaveCheckIn: (checkIn: CheckInState) => void;
+  onSaveReflection: (value: Omit<DailyReflection, "date">) => void;
+  onCalendar: () => void;
   onWorkouts: () => void;
   onNutrition: () => void;
 }) {
   const [checkInOpen, setCheckInOpen] = useState(false);
+  const [reflectionOpen, setReflectionOpen] = useState(false);
   const resource = getResourceToday(checkIn);
+  const hasSavedCheckIn = Boolean(localData.checkIns[localDateKey()]);
+  const reflection = localData.reflections[localDateKey()];
+  const analyzedMeals = localData.meals.filter((meal) => meal.date === localDateKey() && meal.energyKcal);
+  const nutritionEnergy = analyzedMeals.length
+    ? {
+        min: analyzedMeals.reduce((sum, meal) => sum + (meal.energyKcal?.min ?? 0), 0),
+        max: analyzedMeals.reduce((sum, meal) => sum + (meal.energyKcal?.max ?? 0), 0),
+        confidence: Math.round(analyzedMeals.reduce((sum, meal) => sum + (meal.confidence ?? 0), 0) / analyzedMeals.length * 100)
+      }
+    : null;
   const nextPeriodDate = new Date();
   nextPeriodDate.setDate(nextPeriodDate.getDate() + profile.cycleLength - plan.cycleDay + 1);
   const nextPeriod = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(nextPeriodDate);
@@ -468,16 +609,16 @@ function TodayScreen({
         <p className="mt-2 text-sm leading-6 text-mira-muted">Посмотрим на твой сегодняшний контекст без лишнего давления.</p>
       </section>
 
-      <Card className="bg-[#fff6f4]">
+      <Card className="bg-[#30272b]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-mira-muted">Цикл</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">День {plan.cycleDay}</h2>
             <p className="mt-1 text-sm text-mira-primary">{plan.phase} фаза</p>
           </div>
-          <CalendarDays className="h-6 w-6 text-mira-primary" />
+          <CycleDial cycleDay={plan.cycleDay} cycleLength={profile.cycleLength} />
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-black/5 pt-4 text-sm">
+        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm">
           <div>
             <p className="text-mira-muted">Следующая менструация</p>
             <p className="mt-1 font-bold text-mira-text">Ориентировочно {nextPeriod}</p>
@@ -489,6 +630,41 @@ function TodayScreen({
         </div>
       </Card>
 
+      <DashboardCalendar profile={profile} plan={plan} localData={localData} onOpenCalendar={onCalendar} />
+
+      {nutritionEnergy && (
+        <Card className="bg-[#1d302b]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-mira-muted">Энергия из фото еды</p>
+              <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">{nutritionEnergy.min}-{nutritionEnergy.max} ккал</h2>
+              <p className="mt-1 text-sm leading-6 text-mira-muted">Ориентировочный диапазон по {analyzedMeals.length} {analyzedMeals.length === 1 ? "фото" : "фото"}; это не точный подсчёт.</p>
+            </div>
+            <Badge className="bg-mira-background text-mira-text">Уверенность {nutritionEnergy.confidence}%</Badge>
+          </div>
+        </Card>
+      )}
+
+      <Card className="border-mira-primary/30 bg-[#1d302b]">
+        <p className="text-sm font-semibold text-mira-muted">Следующий шаг</p>
+        <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">
+          {!hasSavedCheckIn ? "Отметь, как ты сейчас" : checkIn.painLevel > 0 ? "Сегодня выбираем восстановление" : "План на сегодня готов"}
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">
+          {!hasSavedCheckIn
+            ? "Короткий чек-ин помогает Mira предложить более уместный темп дня."
+            : checkIn.painLevel > 0
+              ? "Боль важнее тренировочной цели. Выбери только комфортное движение или отдых."
+              : "Ты можешь открыть тренировку или оставить в плане только то, что сегодня посильно."}
+        </p>
+        <Button className="mt-4 w-full" size="lg" onClick={!hasSavedCheckIn ? () => setCheckInOpen(true) : onWorkouts}>
+          {!hasSavedCheckIn ? <ClipboardCheck className="h-4 w-4" /> : <Dumbbell className="h-4 w-4" />}
+          {!hasSavedCheckIn ? "Отметить состояние" : checkIn.painLevel > 0 ? "Открыть восстановление" : "Открыть план"}
+        </Button>
+      </Card>
+
+      {hasSavedCheckIn ? (
+        <>
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -512,16 +688,23 @@ function TodayScreen({
           <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">Поддерживающий план на сегодня</h2>
           <p className="mt-2 text-sm leading-6 text-white/70">{plan.movement.reason}</p>
         </div>
-        <div className="divide-y divide-black/5">
+        <div className="divide-y divide-white/10">
           <TodayRecommendation icon={<BriefcaseBusiness />} label="Работа" text={workRecommendation} />
           <TodayRecommendation icon={<Dumbbell />} label="Тренировка" text={`${plan.movement.title} - ${plan.movement.detail}.`} />
           <TodayRecommendation icon={<HeartPulse />} label="Питание" text={`${plan.nutrition.title}. ${plan.nutrition.detail}.`} />
           <TodayRecommendation icon={<Moon />} label="Восстановление" text={`${plan.recovery.title}. ${plan.recovery.detail}.`} />
         </div>
       </Card>
+        </>
+      ) : (
+        <Card>
+          <p className="text-sm font-semibold text-mira-muted">План появится после check-in</p>
+          <p className="mt-2 text-sm leading-6 text-mira-muted">Mira не будет делать вид, что знает твой ресурс без твоей отметки. Начни с нескольких коротких ответов.</p>
+        </Card>
+      )}
 
       <section>
-        <p className="mb-3 px-1 text-sm font-semibold text-mira-muted">Быстрые действия</p>
+        <p className="mb-3 px-1 text-sm font-semibold text-mira-muted">Ещё сегодня</p>
         <div className="grid grid-cols-2 gap-3">
           <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={() => setCheckInOpen(true)}>
             <ClipboardCheck className="h-5 w-5 text-mira-primary" />
@@ -547,17 +730,152 @@ function TodayScreen({
           initial={checkIn}
           onClose={() => setCheckInOpen(false)}
           onSave={(value) => {
-            setCheckIn(value);
+            onSaveCheckIn(value);
             setCheckInOpen(false);
           }}
         />
       )}
 
-      <Card className="bg-[#f2f7f1]">
+      <Card className="bg-[#1d302b]">
         <p className="text-sm font-semibold text-mira-muted">Небольшое наблюдение</p>
         <p className="mt-2 text-sm leading-6 text-mira-text">{insight}</p>
       </Card>
+
+      <Card>
+        <p className="text-sm font-semibold text-mira-muted">Закрыть день</p>
+        <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">{reflection ? "Отметка дня сохранена" : "Как прошёл день?"}</h2>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">
+          {reflection
+            ? "Ты сможешь увидеть эту отметку в личной истории. Её можно обновить в любой момент."
+            : "Пара коротких отметок помогут Mira показывать только твой реальный ритм."}
+        </p>
+        <Button className="mt-4 w-full" variant="secondary" onClick={() => setReflectionOpen(true)}>
+          {reflection ? "Обновить отметку" : "Отметить день"}
+        </Button>
+      </Card>
+
+      {reflectionOpen && (
+        <DailyReflectionForm
+          initial={reflection}
+          onClose={() => setReflectionOpen(false)}
+          onSave={(value) => {
+            onSaveReflection(value);
+            setReflectionOpen(false);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function CycleDial({ cycleDay, cycleLength }: { cycleDay: number; cycleLength: number }) {
+  const progress = Math.min(100, Math.max(4, (cycleDay / cycleLength) * 100));
+  const accent = cycleDay <= 5 ? "#EF4653" : "#76D7F3";
+
+  return (
+    <div
+      aria-label={`День цикла ${cycleDay} из ${cycleLength}`}
+      className="grid h-16 w-16 shrink-0 place-items-center rounded-full p-1"
+      style={{ background: `conic-gradient(${accent} ${progress}%, #484742 0)` }}
+    >
+      <div className="grid h-full w-full place-items-center rounded-full bg-mira-card text-center">
+        <span className="text-[9px] font-bold uppercase text-mira-muted">день</span>
+        <span className="-mt-1 text-lg font-black text-mira-text">{cycleDay}</span>
+      </div>
+    </div>
+  );
+}
+
+function DashboardCalendar({
+  profile,
+  plan,
+  localData,
+  onOpenCalendar
+}: {
+  profile: OnboardingState;
+  plan: ReturnType<typeof buildDailyPlan>;
+  localData: MiraLocalData;
+  onOpenCalendar: () => void;
+}) {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const currentDay = today.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+  const [selectedDay, setSelectedDay] = useState(currentDay);
+  const calendarDays = useMemo(
+    () => Array.from({ length: daysInMonth }, (_, index) => createCalendarDay(index + 1, currentDay, plan, profile, localData, year, month)),
+    [currentDay, daysInMonth, localData, month, plan, profile, year]
+  );
+  const selected = calendarDays[selectedDay - 1];
+  const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(today);
+  const selectedLabel = selected.isPeriod
+    ? "Отмечена менструация"
+    : selected.isPredictedPeriod
+      ? "Ориентировочное окно следующей менструации"
+      : selected.isOvulation
+        ? "Ориентировочная овуляция"
+        : selected.isFertile
+          ? "Ориентировочное фертильное окно"
+          : `${selected.phase} · день цикла ${selected.cycleDay}`;
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-mira-muted">Календарь цикла</p>
+          <h2 className="mt-1 capitalize text-xl font-black tracking-[-0.04em]">{monthName}</h2>
+        </div>
+        <button
+          aria-label="Открыть подробный календарь"
+          className="grid h-10 w-10 place-items-center rounded-full bg-mira-background text-mira-primary transition hover:bg-mira-primary hover:text-mira-ink"
+          onClick={onOpenCalendar}
+          title="Открыть календарь"
+          type="button"
+        >
+          <CalendarDays className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-7 gap-y-1 text-center">
+        {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => (
+          <span key={day} className="pb-1 text-[10px] font-bold text-mira-muted">{day}</span>
+        ))}
+        {Array.from({ length: monthOffset }).map((_, index) => <span key={`dashboard-empty-${index}`} />)}
+        {calendarDays.map((day) => {
+          const selectedDate = day.day === selectedDay;
+          const period = day.isPeriod;
+          const fertile = day.isFertile;
+          const todayDate = day.day === currentDay;
+
+          return (
+            <button
+              key={day.day}
+              aria-label={`Выбрать ${day.day} число`}
+              aria-pressed={selectedDate}
+              className={cn(
+                "relative mx-auto grid h-9 w-9 place-items-center rounded-full text-xs font-bold transition",
+                selectedDate ? "bg-mira-ink text-white shadow-soft" : period ? "bg-mira-cycle/65 text-mira-text" : "text-mira-text hover:bg-mira-background",
+                fertile && !selectedDate ? "ring-1 ring-[#d9d4ee]" : "",
+                todayDate && !selectedDate ? "border border-mira-primary" : ""
+              )}
+              onClick={() => setSelectedDay(day.day)}
+              type="button"
+            >
+              {day.day}
+              {day.isOvulation && !selectedDate && <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-mira-primary" />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex items-start gap-3 rounded-2xl bg-mira-background px-3 py-3">
+        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-mira-primary" />
+        <p className="text-sm leading-5 text-mira-muted">{selectedLabel}</p>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-mira-muted">Отметки ориентировочные и не являются медицинским прогнозом.</p>
+    </Card>
   );
 }
 
@@ -653,8 +971,8 @@ function DailyCheckIn({
                   className={cn(
                     "rounded-full border px-3 py-2 text-sm font-semibold transition",
                     draft.painAreas.includes(area)
-                      ? "border-mira-primary bg-mira-primary text-white"
-                      : "border-black/5 bg-mira-background text-mira-muted"
+                      ? "border-mira-primary bg-mira-primary text-mira-ink"
+                      : "border-white/10 bg-mira-background text-mira-muted"
                   )}
                   onClick={() => toggleListValue("painAreas", area)}
                   type="button"
@@ -690,8 +1008,8 @@ function DailyCheckIn({
                 className={cn(
                   "rounded-full border px-3 py-2 text-sm font-semibold transition",
                   draft.symptoms.includes(symptom)
-                    ? "border-mira-primary bg-mira-primary text-white"
-                    : "border-black/5 bg-mira-background text-mira-muted"
+                    ? "border-mira-primary bg-mira-primary text-mira-ink"
+                    : "border-white/10 bg-mira-background text-mira-muted"
                 )}
                 onClick={() => toggleListValue("symptoms", symptom)}
                 type="button"
@@ -703,7 +1021,7 @@ function DailyCheckIn({
         </Field>
         <Field label="Заметка (необязательно)">
           <textarea
-            className="min-h-20 w-full resize-y rounded-2xl border border-black/5 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
+            className="min-h-20 w-full resize-y rounded-2xl border border-white/10 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
             maxLength={280}
             placeholder="Например: много встреч, хочу оставить вечер спокойнее"
             value={draft.note}
@@ -719,25 +1037,99 @@ function DailyCheckIn({
   );
 }
 
+function DailyReflectionForm({
+  initial,
+  onClose,
+  onSave
+}: {
+  initial?: DailyReflection;
+  onClose: () => void;
+  onSave: (value: Omit<DailyReflection, "date">) => void;
+}) {
+  const [energyAfter, setEnergyAfter] = useState(initial?.energyAfter ?? 6);
+  const [painLevel, setPainLevel] = useState(initial?.painLevel ?? 0);
+  const [note, setNote] = useState(initial?.note ?? "");
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-4">
+      <Card className="rounded-t-[2rem] border-b-0 bg-mira-card p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.38)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-mira-muted">Вечерняя отметка</p>
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Как ощущения сейчас?</h2>
+            <p className="mt-1 text-sm leading-5 text-mira-muted">Можно заполнить за несколько секунд или пропустить.</p>
+          </div>
+          <Button aria-label="Закрыть вечернюю отметку" className="h-10 w-10 shrink-0 p-0" variant="ghost" onClick={onClose}>
+            <span aria-hidden="true">×</span>
+          </Button>
+        </div>
+        <div className="mt-5 space-y-5">
+          <Field label={`Ресурс сейчас: ${energyAfter}/10`}>
+            <input
+              className="slider w-full"
+              max={10}
+              min={1}
+              onChange={(event) => setEnergyAfter(Number(event.target.value))}
+              type="range"
+              value={energyAfter}
+            />
+          </Field>
+          <Field label={`Боль или дискомфорт сейчас: ${painLevel}/10`}>
+            <input
+              className="slider w-full"
+              max={10}
+              min={0}
+              onChange={(event) => setPainLevel(Number(event.target.value))}
+              type="range"
+              value={painLevel}
+            />
+          </Field>
+          <Field label="Короткая заметка (необязательно)">
+            <textarea
+              className="min-h-20 w-full resize-y rounded-2xl border border-white/10 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
+              maxLength={280}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Например: прогулка помогла переключиться"
+              value={note}
+            />
+          </Field>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Button variant="secondary" onClick={onClose}>Не сейчас</Button>
+          <Button onClick={() => onSave({ energyAfter, painLevel, note })}>Сохранить</Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function WorkoutScreen({
   profile,
   checkIn,
   gym,
-  setGym
+  setGym,
+  localData,
+  onSaveWorkout
 }: {
   profile: OnboardingState;
   checkIn: CheckInState;
   gym: GymState;
   setGym: (gym: GymState) => void;
+  localData: MiraLocalData;
+  onSaveWorkout: (value: Omit<WorkoutLog, "id" | "date">) => void;
 }) {
-  const recommendation = useMemo(() => buildWorkout(profile, checkIn, gym), [profile, checkIn, gym]);
-  const resource = getResourceToday(checkIn);
+  const todayMeals = localData.meals.filter((entry) => entry.date === localDateKey());
+  const recommendation = useMemo(
+    () => buildWorkout(profile, checkIn, gym, { mealsToday: todayMeals.length }),
+    [checkIn, gym, profile, todayMeals.length]
+  );
   const [generated, setGenerated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [stopped, setStopped] = useState(false);
   const [safetyMessage, setSafetyMessage] = useState("");
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   const highPain = checkIn.painLevel >= 5;
+  const todayWorkouts = localData.workouts.filter((entry) => entry.date === localDateKey());
 
   const updateGym = (next: Partial<GymState>) => {
     setGym({ ...gym, ...next });
@@ -786,21 +1178,18 @@ function WorkoutScreen({
       </Card>
 
       <Card className="space-y-4">
-        <p className="text-sm font-semibold text-mira-muted">Почему именно такой план</p>
+        <div className="flex items-start justify-between gap-4">
+          <p className="text-sm font-semibold text-mira-muted">Почему именно такой план</p>
+          <Badge className="bg-mira-background text-mira-text">Нагрузка {recommendation.readinessScore}/100</Badge>
+        </div>
         <div className="flex flex-wrap gap-2">
-          {[
-            `Цикл: ${buildDailyPlan(profile, checkIn).phase}`,
-            `Ресурс: ${resource.level}`,
-            checkIn.painLevel ? `Боль: ${checkIn.painLevel}/10` : "Боль не отмечена",
-            checkIn.symptoms.length ? `Симптомы: ${checkIn.symptoms.join(", ")}` : "Симптомы не отмечены",
-            `Работа: ${checkIn.workload.toLowerCase()}`
-          ].map((factor) => (
+          {recommendation.factors.map((factor) => (
             <span key={factor} className="rounded-full bg-mira-background px-3 py-2 text-xs font-semibold text-mira-muted">
               {factor}
             </span>
           ))}
         </div>
-        <p className="text-sm leading-6 text-mira-muted">Доступное время: {gym.time}. План можно изменить в любой момент.</p>
+        <p className="text-sm leading-6 text-mira-muted">Доступное время: {gym.time}. Фаза цикла влияет на расчёт мягко и никогда не важнее боли или самочувствия.</p>
       </Card>
 
       <Card className="space-y-5">
@@ -832,19 +1221,25 @@ function WorkoutScreen({
 
       {isGenerating && (
         <div aria-live="polite" className="rounded-2xl bg-mira-background px-4 py-3 text-sm text-mira-muted" role="status">
-          Учитываем время, ресурс и отмеченные ощущения.
+          Учитываем время, состояние, цикл, рабочую нагрузку и записи еды.
         </div>
       )}
 
       {generated && (
         <Card className="overflow-hidden p-0">
-          <div className="bg-mira-primary p-5 text-white">
-            <Badge className="bg-white/18 text-white">Демо-рекомендация</Badge>
+          <div className="bg-mira-primary p-5 text-mira-ink">
+            <Badge className="border-mira-ink/10 bg-mira-ink/10 text-mira-ink">Локальный алгоритм</Badge>
             <h2 className="mt-3 text-2xl font-black tracking-[-0.05em]">{recommendation.title}</h2>
-            <p className="mt-2 text-sm text-white/80">{recommendation.time} · {recommendation.intensity}</p>
+            <p className="mt-2 text-sm text-mira-ink/75">{recommendation.time} · {recommendation.intensity}</p>
           </div>
           <div className="space-y-4 p-5">
             <p className="rounded-2xl bg-mira-background p-4 text-sm leading-6 text-mira-muted">{recommendation.explanation}</p>
+            {recommendation.nutritionSupport && (
+              <div className="rounded-2xl bg-[#30272b] p-4 text-sm leading-6 text-mira-muted">
+                <p className="font-bold text-mira-text">Контекст питания</p>
+                <p className="mt-1">{recommendation.nutritionSupport}</p>
+              </div>
+            )}
             {safetyMessage && <p className="text-sm font-semibold text-mira-primary">{safetyMessage}</p>}
             {!stopped && (
               <>
@@ -863,6 +1258,17 @@ function WorkoutScreen({
                   </div>
                 </div>
                 <WorkoutBlock title="Завершение" items={[recommendation.cooldown]} />
+                <Button className="w-full" size="lg" onClick={() => {
+                  onSaveWorkout({
+                    status: highPain ? "recovery" : "completed",
+                    title: recommendation.title,
+                    durationMinutes: Number.parseInt(recommendation.time, 10)
+                  });
+                  setStopped(true);
+                  setSafetyMessage(highPain ? "Восстановительная сессия сохранена. Спасибо, что выбрала комфортный темп." : "Тренировка сохранена. Вечером можно добавить короткую отметку о самочувствии.");
+                }}>
+                  Завершить и сохранить
+                </Button>
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Button className="h-auto min-h-16 whitespace-normal px-3 py-3 text-center" variant="outline" onClick={() => {
                     replaceExercise(0, true);
@@ -884,6 +1290,12 @@ function WorkoutScreen({
                   </Button>
                   <Button className="h-auto min-h-16 whitespace-normal px-3 py-3 text-center" variant="outline" onClick={() => {
                     setStopped(true);
+                    onSaveWorkout({
+                      status: "skipped",
+                      title: recommendation.title,
+                      durationMinutes: 0,
+                      note: "Остановлена до завершения"
+                    });
                     setSafetyMessage("Тренировка остановлена. Сегодня можно выбрать отдых или комфортную прогулку.");
                   }}>
                     Остановить тренировку
@@ -895,9 +1307,20 @@ function WorkoutScreen({
         </Card>
       )}
 
-      <Card className="border-dashed bg-white/60">
+      <Card className="border-dashed bg-mira-card/60">
         <p className="text-sm font-semibold text-mira-muted">История тренировок</p>
-        <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появятся завершённые тренировки и заметки о том, как они ощущались.</p>
+        {todayWorkouts.length ? (
+          <div className="mt-3 space-y-2">
+            {todayWorkouts.map((entry) => (
+              <div key={entry.id} className="rounded-2xl bg-mira-background p-3">
+                <p className="text-sm font-bold text-mira-text">{entry.title}</p>
+                <p className="mt-1 text-xs leading-5 text-mira-muted">{entry.status === "completed" ? "Завершена" : entry.status === "recovery" ? "Восстановление" : "Остановлена"}{entry.durationMinutes ? ` · ${entry.durationMinutes} мин` : ""}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появятся завершённые тренировки и заметки о том, как они ощущались.</p>
+        )}
       </Card>
     </div>
   );
@@ -975,10 +1398,14 @@ const calendarLayers: Array<{ id: CalendarLayer; label: string; dot: string }> =
 
 function CalendarScreen({
   profile,
-  plan
+  plan,
+  localData,
+  onToday
 }: {
   profile: OnboardingState;
   plan: ReturnType<typeof buildDailyPlan>;
+  localData: MiraLocalData;
+  onToday: () => void;
 }) {
   const today = new Date();
   const year = today.getFullYear();
@@ -997,14 +1424,15 @@ function CalendarScreen({
     "workouts"
   ]);
   const calendarDays = useMemo(
-    () => Array.from({ length: daysInMonth }, (_, index) => createDemoCalendarDay(index + 1, currentDay, plan, profile)),
-    [currentDay, daysInMonth, plan, profile]
+    () => Array.from({ length: daysInMonth }, (_, index) => createCalendarDay(index + 1, currentDay, plan, profile, localData, year, month)),
+    [currentDay, daysInMonth, localData, month, plan, profile, year]
   );
   const selected = calendarDays[selectedDay - 1];
   const selectedDate = new Date(year, month, selectedDay);
   const weekStart = Math.max(1, selectedDay - ((selectedDate.getDay() + 6) % 7));
   const weekDays = calendarDays.slice(weekStart - 1, Math.min(weekStart + 6, daysInMonth));
   const monthName = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(today);
+  const hasLocalEntries = calendarDays.some((day) => day.energy || day.workout || day.nutrition || day.note);
 
   const toggleLayer = (layer: CalendarLayer) => {
     setActiveLayers((current) =>
@@ -1028,7 +1456,7 @@ function CalendarScreen({
               key={layer.id}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                active ? "border-mira-primary bg-white text-mira-text shadow-soft" : "border-transparent bg-white/50 text-mira-muted"
+                active ? "border-mira-primary bg-mira-card text-mira-text shadow-soft" : "border-transparent bg-mira-card/50 text-mira-muted"
               )}
               onClick={() => toggleLayer(layer.id)}
               type="button"
@@ -1044,6 +1472,15 @@ function CalendarScreen({
         <div aria-live="polite" className="rounded-2xl bg-mira-background px-4 py-3 text-sm leading-6 text-mira-muted" role="status">
           Все слои скрыты. Включи один или несколько, чтобы увидеть отметки в календаре.
         </div>
+      )}
+
+      {!hasLocalEntries && (
+        <Card className="bg-[#1d302b]">
+          <p className="text-sm font-semibold text-mira-muted">Первая запись</p>
+          <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Календарь оживёт с твоим первым чек-ином</h2>
+          <p className="mt-2 text-sm leading-6 text-mira-muted">Сейчас здесь есть только ориентиры цикла. Самочувствие, тренировки, еда и заметки появятся после сохранения твоих записей.</p>
+          <Button className="mt-4 w-full" onClick={onToday}>Отметить состояние</Button>
+        </Card>
       )}
 
       <Card className="p-4">
@@ -1164,7 +1601,7 @@ function CalendarDaySheet({ date, day, onClose }: { date: Date; day: CalendarDay
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-4">
-      <Card className="rounded-t-[2rem] border-b-0 bg-white p-5 shadow-[0_-18px_60px_rgba(28,28,30,0.16)]">
+      <Card className="rounded-t-[2rem] border-b-0 bg-mira-card p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.38)]">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="capitalize text-sm font-semibold text-mira-muted">{dateLabel}</p>
@@ -1178,13 +1615,13 @@ function CalendarDaySheet({ date, day, onClose }: { date: Date; day: CalendarDay
         <div className="space-y-3 text-sm">
           <CalendarDetail label="Цикл" value={prediction} />
           <CalendarDetail label="Симптомы" value={day.symptoms.length ? day.symptoms.join(", ") : "Не отмечены"} />
-          <CalendarDetail label="Состояние" value={`Энергия ${day.energy}/10 · ${day.mood} · сон: ${day.sleep.toLowerCase()}`} />
-          <CalendarDetail label="Работа" value={day.workload} />
-          <CalendarDetail label="Тренировка" value={day.workout} />
-          <CalendarDetail label="Питание" value={day.nutrition} />
+          <CalendarDetail label="Состояние" value={day.energy ? `Энергия ${day.energy}/10 · настроение ${day.mood} · сон: ${day.sleep.toLowerCase()}` : "Не отмечено"} />
+          <CalendarDetail label="Работа" value={day.workload || "Не отмечена"} />
+          <CalendarDetail label="Тренировка" value={day.workout || "Не отмечена"} />
+          <CalendarDetail label="Питание" value={day.nutrition || "Нет записей"} />
           {day.note && <CalendarDetail label="Заметка" value={day.note} />}
         </div>
-        <div className="mt-4 rounded-2xl bg-[#f2f7f1] p-4">
+        <div className="mt-4 rounded-2xl bg-[#1d302b] p-4">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-mira-muted">Рекомендация на день</p>
           <p className="mt-2 text-sm leading-6 text-mira-text">{day.recommendation}</p>
         </div>
@@ -1195,29 +1632,34 @@ function CalendarDaySheet({ date, day, onClose }: { date: Date; day: CalendarDay
 
 function CalendarDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-5 border-b border-black/5 pb-3 last:border-0 last:pb-0">
+    <div className="flex items-start justify-between gap-5 border-b border-white/10 pb-3 last:border-0 last:pb-0">
       <span className="shrink-0 font-semibold text-mira-muted">{label}</span>
       <span className="text-right leading-5 text-mira-text">{value}</span>
     </div>
   );
 }
 
-function createDemoCalendarDay(
+function createCalendarDay(
   day: number,
   currentDay: number,
   plan: ReturnType<typeof buildDailyPlan>,
-  profile: OnboardingState
+  profile: OnboardingState,
+  localData: MiraLocalData,
+  year: number,
+  month: number
 ): CalendarDay {
   const cycleDay = ((plan.cycleDay - 1 + day - currentDay + profile.cycleLength * 2) % profile.cycleLength) + 1;
   const isPeriod = cycleDay <= 5;
   const isPredictedPeriod = cycleDay >= profile.cycleLength - 2;
   const isFertile = cycleDay >= 11 && cycleDay <= 16;
   const isOvulation = cycleDay === 14;
-  const symptoms = day % 6 === 0 ? ["усталость"] : day % 9 === 0 ? ["вздутие"] : [];
-  const busy = day % 5 === 0;
-  const hasWorkout = day % 3 === 0;
-  const hasNutrition = day % 2 === 0;
-  const energy = symptoms.length ? 5 : busy ? 6 : 7;
+  const date = localDateKey(new Date(year, month, day));
+  const checkIn = localData.checkIns[date]?.value;
+  const workout = localData.workouts.find((entry) => entry.date === date);
+  const mealCount = localData.meals.filter((entry) => entry.date === date).length;
+  const symptoms = checkIn?.symptoms ?? [];
+  const busy = checkIn?.workload === "Высокая";
+  const energy = checkIn?.energy ?? 0;
 
   return {
     day,
@@ -1228,14 +1670,22 @@ function createDemoCalendarDay(
     isFertile,
     isOvulation,
     symptoms,
-    mood: symptoms.length ? "😐" : busy ? "🙂" : "😍",
+    mood: checkIn ? `${checkIn.mood}/10` : "",
     energy,
-    sleep: busy ? "Нормально" : "Хорошо",
-    workload: busy ? "Насыщенный день" : "Спокойный ритм",
-    workout: hasWorkout ? "Запланирована мягкая силовая" : "Тренировка не запланирована",
-    nutrition: hasNutrition ? "Есть запись о приёме пищи" : "Записей нет",
-    note: day % 8 === 0 ? "Хочется оставить вечер свободнее." : undefined,
-    recommendation: symptoms.length
+    sleep: checkIn?.sleep ?? "",
+    workload: checkIn ? (busy ? "Высокая нагрузка" : "Обычная нагрузка") : "",
+    workout: workout
+      ? workout.status === "completed"
+        ? `Завершено: ${workout.title}`
+        : workout.status === "recovery"
+          ? `Восстановление: ${workout.title}`
+          : `Пропущено: ${workout.title}`
+      : "",
+    nutrition: mealCount ? `${mealCount} ${mealCount === 1 ? "приём пищи" : "приёма пищи"}` : "",
+    note: localData.notes[date] || checkIn?.note || undefined,
+    recommendation: !checkIn
+      ? "Записи за этот день пока нет. Добавь короткий чек-ин, когда захочешь сохранить контекст."
+      : symptoms.length
       ? "Выбери комфортный темп и оставь возможность сократить нагрузку по ощущениям."
       : busy
         ? "Сделай короткую паузу между рабочими блоками и выбери посильное движение."
@@ -1252,9 +1702,9 @@ function getVisibleCalendarLayers(day: CalendarDay, activeLayers: CalendarLayer[
     ...(day.symptoms.length ? ["symptoms" as const] : []),
     ...(day.mood ? ["mood" as const] : []),
     ...(day.energy ? ["energy" as const] : []),
-    ...(day.workload.includes("Насыщенный") ? ["workload" as const] : []),
-    ...(day.workout.includes("Запланирована") ? ["workouts" as const] : []),
-    ...(day.nutrition.includes("Есть") ? ["nutrition" as const] : []),
+    ...(day.workload ? ["workload" as const] : []),
+    ...(day.workout ? ["workouts" as const] : []),
+    ...(day.nutrition ? ["nutrition" as const] : []),
     ...(day.note ? ["notes" as const] : [])
   ];
 
@@ -1265,25 +1715,23 @@ function weekdayShort(year: number, month: number, day: number) {
   return new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(new Date(year, month, day)).slice(0, 2);
 }
 
-const demoMealAnalysis = {
-  foods: ["Запечённый лосось", "Рис басмати", "Овощи"],
-  calories: "420-560 ккал",
-  protein: "28-36 г",
-  carbs: "42-58 г",
-  fat: "16-24 г",
-  confidence: "72%",
-  uncertainty: ["размер порции", "количество масла", "соус или заправка"]
-};
-
 function NutritionScreen({
   checkIn,
-  plan
+  plan,
+  localData,
+  onSaveMeal
 }: {
   checkIn: CheckInState;
   plan: ReturnType<typeof buildDailyPlan>;
+  localData: MiraLocalData;
+  onSaveMeal: (value: Omit<MealLog, "id" | "date">) => void;
 }) {
   const [photoFlowOpen, setPhotoFlowOpen] = useState(false);
-  const [analysisVisible, setAnalysisVisible] = useState(false);
+  const [analysis, setAnalysis] = useState<AnalyzeMealOutput | null>(null);
+  const [analysisSource, setAnalysisSource] = useState<"ai" | "demo" | "fallback" | null>(null);
+  const [analysisMessage, setAnalysisMessage] = useState("");
+  const [manualMealOpen, setManualMealOpen] = useState(false);
+  const todayMeals = localData.meals.filter((entry) => entry.date === localDateKey());
   const recommendation = checkIn.symptoms.includes("тяга")
     ? "Для следующего приёма еды можно добавить привычный источник белка и что-то с клетчаткой. Это мягкая поддержка энергии, а не правило."
     : checkIn.energy <= 4
@@ -1300,16 +1748,16 @@ function NutritionScreen({
         <p className="mt-2 text-sm leading-6 text-mira-muted">Mira помогает заметить, что может поддержать энергию и самочувствие, без оценок еды.</p>
       </section>
 
-      <Card className="bg-[#f2f7f1]">
+      <Card className="bg-[#1d302b]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-mira-muted">Сводка за сегодня</p>
-            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">{analysisVisible ? "1 приём пищи" : "Пока без записей"}</h2>
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">{todayMeals.length ? `${todayMeals.length} ${todayMeals.length === 1 ? "приём пищи" : "приёма пищи"}` : "Пока без записей"}</h2>
           </div>
-          <Badge className="bg-white/80 text-mira-text">Демо</Badge>
+          <Badge className="bg-mira-card/80 text-mira-text">На устройстве</Badge>
         </div>
         <p className="mt-3 text-sm leading-6 text-mira-muted">
-          {analysisVisible ? "Есть один приблизительный анализ. Ты всегда сможешь уточнить его позже." : "Добавь фото или посмотри демо-анализ, чтобы увидеть, как это работает."}
+          {todayMeals.length ? "Записи остаются локально в этом браузере. Ты всегда сможешь добавить контекст позже." : "Добавь еду вручную или через фото, чтобы сохранить контекст дня."}
         </p>
       </Card>
 
@@ -1320,48 +1768,54 @@ function NutritionScreen({
           <p className="mt-2 text-sm leading-6 text-white/70">Фото помогает сделать ориентировочную запись. Это не точный подсчёт.</p>
         </div>
         <div className="p-5">
-          <Button className="w-full" size="lg" onClick={() => setPhotoFlowOpen(true)}>
-            <Camera className="h-4 w-4" /> Сфотографировать еду
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Button className="h-auto min-h-16 whitespace-normal px-3 py-3 text-center" size="lg" onClick={() => setPhotoFlowOpen(true)}>
+              <Camera className="h-4 w-4" /> Фото еды
+            </Button>
+            <Button className="h-auto min-h-16 whitespace-normal px-3 py-3 text-center" size="lg" variant="secondary" onClick={() => setManualMealOpen(true)}>
+              <Salad className="h-4 w-4" /> Добавить вручную
+            </Button>
+          </div>
         </div>
       </Card>
 
-      {analysisVisible && (
+      {analysis && (
         <Card>
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-mira-muted">Анализ блюда</p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">Ориентировочная оценка</h2>
             </div>
-            <Badge className="bg-mira-background text-mira-text">Уверенность {demoMealAnalysis.confidence}</Badge>
+            <Badge className="bg-mira-background text-mira-text">Уверенность {Math.round(analysis.confidence * 100)}%</Badge>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {demoMealAnalysis.foods.map((food) => (
+            {analysis.foods.map((food) => (
               <span key={food} className="rounded-full bg-mira-background px-3 py-2 text-xs font-semibold text-mira-text">{food}</span>
             ))}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-mira-background p-3">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Калорийность</p>
-              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.calories}</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{analysis.calories.min}-{analysis.calories.max} ккал</p>
             </div>
             <div className="rounded-2xl bg-mira-background p-3">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Белки</p>
-              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.protein}</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{analysis.macros.protein.min}-{analysis.macros.protein.max} г</p>
             </div>
             <div className="rounded-2xl bg-mira-background p-3">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Углеводы</p>
-              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.carbs}</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{analysis.macros.carbs.min}-{analysis.macros.carbs.max} г</p>
             </div>
             <div className="rounded-2xl bg-mira-background p-3">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Жиры</p>
-              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.fat}</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{analysis.macros.fat.min}-{analysis.macros.fat.max} г</p>
             </div>
           </div>
-          <div className="mt-4 rounded-2xl bg-[#fff6f4] p-4">
+          <div className="mt-4 rounded-2xl bg-[#30272b] p-4">
             <p className="text-sm font-semibold text-mira-text">Что может повлиять на оценку</p>
-            <p className="mt-1 text-sm leading-6 text-mira-muted">{demoMealAnalysis.uncertainty.join(", ")}. Фото-анализ всегда приблизительный.</p>
+            <p className="mt-1 text-sm leading-6 text-mira-muted">{analysis.uncertaintyFactors.join(", ")}. {analysis.note}</p>
           </div>
+          {analysisSource && <p className="mt-3 text-xs leading-5 text-mira-muted">{analysisSource === "ai" ? "Оценка создана AI по одному фото и остаётся приблизительной." : analysisMessage}</p>}
         </Card>
       )}
 
@@ -1370,17 +1824,54 @@ function NutritionScreen({
         <p className="mt-2 text-sm leading-6 text-mira-text">{recommendation}</p>
       </Card>
 
-      <Card className="border-dashed bg-white/60">
+      <Card className="border-dashed bg-mira-card/60">
         <p className="text-sm font-semibold text-mira-muted">История питания</p>
-        <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появятся сохранённые приёмы пищи и твои уточнения к оценкам.</p>
+        {todayMeals.length ? (
+          <div className="mt-3 space-y-2">
+            {todayMeals.map((meal) => (
+              <div key={meal.id} className="rounded-2xl bg-mira-background p-3">
+                <p className="text-sm font-bold text-mira-text">{meal.label}</p>
+                <p className="mt-1 text-xs text-mira-muted">
+                  {meal.source === "manual"
+                    ? "Добавлено вручную"
+                    : meal.source === "photo-ai"
+                      ? `AI-оценка: ${meal.energyKcal?.min ?? 0}-${meal.energyKcal?.max ?? 0} ккал`
+                      : "Ориентировочный demo-анализ"}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появятся сохранённые приёмы пищи и твои уточнения к оценкам.</p>
+        )}
       </Card>
 
       {photoFlowOpen && (
         <MealPhotoFlow
           onClose={() => setPhotoFlowOpen(false)}
-          onShowDemo={() => {
-            setAnalysisVisible(true);
+          onAnalyze={async (image) => {
+            const result = await analyzeMealPhoto(image, { energy: checkIn.energy, symptoms: checkIn.symptoms });
+            setAnalysis(result.analysis);
+            setAnalysisSource(result.source);
+            setAnalysisMessage(result.message ?? "");
+            onSaveMeal({
+              label: result.analysis.foods.join(", "),
+              source: result.source === "ai" ? "photo-ai" : "photo-demo",
+              energyKcal: result.analysis.calories,
+              confidence: result.analysis.confidence,
+              note: result.analysis.note
+            });
             setPhotoFlowOpen(false);
+          }}
+        />
+      )}
+
+      {manualMealOpen && (
+        <ManualMealForm
+          onClose={() => setManualMealOpen(false)}
+          onSave={(value) => {
+            onSaveMeal({ label: value.label, source: "manual", note: value.note || undefined });
+            setManualMealOpen(false);
           }}
         />
       )}
@@ -1388,24 +1879,40 @@ function NutritionScreen({
   );
 }
 
-function MealPhotoFlow({ onClose, onShowDemo }: { onClose: () => void; onShowDemo: () => void }) {
+function MealPhotoFlow({ onClose, onAnalyze }: { onClose: () => void; onAnalyze: (image: File) => Promise<void> }) {
+  const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState("");
+  const [hasConsent, setHasConsent] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const selectPhoto = (file?: File) => {
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024) {
+      setFile(null);
       setFileName("");
       setFileError("Выбери изображение JPEG, PNG или WebP размером до 8 МБ.");
       return;
     }
     setFileError("");
+    setFile(file);
     setFileName(file.name);
+  };
+
+  const submit = async () => {
+    if (!file || !hasConsent) return;
+    setIsAnalyzing(true);
+    try {
+      await onAnalyze(file);
+    } catch {
+      setFileError("Не удалось отправить фото на анализ. Попробуй ещё раз или добавь еду вручную.");
+      setIsAnalyzing(false);
+    }
   };
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-4">
-      <Card className="rounded-t-[2rem] border-b-0 bg-white p-5 shadow-[0_-18px_60px_rgba(28,28,30,0.16)]">
+      <Card className="rounded-t-[2rem] border-b-0 bg-mira-card p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.38)]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-mira-muted">Фото блюда</p>
@@ -1418,7 +1925,7 @@ function MealPhotoFlow({ onClose, onShowDemo }: { onClose: () => void; onShowDem
         <label className="mt-5 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-mira-primary/40 bg-mira-background px-5 text-center">
           <Camera className="h-6 w-6 text-mira-primary" />
           <span className="mt-3 text-sm font-bold text-mira-text">{fileName || "Сделать или выбрать фото"}</span>
-          <span className="mt-1 text-xs leading-5 text-mira-muted">В этом демо фото остаётся на устройстве и не отправляется на анализ.</span>
+          <span className="mt-1 text-xs leading-5 text-mira-muted">Поддерживаются JPEG, PNG и WebP до 8 МБ.</span>
           <input
             className="sr-only"
             type="file"
@@ -1426,28 +1933,110 @@ function MealPhotoFlow({ onClose, onShowDemo }: { onClose: () => void; onShowDem
             onChange={(event) => selectPhoto(event.target.files?.[0])}
           />
         </label>
-        {fileError && <p className="mt-3 rounded-2xl bg-[#fff6f4] p-3 text-sm leading-6 text-mira-text" role="alert">{fileError}</p>}
-        <p className="mt-4 text-sm leading-6 text-mira-muted">Пока можно посмотреть демо-анализ с диапазонами и видимой неопределённостью.</p>
-        <Button className="mt-4 w-full" size="lg" onClick={onShowDemo}>Показать демо-анализ</Button>
+        {fileError && <p className="mt-3 rounded-2xl bg-[#30272b] p-3 text-sm leading-6 text-mira-text" role="alert">{fileError}</p>}
+        <label className="mt-4 flex items-start gap-3 rounded-2xl bg-mira-background p-4 text-sm leading-6 text-mira-muted">
+          <input
+            checked={hasConsent}
+            className="mt-1 h-4 w-4 shrink-0 accent-mira-primary"
+            onChange={(event) => setHasConsent(event.target.checked)}
+            type="checkbox"
+          />
+          <span>Я согласна отправить это фото в настроенный AI-сервис для приблизительной оценки блюда. Фото не сохраняется в локальной истории Mira.</span>
+        </label>
+        <p className="mt-4 text-sm leading-6 text-mira-muted">Результат покажет диапазоны калорий и БЖУ с уверенностью и видимой неопределённостью. Это не точный подсчёт.</p>
+        <Button className="mt-4 w-full" disabled={!file || !hasConsent || isAnalyzing} size="lg" onClick={submit}>
+          {isAnalyzing ? "Анализируем фото..." : "Проанализировать фото"}
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
+function ManualMealForm({
+  onClose,
+  onSave
+}: {
+  onClose: () => void;
+  onSave: (value: { label: string; note: string }) => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [note, setNote] = useState("");
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md px-4 pb-4">
+      <Card className="rounded-t-[2rem] border-b-0 bg-mira-card p-5 shadow-[0_-18px_60px_rgba(0,0,0,0.38)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-mira-muted">Приём пищи</p>
+            <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Добавить без фото</h2>
+            <p className="mt-1 text-sm leading-5 text-mira-muted">Короткой заметки достаточно. Не нужно считать калории или порции.</p>
+          </div>
+          <Button aria-label="Закрыть запись еды" className="h-10 w-10 shrink-0 p-0" variant="ghost" onClick={onClose}>
+            <span aria-hidden="true">×</span>
+          </Button>
+        </div>
+        <div className="mt-5 space-y-4">
+          <Field label="Что было в приёме пищи?">
+            <input
+              autoFocus
+              className="w-full rounded-2xl border border-white/10 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
+              maxLength={120}
+              onChange={(event) => setLabel(event.target.value)}
+              placeholder="Например: суп и хлеб, йогурт с ягодами"
+              value={label}
+            />
+          </Field>
+          <Field label="Заметка (необязательно)">
+            <textarea
+              className="min-h-20 w-full resize-y rounded-2xl border border-white/10 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
+              maxLength={280}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Например: поела между встречами"
+              value={note}
+            />
+          </Field>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <Button variant="secondary" onClick={onClose}>Отмена</Button>
+          <Button disabled={!label.trim()} onClick={() => onSave({ label: label.trim(), note: note.trim() })}>Сохранить</Button>
+        </div>
       </Card>
     </div>
   );
 }
 
 function AnalyticsScreen({
+  profile,
   plan,
-  checkIn
+  checkIn,
+  localData,
+  onToday
 }: {
+  profile: OnboardingState;
   plan: ReturnType<typeof buildDailyPlan>;
   checkIn: CheckInState;
+  localData: MiraLocalData;
+  onToday: () => void;
 }) {
-  const currentContext = checkIn.stress >= 7
-    ? "Сегодня стресс выше обычного, поэтому его стоит учитывать рядом с любыми паттернами."
-    : "Текущий день выглядит достаточно ровным: это хороший момент наблюдать за привычными паттернами.";
+  const records = Object.values(localData.checkIns).sort((a, b) => a.date.localeCompare(b.date));
+  const recent = records.slice(-7);
+  const minimumForPatterns = 3;
+  const missingRecords = Math.max(0, minimumForPatterns - records.length);
+  const average = (values: number[]) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+  const energyValues = recent.map((record) => record.value.energy);
+  const moodValues = recent.map((record) => record.value.mood);
+  const painValues = recent.map((record) => record.value.painLevel);
+  const sleepValues = recent.map((record) => record.value.sleep === "Хорошо" ? 3 : record.value.sleep === "Нормально" ? 2 : 1);
+  const cravingCount = recent.filter((record) => record.value.symptoms.includes("тяга")).length;
+  const completedWorkouts = localData.workouts.filter((entry) => entry.status === "completed").length;
+  const recoveryDays = localData.workouts.filter((entry) => entry.status === "recovery").length;
+  const painReplacements = localData.workouts.filter((entry) => entry.note?.includes("боль")).length;
   const insights = [
-    "В недели с более высокой рабочей нагрузкой энергия в демо-данных чаще ниже к вечеру.",
-    "Когда появляются тяга и усталость, более регулярный следующий приём пищи может ощущаться поддерживающе.",
-    `В фазе «${plan.phase.toLowerCase()}» Mira предлагает оставлять нагрузку гибкой и ориентироваться на самоотчёт.`
+    `За последние ${recent.length} ${recent.length === 1 ? "день" : "дня"} средняя энергия была ${average(energyValues)}/10.`,
+    checkIn.stress >= 7
+      ? "Сегодня стресс выше обычного. Учитывай его рядом с любыми выводами о нагрузке."
+      : "Один день не объясняет закономерность: Mira покажет паттерны только по нескольким отметкам.",
+    `Текущая фаза «${plan.phase.toLowerCase()}» остаётся контекстом, а не правилом для твоего тела.`
   ];
 
   return (
@@ -1455,71 +2044,85 @@ function AnalyticsScreen({
       <section className="px-1">
         <p className="text-sm font-semibold text-mira-muted">Аналитика</p>
         <h1 className="mt-1 text-3xl font-black tracking-[-0.05em]">Паттерны, а не оценки</h1>
-        <p className="mt-2 text-sm leading-6 text-mira-muted">Это демо-данные для наблюдения за ритмом. Они не объясняют причины и не заменяют профессиональную помощь.</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появляются только твои сохранённые записи. Они не объясняют причины и не заменяют профессиональную помощь.</p>
       </section>
 
+      {records.length < minimumForPatterns && (
+        <Card className="bg-[#1d302b]">
+          <p className="text-sm font-semibold text-mira-muted">Первые наблюдения</p>
+          <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">
+            {missingRecords ? `Нужно ещё ${missingRecords} ${missingRecords === 1 ? "чек-ин" : "чек-ина"}` : "Данные готовы"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-mira-muted">После трёх сохранённых чек-инов Mira сможет показать простую сводку самочувствия. Персональные паттерны появятся только после достаточного количества записей.</p>
+          <Button className="mt-4 w-full" onClick={onToday}>Отметить состояние</Button>
+        </Card>
+      )}
+
       <Card>
-        <p className="text-sm font-semibold text-mira-muted">Цикл</p>
+        <p className="text-sm font-semibold text-mira-muted">Текущий цикл</p>
         <div className="mt-4 grid grid-cols-3 gap-3">
-          <AnalyticsMetric label="Средняя длина" value="28 дн." />
-          <AnalyticsMetric label="Менструация" value="5 дн." />
-          <AnalyticsMetric label="Вариативность" value="±2 дн." />
+          <AnalyticsMetric label="Настройка цикла" value={`${profile.cycleLength} дн.`} />
+          <AnalyticsMetric label="День цикла" value={`${plan.cycleDay}`} />
+          <AnalyticsMetric label="Записей" value={`${records.length}`} />
         </div>
         <p className="mt-4 text-sm leading-6 text-mira-muted">Текущая фаза: {plan.phase}. Оценки цикла остаются ориентировочными.</p>
       </Card>
 
-      <Card>
-        <p className="text-sm font-semibold text-mira-muted">Симптомы и состояние</p>
-        <p className="mt-1 text-sm leading-6 text-mira-muted">Небольшие шкалы показывают частоту отметок в демо-неделе.</p>
-        <div className="mt-4 space-y-4">
-          <AnalyticsTrend label="Боль" values={[1, 2, 1, 3, 1, 1, 0]} note="Чаще отмечалась после насыщенных дней." />
-          <AnalyticsTrend label="Настроение" values={[6, 7, 6, 5, 7, 8, 7]} note={`Сегодня: ${checkIn.mood}/10.`} positive />
-          <AnalyticsTrend label="Энергия" values={[7, 6, 5, 6, 7, 7, 6]} note={`Сегодня: ${checkIn.energy}/10.`} positive />
-          <AnalyticsTrend label="Тяга" values={[1, 1, 2, 3, 2, 1, 1]} note="Может совпадать с усталостью, но не доказывает причину." />
-          <AnalyticsTrend label="Сон" values={[7, 7, 6, 5, 7, 8, 7]} note={`Сегодня: ${checkIn.sleep.toLowerCase()}.`} positive />
-        </div>
-      </Card>
+      {records.length >= minimumForPatterns && (
+        <>
+          <Card>
+            <p className="text-sm font-semibold text-mira-muted">Симптомы и состояние</p>
+            <p className="mt-1 text-sm leading-6 text-mira-muted">Сводка последних {recent.length} сохранённых чек-инов.</p>
+            <div className="mt-4 space-y-4">
+              <AnalyticsTrend label="Боль" values={painValues} note={`Среднее: ${average(painValues)}/10.`} />
+              <AnalyticsTrend label="Настроение" values={moodValues} note={`Среднее: ${average(moodValues)}/10.`} positive />
+              <AnalyticsTrend label="Энергия" values={energyValues} note={`Среднее: ${average(energyValues)}/10.`} positive />
+              <AnalyticsTrend label="Сон" values={sleepValues} note="Шкала: плохо, нормально, хорошо." positive />
+            </div>
+          </Card>
 
-      <Card className="bg-[#fff6f4]">
-        <p className="text-sm font-semibold text-mira-muted">Работа и ресурс</p>
-        <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Нагрузка на работе может менять план</h2>
-        <p className="mt-2 text-sm leading-6 text-mira-muted">В демо-истории в дни с высокой нагрузкой тренировки чаще становились короче, а усталость отмечалась чаще. {currentContext}</p>
-      </Card>
+          <Card className="bg-[#30272b]">
+            <p className="text-sm font-semibold text-mira-muted">Работа и ресурс</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Контекст без выводов за тебя</h2>
+            <p className="mt-2 text-sm leading-6 text-mira-muted">Высокая рабочая нагрузка отмечена в {recent.filter((record) => record.value.workload === "Высокая").length} из {recent.length} последних чек-инов. Это наблюдение, а не объяснение причины.</p>
+          </Card>
 
-      <Card>
-        <p className="text-sm font-semibold text-mira-muted">Тренировки</p>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <AnalyticsMetric label="Завершено" value="6 из 8" />
-          <AnalyticsMetric label="Пропущено" value="2 дня" />
-          <AnalyticsMetric label="Восстановление" value="3 дня" />
-          <AnalyticsMetric label="Замены из-за боли" value="1 раз" />
-        </div>
-        <p className="mt-4 text-sm leading-6 text-mira-muted">Восстановительные дни - часть плана, а не пропуск результата.</p>
-      </Card>
+          <Card>
+            <p className="text-sm font-semibold text-mira-muted">Тренировки</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <AnalyticsMetric label="Завершено" value={`${completedWorkouts}`} />
+              <AnalyticsMetric label="Восстановление" value={`${recoveryDays}`} />
+              <AnalyticsMetric label="Пропущено" value={`${localData.workouts.filter((entry) => entry.status === "skipped").length}`} />
+              <AnalyticsMetric label="Реакция на боль" value={`${painReplacements}`} />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-mira-muted">Восстановительные дни - часть плана, а не пропуск результата.</p>
+          </Card>
 
-      <Card>
-        <p className="text-sm font-semibold text-mira-muted">Питание</p>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <AnalyticsMetric label="Белок" value="5 из 7 дней" />
-          <AnalyticsMetric label="Отметки тяги" value="3 дня" />
-        </div>
-        <p className="mt-4 text-sm leading-6 text-mira-muted">В демо-данных тяга чаще появляется в дни с меньшим ресурсом. Это повод заметить контекст, а не ограничивать еду.</p>
-      </Card>
+          <Card>
+            <p className="text-sm font-semibold text-mira-muted">Питание</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <AnalyticsMetric label="Записи еды" value={`${localData.meals.length}`} />
+              <AnalyticsMetric label="Отметки тяги" value={`${cravingCount}`} />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-mira-muted">Отметки помогают заметить контекст, а не оценивать питание.</p>
+          </Card>
 
-      <Card className="bg-mira-ink text-white">
-        <p className="text-sm font-semibold text-white/60">ИИ-наблюдения · демо</p>
-        <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Три полезных паттерна</h2>
-        <ol className="mt-4 space-y-3">
-          {insights.map((insight, index) => (
-            <li key={insight} className="flex gap-3 text-sm leading-6 text-white/80">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-black text-white">{index + 1}</span>
-              <span>{insight}</span>
-            </li>
-          ))}
-        </ol>
-      </Card>
+          <Card className="bg-mira-ink text-white">
+            <p className="text-sm font-semibold text-white/60">Наблюдения</p>
+            <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Контекст из твоих записей</h2>
+            <ol className="mt-4 space-y-3">
+              {insights.map((insight, index) => (
+                <li key={insight} className="flex gap-3 text-sm leading-6 text-white/80">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-black text-white">{index + 1}</span>
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ol>
+          </Card>
 
-      <HealthNavigator checkIn={checkIn} />
+          <HealthNavigator checkIn={checkIn} />
+        </>
+      )}
     </div>
   );
 }
@@ -1609,12 +2212,12 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
 
   return (
     <section className="space-y-4">
-      <Card className="bg-[#f2f7f1]">
+      <Card className="bg-[#1d302b]">
         <p className="text-sm font-semibold text-mira-muted">Навигатор здоровья</p>
         <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Понять, что стоит обсудить</h2>
         <p className="mt-2 text-sm leading-6 text-mira-muted">Это спокойный обзор паттернов из самоотчёта, а не медицинская оценка.</p>
 
-        <div className="mt-4 rounded-2xl bg-white/80 p-4">
+        <div className="mt-4 rounded-2xl bg-mira-card/80 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Сигнал здоровья · демо</p>
@@ -1640,7 +2243,7 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
                   key={signal.level}
                   className={cn(
                     "w-full rounded-2xl border p-3 text-left transition",
-                    selectedLevel === signal.level ? "border-mira-primary bg-mira-background" : "border-black/5 bg-white"
+                    selectedLevel === signal.level ? "border-mira-primary bg-mira-background" : "border-white/10 bg-mira-card"
                   )}
                   onClick={() => setSelectedLevel(signal.level)}
                   type="button"
@@ -1804,7 +2407,7 @@ function ProfileScreen({
           {!deleteConfirmOpen ? (
             <Button className="w-full" variant="outline" onClick={() => setDeleteConfirmOpen(true)}>Удалить данные</Button>
           ) : (
-            <div className="rounded-2xl bg-[#fff6f4] p-4">
+            <div className="rounded-2xl bg-[#30272b] p-4">
               <p className="text-sm font-semibold text-mira-text">Удалить демо-данные?</p>
               <p className="mt-1 text-sm leading-6 text-mira-muted">В готовой версии это действие будет необратимым. Сейчас данные не удаляются.</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -1841,7 +2444,7 @@ function SettingsToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-4 last:border-0 last:pb-0">
+    <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4 last:border-0 last:pb-0">
       <div>
         <p className="text-sm font-bold text-mira-text">{label}</p>
         <p className="mt-1 text-sm leading-5 text-mira-muted">{description}</p>
@@ -1851,7 +2454,7 @@ function SettingsToggle({
         aria-label={label}
         className={cn(
           "mt-1 flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition",
-          checked ? "bg-mira-primary" : "bg-black/10"
+          checked ? "bg-mira-primary" : "bg-white/15"
         )}
         onClick={() => onChange(!checked)}
         role="switch"
@@ -1868,10 +2471,10 @@ function AppHeader({ onOpenProfile }: { onOpenProfile: () => void }) {
     <header className="mb-5 flex items-center justify-between">
       <LogoMark />
       <div className="flex items-center gap-2">
-        <Badge className="bg-white/80">Прототип</Badge>
+        <Badge className="bg-mira-card/80">Прототип</Badge>
         <button
           aria-label="Открыть профиль и настройки"
-          className="grid h-11 w-11 place-items-center rounded-full bg-mira-primary text-white shadow-soft"
+          className="grid h-11 w-11 place-items-center rounded-full bg-mira-primary text-mira-ink shadow-soft"
           onClick={onOpenProfile}
           type="button"
         >
@@ -1890,7 +2493,7 @@ function BottomNav({
   setActive: (active: (typeof nav)[number]["id"]) => void;
 }) {
   return (
-    <nav aria-label="Основная навигация" className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-md grid-cols-5 gap-1 rounded-full border border-white/80 bg-white/95 p-2 shadow-soft backdrop-blur">
+    <nav aria-label="Основная навигация" className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 mx-auto grid max-w-md grid-cols-5 gap-1 rounded-full border border-white/10 bg-mira-card/95 p-2 shadow-soft backdrop-blur">
       {nav.map((item) => {
         const Icon = item.icon;
         return (
@@ -1931,7 +2534,7 @@ function ChoiceGrid({
             "rounded-2xl border px-4 py-3 text-left text-sm font-bold transition",
             value === option
               ? "border-mira-primary bg-mira-primary text-white shadow-glow"
-              : "border-black/5 bg-mira-background text-mira-text"
+              : "border-white/10 bg-mira-background text-mira-text"
           )}
           onClick={() => onChange(option)}
           type="button"
@@ -1939,6 +2542,42 @@ function ChoiceGrid({
           {option}
         </button>
       ))}
+    </div>
+  );
+}
+
+function MultiChoiceGrid({
+  options,
+  values,
+  onChange
+}: {
+  options: string[];
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map((option) => {
+        const selected = values.includes(option);
+        return (
+          <button
+            key={option}
+            aria-pressed={selected}
+            className={cn(
+              "rounded-2xl border px-4 py-3 text-left text-sm font-bold transition",
+              selected
+                ? "border-mira-primary bg-mira-primary text-white shadow-glow"
+                : "border-white/10 bg-mira-background text-mira-text"
+            )}
+            onClick={() =>
+              onChange(selected ? values.filter((value) => value !== option) : [...values, option])
+            }
+            type="button"
+          >
+            {option}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -2045,13 +2684,24 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
 function LogoMark() {
   return (
     <div className="flex items-center gap-3">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-mira-ink text-white shadow-soft">
-        <Sparkles className="h-5 w-5" />
-      </div>
+      <MiraSymbol />
       <div>
-        <p className="text-lg font-black tracking-[-0.05em]">Mira</p>
+        <p className="text-lg font-black tracking-[-0.05em]">mira</p>
         <p className="text-xs font-semibold text-mira-muted">ИИ-коуч для тела</p>
       </div>
+    </div>
+  );
+}
+
+function MiraSymbol() {
+  return (
+    <div aria-label="Логотип Mira" className="grid h-12 w-12 place-items-center rounded-2xl bg-mira-ink shadow-soft" role="img">
+      <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="12" stroke="#45443f" strokeWidth="3" />
+        <path d="M18 6a12 12 0 0 1 10.8 6.8" stroke="#76D7F3" strokeLinecap="round" strokeWidth="3" />
+        <path d="M28.8 24.3A12 12 0 0 1 18 30" stroke="#76D7F3" strokeLinecap="round" strokeWidth="3" />
+        <circle cx="29.2" cy="16.4" fill="#EF4653" r="2.5" />
+      </svg>
     </div>
   );
 }

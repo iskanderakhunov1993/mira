@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  color: #1c1c1e;
-  background: #faf8f6;
+  color: #f7f6f1;
+  background: #191918;
 }
 
 * {
@@ -17,8 +17,8 @@ html {
 
 body {
   min-height: 100vh;
-  background: #faf8f6;
-  color: #1c1c1e;
+  background: #191918;
+  color: #f7f6f1;
 }
 
 button,
@@ -39,25 +39,25 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 3px solid rgba(140, 116, 217, 0.38);
+  outline: 3px solid rgba(118, 215, 243, 0.5);
   outline-offset: 3px;
 }
 
 .soft-grid {
-  background: #faf8f6;
+  background: #191918;
 }
 
 .phone-shell {
   box-shadow:
-    0 32px 90px rgba(40, 36, 56, 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+    0 32px 90px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .slider {
   appearance: none;
   height: 8px;
   border-radius: 999px;
-  background: #dcd3f6;
+  background: #40403c;
   outline: none;
 }
 
@@ -66,9 +66,9 @@ textarea:focus-visible {
   width: 24px;
   height: 24px;
   border-radius: 999px;
-  background: #ffffff;
-  border: 6px solid #8c74d9;
-  box-shadow: 0 8px 20px rgba(140, 116, 217, 0.3);
+  background: #191918;
+  border: 6px solid #76d7f3;
+  box-shadow: 0 8px 20px rgba(118, 215, 243, 0.28);
 }
 
 @media (max-width: 380px) {

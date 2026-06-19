@@ -1,5 +1,6 @@
 export type OnboardingState = {
   goal: string;
+  focusAreas: string[];
   periodStart: string;
   cycleLength: number;
   cycleRegularity: "Регулярный" | "Нерегулярный";
@@ -40,6 +41,23 @@ export type WorkoutExercise = {
   prescription: string;
   rest: string;
   cue: string;
+};
+
+export type WorkoutDecisionContext = {
+  mealsToday: number;
+};
+
+export type WorkoutPlan = {
+  title: string;
+  time: GymState["time"];
+  intensity: "Низкая" | "Низко-средняя" | "Средняя" | "Средне-высокая";
+  readinessScore: number;
+  explanation: string;
+  factors: string[];
+  nutritionSupport?: string;
+  warmup: string;
+  exercises: WorkoutExercise[];
+  cooldown: string;
 };
 
 export function getCycleDay(periodStart: string, cycleLength: number) {
@@ -158,19 +176,51 @@ export function buildDailyPlan(
 export function buildWorkout(
   profile: OnboardingState,
   checkIn: CheckInState,
-  gym: GymState
-) {
+  gym: GymState,
+  context: WorkoutDecisionContext = { mealsToday: 0 }
+): WorkoutPlan {
   const plan = buildDailyPlan(profile, checkIn);
   const highPain = checkIn.painLevel >= 5;
-  const tired = gym.energy === "Устала" || checkIn.energy <= 4 || checkIn.painLevel > 0;
+  const phaseAdjustment = plan.phase === "Фолликулярная" || plan.phase === "Овуляторная"
+    ? 3
+    : plan.phase === "Поздняя лютеиновая"
+      ? -4
+      : 0;
+  const sleepScore = checkIn.sleep === "Хорошо" ? 14 : checkIn.sleep === "Нормально" ? 8 : 2;
+  const workloadPenalty = checkIn.workload === "Высокая" ? 12 : checkIn.workload === "Обычная" ? 6 : 0;
+  const selfReportedEnergyAdjustment = gym.energy === "Много энергии" ? 4 : gym.energy === "Устала" ? -10 : 0;
+  const symptomPenalty = checkIn.symptoms.some((symptom) => ["спазмы", "усталость", "головная боль"].includes(symptom)) ? 8 : 0;
+  const nutritionPenalty = context.mealsToday === 0 && checkIn.energy <= 6 ? 8 : 0;
+  const readinessScore = Math.max(
+    0,
+    Math.min(
+      100,
+      checkIn.energy * 6 + checkIn.mood * 2 + sleepScore + phaseAdjustment + selfReportedEnergyAdjustment - Math.max(0, checkIn.stress - 4) * 5 - workloadPenalty - checkIn.painLevel * 8 - symptomPenalty - nutritionPenalty
+    )
+  );
+  const nutritionSupport = nutritionPenalty
+    ? "В Mira пока нет записи о еде, а энергия невысокая. Перед тренировкой оцени, нужен ли тебе привычный перекус или пауза - это не правило, а часть бережного выбора."
+    : undefined;
+  const factors = [
+    `Фаза: ${plan.phase.toLowerCase()}`,
+    `Энергия: ${checkIn.energy}/10`,
+    `Сон: ${checkIn.sleep.toLowerCase()}`,
+    `Стресс: ${checkIn.stress}/10`,
+    `Работа: ${checkIn.workload.toLowerCase()}`,
+    checkIn.painLevel ? `Боль: ${checkIn.painLevel}/10` : "Боль: не отмечена",
+    context.mealsToday ? `Еда: ${context.mealsToday} ${context.mealsToday === 1 ? "запись" : "записи"}` : "Еда: записей пока нет"
+  ];
 
   if (highPain) {
     return {
       title: "Восстановление без силовой нагрузки",
       time: gym.time,
       intensity: "Низкая",
+      readinessScore,
       explanation:
         "Ты отметила заметную боль. Сегодня Mira предлагает только комфортное движение и паузу от силовой нагрузки. Остановись, если ощущения усиливаются.",
+      factors,
+      nutritionSupport,
       warmup: "2 минуты спокойного дыхания в удобном положении",
       exercises: [
         {
@@ -190,13 +240,24 @@ export function buildWorkout(
     };
   }
 
-  const intensity = tired
-    ? "Низко-средняя"
-    : gym.energy === "Много энергии"
-      ? "Средне-высокая"
-      : "Средняя";
+  const movementMode = checkIn.painLevel > 0 || readinessScore <= 42 || gym.goal === "Просто подвигаться"
+    ? "recovery"
+    : readinessScore <= 60 || gym.goal === "Мягкое кардио"
+      ? "low"
+      : readinessScore <= 78
+        ? "moderate"
+        : "progression";
+  const intensity = movementMode === "recovery"
+    ? "Низкая"
+    : movementMode === "low"
+      ? "Низко-средняя"
+      : movementMode === "moderate"
+        ? "Средняя"
+        : "Средне-высокая";
   const title =
-    gym.goal === "Ноги и ягодицы"
+    movementMode === "recovery"
+      ? "Мягкое движение и мобильность"
+      : gym.goal === "Ноги и ягодицы"
       ? "Силовая на низ тела"
       : gym.goal === "Мягкое кардио"
         ? "Низкоударное кардио"
@@ -204,7 +265,7 @@ export function buildWorkout(
           ? "Тонус всего тела"
           : "Мягкая перезагрузка движением";
 
-  const exercises: WorkoutExercise[] =
+  const gymExercises: WorkoutExercise[] =
     gym.goal === "Ноги и ягодицы"
       ? [
           { name: "Ягодичный мост в тренажёре", prescription: "3 × 10", rest: "60 сек", cue: "Поднимай таз до комфортной высоты без переразгибания." },
@@ -232,17 +293,56 @@ export function buildWorkout(
               { name: "Мягкая растяжка", prescription: "3 минуты", rest: "По самочувствию", cue: "Не тянись через дискомфорт." }
             ];
 
-  const exerciseCount = gym.time === "12 мин" ? 2 : gym.time === "25 мин" ? 3 : 4;
+  const homeExercises: WorkoutExercise[] =
+    gym.goal === "Ноги и ягодицы"
+      ? [
+          { name: "Ягодичный мост на полу", prescription: "3 × 10", rest: "45 сек", cue: "Поднимай таз только до комфортной высоты и не задерживай дыхание." },
+          { name: "Присед к стулу", prescription: "3 × 8", rest: "60 сек", cue: "Сохраняй опору под стопами и садись только до комфортной глубины." },
+          { name: "Отведение ноги стоя", prescription: "2 × 10 / сторона", rest: "30 сек", cue: "Держись за опору и двигайся плавно." },
+          { name: "Наклон с опорой", prescription: "2 × 8", rest: "45 сек", cue: "Сохраняй длинную спину и не тянись через дискомфорт." }
+        ]
+      : gym.goal === "Мягкое кардио"
+        ? [
+            { name: "Спокойная ходьба", prescription: "6-12 минут", rest: "По самочувствию", cue: "Выбирай разговорный темп." },
+            { name: "Шаги на месте", prescription: "2 × 60 сек", rest: "30 сек", cue: "Без прыжков и ускорений." },
+            { name: "Мягкая мобильность плеч", prescription: "2 × 6", rest: "30 сек", cue: "Дыши ровно и не зажимай шею." }
+          ]
+        : gym.goal === "Всё тело"
+          ? [
+              { name: "Отжимания от опоры", prescription: "3 × 8", rest: "60 сек", cue: "Выбери высоту опоры, где движение остаётся комфортным." },
+              { name: "Присед к стулу", prescription: "3 × 8", rest: "60 сек", cue: "Держи устойчивую опору и спокойный темп." },
+              { name: "Тяга резинки сидя", prescription: "2 × 10", rest: "45 сек", cue: "Веди локти назад, не поднимай плечи." },
+              { name: "Dead bug", prescription: "2 × 8 / сторона", rest: "45 сек", cue: "Двигайся медленно, сохраняя дыхание." }
+            ]
+          : [
+              { name: "Спокойная ходьба", prescription: "5-10 минут", rest: "По самочувствию", cue: "Остановись, если ощущения ухудшаются." },
+              { name: "Мобильность таза", prescription: "2 × 6 / сторона", rest: "30 сек", cue: "Оставайся в комфортной амплитуде." },
+              { name: "Дыхание с длинным выдохом", prescription: "2 минуты", rest: "По самочувствию", cue: "Пусть выдох будет чуть длиннее вдоха." }
+            ];
+  const exercises = profile.trainingPlace === "Дом" ? homeExercises : gymExercises;
+  const exerciseCount = movementMode === "recovery"
+    ? 2
+    : gym.time === "12 мин"
+      ? 2
+      : gym.time === "25 мин"
+        ? 3
+        : 4;
+  const phaseDescription = plan.phase === "Фолликулярная" || plan.phase === "Овуляторная"
+    ? "Фаза цикла слегка поддержала выбор нагрузки, но итог определили твои текущие ощущения."
+    : "Фаза цикла учтена как контекст, но итог определили твои текущие ощущения."
 
   return {
     title,
     time: gym.time,
     intensity,
-    explanation: `С учётом восстановления и фазы цикла «${plan.phase.toLowerCase()}» эта тренировка держит нагрузку поддерживающей, без лишнего давления на тело.`,
-    warmup: tired
-      ? "6 мин спокойной ходьбы + мобильность"
-      : "8 мин ходьбы в наклоне + активация",
+    readinessScore,
+    explanation: `Расчёт нагрузки: ${readinessScore}/100. ${phaseDescription} ${movementMode === "recovery" ? "Сегодня выбираем мягкое движение без силовой цели." : "Нагрузка остаётся поддерживающей, без необходимости форсировать результат."}`,
+    factors,
+    nutritionSupport,
+    warmup: movementMode === "recovery" || movementMode === "low"
+      ? "4-6 мин спокойной ходьбы + мягкая мобильность"
+      : "6-8 мин ходьбы или велосипеда + активация",
     exercises: exercises.slice(0, exerciseCount),
-    cooldown: "5 мин лёгкой ходьбы, длинные выдохи, расслабление таза и спины"
+    cooldown: "3-5 мин спокойного движения, длинные выдохи, расслабление таза и спины"
   };
 }
