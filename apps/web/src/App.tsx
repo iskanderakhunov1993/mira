@@ -58,13 +58,13 @@ const initialProfile: UserProfile = {
 
 export function App() {
   const [accountCreated, setAccountCreated] = useState(
-    () => window.localStorage.getItem("ayla-account-created") === "true"
+    () => window.localStorage.getItem("mira-account-created") === "true"
   );
   const [onboardingComplete, setOnboardingComplete] = useState(
-    () => window.localStorage.getItem("ayla-onboarding-complete") === "true"
+    () => window.localStorage.getItem("mira-onboarding-complete") === "true"
   );
   const [profile, setProfile] = useState<UserProfile>(() => {
-    const saved = window.localStorage.getItem("ayla-profile");
+    const saved = window.localStorage.getItem("mira-profile");
     return saved
       ? { ...initialProfile, ...(JSON.parse(saved) as UserProfile) }
       : initialProfile;
@@ -84,7 +84,7 @@ export function App() {
   });
   const [exercises, setExercises] = useState(initialExercises);
   const [workoutRationale, setWorkoutRationale] = useState(
-    "Ayla соберёт план после проверки текущего состояния."
+    "Mira соберёт план после проверки текущего состояния."
   );
   const [workoutSignals, setWorkoutSignals] = useState<string[]>([
     `Цель: ${profile.goal}`
@@ -152,8 +152,8 @@ export function App() {
     setProfile(nextProfile);
     setLatestScan(scan);
     setOnboardingComplete(true);
-    window.localStorage.setItem("ayla-profile", JSON.stringify(nextProfile));
-    window.localStorage.setItem("ayla-onboarding-complete", "true");
+    window.localStorage.setItem("mira-profile", JSON.stringify(nextProfile));
+    window.localStorage.setItem("mira-onboarding-complete", "true");
   };
 
   if (!accountCreated) {
@@ -161,7 +161,7 @@ export function App() {
       <LandingScreen
         onCreateAccount={() => {
           setAccountCreated(true);
-          window.localStorage.setItem("ayla-account-created", "draft");
+          window.localStorage.setItem("mira-account-created", "draft");
         }}
       />
     );
@@ -169,19 +169,19 @@ export function App() {
 
   if (
     accountCreated &&
-    window.localStorage.getItem("ayla-account-created") !== "true"
+    window.localStorage.getItem("mira-account-created") !== "true"
   ) {
     return (
       <RegisterScreen
         profile={profile}
         onBack={() => {
           setAccountCreated(false);
-          window.localStorage.removeItem("ayla-account-created");
+          window.localStorage.removeItem("mira-account-created");
         }}
         onChange={setProfile}
         onComplete={() => {
-          window.localStorage.setItem("ayla-account-created", "true");
-          window.localStorage.setItem("ayla-profile", JSON.stringify(profile));
+          window.localStorage.setItem("mira-account-created", "true");
+          window.localStorage.setItem("mira-profile", JSON.stringify(profile));
           setProfile({ ...profile });
         }}
       />
@@ -252,7 +252,7 @@ export function App() {
             <ProfileScreen
               profile={profile}
               onRestartOnboarding={() => {
-                window.localStorage.removeItem("ayla-onboarding-complete");
+                window.localStorage.removeItem("mira-onboarding-complete");
                 setOnboardingComplete(false);
                 setScreen("today");
               }}

@@ -1,13 +1,13 @@
-# Ayla Product Specification
+# Mira Product Specification
 
 ## Product Positioning
 
-Ayla is a cycle-aware body calendar and daily AI wellness coach for women. It
+Mira is a cycle-aware body calendar and daily AI wellness coach for women. It
 turns self-reported context, training history, nutrition, recovery, and optional
 cycle signals into one calm daily decision: what kind of movement, nourishment,
 and recovery may be useful today.
 
-Ayla is not a diagnostic product, fertility predictor, calorie-policing tool,
+Mira is not a diagnostic product, fertility predictor, calorie-policing tool,
 or static workout program.
 
 ## Target User
@@ -20,7 +20,7 @@ being prescriptive or medical.
 ## Core Value Proposition
 
 Instead of asking a user to interpret many disconnected health and fitness
-signals, Ayla gives an explainable, actionable plan for the day. The user can
+signals, Mira gives an explainable, actionable plan for the day. The user can
 quickly see what to do, how hard to train, and what supportive actions to
 consider without shame or false precision.
 

@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ayla: {
+        mira: {
           background: "#FAF8F6",
           card: "#FFFFFF",
           text: "#1C1C1E",

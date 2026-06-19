@@ -1,4 +1,4 @@
-project_id = "ayla"
+project_id = "mira"
 
 [functions.analyze-meal]
 verify_jwt = true

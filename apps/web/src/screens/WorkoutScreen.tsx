@@ -82,7 +82,7 @@ export function WorkoutScreen({
           disabled={generating}
         >
           <Sparkles size={18} />
-          {generating ? "Ayla анализирует..." : "Сгенерировать тренировку"}
+          {generating ? "Mira анализирует..." : "Сгенерировать тренировку"}
         </button>
       </div>
     );

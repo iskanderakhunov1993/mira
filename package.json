@@ -1,5 +1,5 @@
 {
-  "name": "ayla",
+  "name": "mira",
   "private": true,
   "version": "0.1.0",
   "main": "index.js",
@@ -7,9 +7,9 @@
     "apps/web"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=@ayla/web",
-    "build": "npm run build --workspace=@ayla/web",
-    "lint": "npm run lint --workspace=@ayla/web",
+    "dev": "npm run dev --workspace=@mira/web",
+    "build": "npm run build --workspace=@mira/web",
+    "lint": "npm run lint --workspace=@mira/web",
     "expo:start": "expo start",
     "expo:android": "expo start --android",
     "expo:ios": "expo start --ios",

@@ -36,7 +36,7 @@ type AiClientConfig = {
 
 type OutputValidator<T> = (value: unknown) => value is T;
 
-export function createAylaAiClient(config: AiClientConfig = {}) {
+export function createMiraAiClient(config: AiClientConfig = {}) {
   const supabaseUrl = config.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   async function invoke<Input, Output>(
@@ -85,4 +85,4 @@ export function createAylaAiClient(config: AiClientConfig = {}) {
   };
 }
 
-export const aylaAiClient = createAylaAiClient();
+export const miraAiClient = createMiraAiClient();

@@ -110,7 +110,7 @@ export function Onboarding({
               <UserRound size={28} />
             </span>
             <p className="eyebrow">ШАГ 1 · ХАРАКТЕРИСТИКА</p>
-            <h1>Расскажи, с кем Ayla будет работать</h1>
+            <h1>Расскажи, с кем Mira будет работать</h1>
             <p className="lead">
               Эти данные помогают настроить тон, нагрузку, рекомендации по
               восстановлению и ежедневные подсказки.
@@ -325,7 +325,7 @@ export function Onboarding({
             <article className="medical-boundary">
               <ShieldCheck size={20} />
               <p>
-                Ayla не пишет «у вас сколиоз» или другие медицинские выводы.
+                Mira не пишет «у вас сколиоз» или другие медицинские выводы.
                 Формулировка всегда нейтральная: «учтём нагрузку на спину».
               </p>
             </article>
@@ -338,7 +338,7 @@ export function Onboarding({
               <MoonStar size={28} />
             </span>
             <p className="eyebrow">ШАГ 4 · ЦИКЛ</p>
-            <h1>Хочешь, чтобы Ayla учитывала цикл?</h1>
+            <h1>Хочешь, чтобы Mira учитывала цикл?</h1>
             <p className="lead">
               Фаза цикла помогает мягче подбирать интенсивность, recovery,
               cravings и рекомендации по питанию.
@@ -431,7 +431,7 @@ export function Onboarding({
             <p className="eyebrow">ШАГ 5 · ФОТО ТЕЛА</p>
             <h1>Создадим безопасную точку отсчёта</h1>
             <p className="lead">
-              Три ракурса помогут видеть изменения формы и устойчивости. Ayla
+              Три ракурса помогут видеть изменения формы и устойчивости. Mira
               не оценивает привлекательность, не угадывает вес и не делает
               медицинских выводов.
             </p>
@@ -481,7 +481,7 @@ export function Onboarding({
             <p className="eyebrow">ШАГ 6 · ДОПОЛНИТЕЛЬНО</p>
             <h1>Добавить данные для более умной персонализации?</h1>
             <p className="lead">
-              Это необязательно. Ayla использует такие данные только как
+              Это необязательно. Mira использует такие данные только как
               контекст для рекомендаций, не для диагностики.
             </p>
             <h3 className="onboarding-subtitle">Документы</h3>
@@ -554,7 +554,7 @@ export function Onboarding({
             className="primary-button"
             onClick={() => onComplete(profile, scanResult)}
           >
-            Открыть мою Ayla <ArrowRight size={17} />
+            Открыть мою Mira <ArrowRight size={17} />
           </button>
         )}
       </footer>

@@ -65,7 +65,7 @@ export function ProfileScreen({
         <div>
           <p className="eyebrow">ПРОФИЛЬ AYLА</p>
           <h1>{profile.name || "Алина"}</h1>
-          <p>Вместе с Ayla с 4 мая · 6 недель</p>
+          <p>Вместе с Mira с 4 мая · 6 недель</p>
         </div>
         <button className="icon-button">
           <Settings2 size={19} />
@@ -96,7 +96,7 @@ export function ProfileScreen({
             <span className="membership-icon large">
               <Apple size={20} />
             </span>
-            <p className="eyebrow">AYLA MEMBERSHIP</p>
+            <p className="eyebrow">MIRA MEMBERSHIP</p>
             <h3>Твой персональный coach активен</h3>
             <p>
               Ежедневные тренировки, анализ питания и body-aware insights.

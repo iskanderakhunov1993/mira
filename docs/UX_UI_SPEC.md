@@ -1,4 +1,4 @@
-# Ayla UX And UI Specification
+# Mira UX And UI Specification
 
 ## Design Principles
 

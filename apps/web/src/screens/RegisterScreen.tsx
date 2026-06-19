@@ -33,7 +33,7 @@ export function RegisterScreen({
           <p className="eyebrow">АККАУНТ AYLА</p>
           <h1>Создадим твой приватный профиль</h1>
           <p className="lead">
-            После регистрации откроется обязательный onboarding, чтобы Ayla
+            После регистрации откроется обязательный onboarding, чтобы Mira
             собрала контекст о цели, теле, цикле и ограничениях.
           </p>
           <div className="account-fields auth-fields">

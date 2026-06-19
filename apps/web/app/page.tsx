@@ -84,7 +84,7 @@ const defaultGym: GymState = {
   goal: "Ноги и ягодицы"
 };
 
-export default function AylaMvp() {
+export default function MiraMvp() {
   const [started, setStarted] = useState(false);
   const [onboarded, setOnboarded] = useState(false);
   const [step, setStep] = useState(0);
@@ -113,7 +113,7 @@ export default function AylaMvp() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 text-ayla-text">
+    <main className="min-h-screen px-4 py-5 text-mira-text">
       <div className="mx-auto max-w-md">
         <AppHeader onOpenProfile={() => setProfileOpen(true)} />
 
@@ -170,10 +170,10 @@ export default function AylaMvp() {
 
 function Landing({ onStart }: { onStart: () => void }) {
   return (
-    <main className="soft-grid min-h-screen overflow-hidden px-5 py-6 text-ayla-text">
+    <main className="soft-grid min-h-screen overflow-hidden px-5 py-6 text-mira-text">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-center">
         <section className="pt-6 lg:pt-16">
-          <Badge className="mb-6 border-ayla-primary/15 bg-white/80 text-ayla-primary">
+          <Badge className="mb-6 border-mira-primary/15 bg-white/80 text-mira-primary">
             ИИ-коуч для тела на каждый день
           </Badge>
           <motion.h1
@@ -183,8 +183,8 @@ function Landing({ onStart }: { onStart: () => void }) {
           >
             Что лучше для моего тела сегодня?
           </motion.h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-ayla-muted">
-            Ayla превращает цикл, энергию, сон, стресс, настроение и историю тренировок
+          <p className="mt-6 max-w-xl text-lg leading-8 text-mira-muted">
+            Mira превращает цикл, энергию, сон, стресс, настроение и историю тренировок
             в спокойный персональный план дня. Меньше трекинга. Больше ясности.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -210,12 +210,12 @@ function Landing({ onStart }: { onStart: () => void }) {
           transition={{ duration: 0.5 }}
           className="phone-shell relative mx-auto w-full max-w-sm rounded-[3rem] border border-white/70 bg-white/70 p-3 backdrop-blur"
         >
-          <div className="rounded-[2.4rem] bg-ayla-background p-5">
+          <div className="rounded-[2.4rem] bg-mira-background p-5">
             <div className="mb-6 flex items-center justify-between">
               <LogoMark />
               <Badge>Сегодня</Badge>
             </div>
-            <Card className="bg-ayla-primary p-6 text-white">
+            <Card className="bg-mira-primary p-6 text-white">
               <p className="text-sm text-white/75">Твоё тело сегодня</p>
               <h2 className="mt-3 text-4xl font-black tracking-[-0.05em]">В балансе</h2>
               <p className="mt-3 text-sm leading-6 text-white/80">
@@ -254,7 +254,7 @@ function Onboarding({
   const progress = ((step + 1) / 4) * 100;
 
   return (
-    <main className="min-h-screen px-5 py-6 text-ayla-text">
+    <main className="min-h-screen px-5 py-6 text-mira-text">
       <div className="mx-auto max-w-md">
         <div className="mb-6 flex items-center justify-between">
           <LogoMark />
@@ -262,7 +262,7 @@ function Onboarding({
         </div>
         <div className="mb-8 h-2 rounded-full bg-white">
           <div
-            className="h-full rounded-full bg-ayla-primary transition-all"
+            className="h-full rounded-full bg-mira-primary transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -272,7 +272,7 @@ function Onboarding({
             <StepShell
               eyebrow="Цель"
               title="Какая у тебя главная цель?"
-              subtitle="Ayla использует это как направление, а не как жёсткий план."
+              subtitle="Mira использует это как направление, а не как жёсткий план."
             >
               <ChoiceGrid
                 options={goals}
@@ -290,7 +290,7 @@ function Onboarding({
             >
               <Field label="Первый день последней менструации">
                 <input
-                  className="w-full rounded-2xl border border-black/5 bg-ayla-background px-4 py-3"
+                  className="w-full rounded-2xl border border-black/5 bg-mira-background px-4 py-3"
                   type="date"
                   value={profile.periodStart}
                   onChange={(event) => setProfile({ ...profile, periodStart: event.target.value })}
@@ -298,7 +298,7 @@ function Onboarding({
               </Field>
               <Field label="Средняя длина цикла">
                 <input
-                  className="w-full rounded-2xl border border-black/5 bg-ayla-background px-4 py-3"
+                  className="w-full rounded-2xl border border-black/5 bg-mira-background px-4 py-3"
                   type="number"
                   min={21}
                   max={45}
@@ -367,7 +367,7 @@ function Onboarding({
             <StepShell
               eyebrow="Образ жизни"
               title="Как обычно чувствует себя твоё тело?"
-              subtitle="Это помогает Ayla сделать первую рекомендацию более персональной."
+              subtitle="Это помогает Mira сделать первую рекомендацию более персональной."
             >
               <Field label="Качество сна">
                 <ChoiceGrid
@@ -463,28 +463,28 @@ function TodayScreen({
   return (
     <div className="space-y-4">
       <section className="px-1 pt-1">
-        <p className="capitalize text-sm font-semibold text-ayla-muted">{today}</p>
+        <p className="capitalize text-sm font-semibold text-mira-muted">{today}</p>
         <h1 className="mt-2 text-4xl font-black tracking-[-0.06em]">Доброе утро, Алина</h1>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Посмотрим на твой сегодняшний контекст без лишнего давления.</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Посмотрим на твой сегодняшний контекст без лишнего давления.</p>
       </section>
 
       <Card className="bg-[#fff6f4]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Цикл</p>
+            <p className="text-sm font-semibold text-mira-muted">Цикл</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">День {plan.cycleDay}</h2>
-            <p className="mt-1 text-sm text-ayla-primary">{plan.phase} фаза</p>
+            <p className="mt-1 text-sm text-mira-primary">{plan.phase} фаза</p>
           </div>
-          <CalendarDays className="h-6 w-6 text-ayla-primary" />
+          <CalendarDays className="h-6 w-6 text-mira-primary" />
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 border-t border-black/5 pt-4 text-sm">
           <div>
-            <p className="text-ayla-muted">Следующая менструация</p>
-            <p className="mt-1 font-bold text-ayla-text">Ориентировочно {nextPeriod}</p>
+            <p className="text-mira-muted">Следующая менструация</p>
+            <p className="mt-1 font-bold text-mira-text">Ориентировочно {nextPeriod}</p>
           </div>
           <div>
-            <p className="text-ayla-muted">Уверенность прогноза</p>
-            <p className="mt-1 font-bold text-ayla-text">{confidence}</p>
+            <p className="text-mira-muted">Уверенность прогноза</p>
+            <p className="mt-1 font-bold text-mira-text">{confidence}</p>
           </div>
         </div>
       </Card>
@@ -492,14 +492,14 @@ function TodayScreen({
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Ресурс сегодня</p>
+            <p className="text-sm font-semibold text-mira-muted">Ресурс сегодня</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">{resource.level}</h2>
           </div>
-          <Badge className="bg-ayla-success text-ayla-text">{Math.max(0, resource.score)} из 15</Badge>
+          <Badge className="bg-mira-success text-mira-text">{Math.max(0, resource.score)} из 15</Badge>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {resource.factors.map((factor) => (
-            <span key={factor} className="rounded-full bg-ayla-background px-3 py-2 text-xs font-semibold text-ayla-muted">
+            <span key={factor} className="rounded-full bg-mira-background px-3 py-2 text-xs font-semibold text-mira-muted">
               {factor}
             </span>
           ))}
@@ -507,7 +507,7 @@ function TodayScreen({
       </Card>
 
       <Card className="overflow-hidden p-0">
-        <div className="bg-ayla-ink p-5 text-white">
+        <div className="bg-mira-ink p-5 text-white">
           <p className="text-sm font-semibold text-white/60">Главная рекомендация</p>
           <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">Поддерживающий план на сегодня</h2>
           <p className="mt-2 text-sm leading-6 text-white/70">{plan.movement.reason}</p>
@@ -521,22 +521,22 @@ function TodayScreen({
       </Card>
 
       <section>
-        <p className="mb-3 px-1 text-sm font-semibold text-ayla-muted">Быстрые действия</p>
+        <p className="mb-3 px-1 text-sm font-semibold text-mira-muted">Быстрые действия</p>
         <div className="grid grid-cols-2 gap-3">
           <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={() => setCheckInOpen(true)}>
-            <ClipboardCheck className="h-5 w-5 text-ayla-primary" />
+            <ClipboardCheck className="h-5 w-5 text-mira-primary" />
             Чек-ин
           </Button>
           <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={onWorkouts}>
-            <Dumbbell className="h-5 w-5 text-ayla-primary" />
+            <Dumbbell className="h-5 w-5 text-mira-primary" />
             Собрать тренировку
           </Button>
           <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={onNutrition}>
-            <Camera className="h-5 w-5 text-ayla-primary" />
+            <Camera className="h-5 w-5 text-mira-primary" />
             Сфотографировать еду
           </Button>
           <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={() => setCheckInOpen(true)}>
-            <BriefcaseBusiness className="h-5 w-5 text-ayla-primary" />
+            <BriefcaseBusiness className="h-5 w-5 text-mira-primary" />
             Добавить контекст работы
           </Button>
         </div>
@@ -554,8 +554,8 @@ function TodayScreen({
       )}
 
       <Card className="bg-[#f2f7f1]">
-        <p className="text-sm font-semibold text-ayla-muted">Небольшое наблюдение</p>
-        <p className="mt-2 text-sm leading-6 text-ayla-text">{insight}</p>
+        <p className="text-sm font-semibold text-mira-muted">Небольшое наблюдение</p>
+        <p className="mt-2 text-sm leading-6 text-mira-text">{insight}</p>
       </Card>
     </div>
   );
@@ -564,10 +564,10 @@ function TodayScreen({
 function TodayRecommendation({ icon, label, text }: { icon: React.ReactNode; label: string; text: string }) {
   return (
     <div className="flex gap-3 px-5 py-4">
-      <div className="mt-0.5 text-ayla-primary [&_svg]:h-4 [&_svg]:w-4">{icon}</div>
+      <div className="mt-0.5 text-mira-primary [&_svg]:h-4 [&_svg]:w-4">{icon}</div>
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-ayla-muted">{label}</p>
-        <p className="mt-1 text-sm leading-6 text-ayla-text">{text}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-mira-muted">{label}</p>
+        <p className="mt-1 text-sm leading-6 text-mira-text">{text}</p>
       </div>
     </div>
   );
@@ -597,9 +597,9 @@ function DailyCheckIn({
     <Card className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-ayla-muted">Быстрый чек-ин</p>
+          <p className="text-sm font-semibold text-mira-muted">Быстрый чек-ин</p>
           <h2 className="text-xl font-black tracking-[-0.04em]">Как ты сегодня?</h2>
-          <p className="mt-1 text-sm leading-5 text-ayla-muted">Обычно хватает 30-60 секунд. Отмечай только то, что сейчас важно.</p>
+          <p className="mt-1 text-sm leading-5 text-mira-muted">Обычно хватает 30-60 секунд. Отмечай только то, что сейчас важно.</p>
         </div>
         <Button aria-label="Закрыть чек-ин" className="h-10 w-10 shrink-0 p-0" variant="ghost" onClick={onClose}>
           <span aria-hidden="true">×</span>
@@ -653,8 +653,8 @@ function DailyCheckIn({
                   className={cn(
                     "rounded-full border px-3 py-2 text-sm font-semibold transition",
                     draft.painAreas.includes(area)
-                      ? "border-ayla-primary bg-ayla-primary text-white"
-                      : "border-black/5 bg-ayla-background text-ayla-muted"
+                      ? "border-mira-primary bg-mira-primary text-white"
+                      : "border-black/5 bg-mira-background text-mira-muted"
                   )}
                   onClick={() => toggleListValue("painAreas", area)}
                   type="button"
@@ -690,8 +690,8 @@ function DailyCheckIn({
                 className={cn(
                   "rounded-full border px-3 py-2 text-sm font-semibold transition",
                   draft.symptoms.includes(symptom)
-                    ? "border-ayla-primary bg-ayla-primary text-white"
-                    : "border-black/5 bg-ayla-background text-ayla-muted"
+                    ? "border-mira-primary bg-mira-primary text-white"
+                    : "border-black/5 bg-mira-background text-mira-muted"
                 )}
                 onClick={() => toggleListValue("symptoms", symptom)}
                 type="button"
@@ -703,7 +703,7 @@ function DailyCheckIn({
         </Field>
         <Field label="Заметка (необязательно)">
           <textarea
-            className="min-h-20 w-full resize-y rounded-2xl border border-black/5 bg-ayla-background px-4 py-3 text-sm text-ayla-text outline-none transition focus:border-ayla-primary"
+            className="min-h-20 w-full resize-y rounded-2xl border border-black/5 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
             maxLength={280}
             placeholder="Например: много встреч, хочу оставить вечер спокойнее"
             value={draft.note}
@@ -775,18 +775,18 @@ function WorkoutScreen({
 
   return (
     <div className="space-y-4">
-      <Card className="bg-ayla-ink text-white">
+      <Card className="bg-mira-ink text-white">
         <p className="text-sm font-semibold text-white/60">Тренировка на сегодня</p>
         <h1 className="mt-2 text-3xl font-black tracking-[-0.06em]">{highPain ? "Сегодня - восстановление" : "Подберём спокойную нагрузку"}</h1>
         <p className="mt-3 text-sm leading-6 text-white/65">
           {highPain
             ? "Ты отметила высокий уровень боли, поэтому силовую нагрузку сегодня исключаем."
-            : "Ayla использует твой сегодняшний контекст, а не заставляет следовать жёсткой программе."}
+            : "Mira использует твой сегодняшний контекст, а не заставляет следовать жёсткой программе."}
         </p>
       </Card>
 
       <Card className="space-y-4">
-        <p className="text-sm font-semibold text-ayla-muted">Почему именно такой план</p>
+        <p className="text-sm font-semibold text-mira-muted">Почему именно такой план</p>
         <div className="flex flex-wrap gap-2">
           {[
             `Цикл: ${buildDailyPlan(profile, checkIn).phase}`,
@@ -795,12 +795,12 @@ function WorkoutScreen({
             checkIn.symptoms.length ? `Симптомы: ${checkIn.symptoms.join(", ")}` : "Симптомы не отмечены",
             `Работа: ${checkIn.workload.toLowerCase()}`
           ].map((factor) => (
-            <span key={factor} className="rounded-full bg-ayla-background px-3 py-2 text-xs font-semibold text-ayla-muted">
+            <span key={factor} className="rounded-full bg-mira-background px-3 py-2 text-xs font-semibold text-mira-muted">
               {factor}
             </span>
           ))}
         </div>
-        <p className="text-sm leading-6 text-ayla-muted">Доступное время: {gym.time}. План можно изменить в любой момент.</p>
+        <p className="text-sm leading-6 text-mira-muted">Доступное время: {gym.time}. План можно изменить в любой момент.</p>
       </Card>
 
       <Card className="space-y-5">
@@ -831,26 +831,26 @@ function WorkoutScreen({
       </Card>
 
       {isGenerating && (
-        <div aria-live="polite" className="rounded-2xl bg-ayla-background px-4 py-3 text-sm text-ayla-muted" role="status">
+        <div aria-live="polite" className="rounded-2xl bg-mira-background px-4 py-3 text-sm text-mira-muted" role="status">
           Учитываем время, ресурс и отмеченные ощущения.
         </div>
       )}
 
       {generated && (
         <Card className="overflow-hidden p-0">
-          <div className="bg-ayla-primary p-5 text-white">
+          <div className="bg-mira-primary p-5 text-white">
             <Badge className="bg-white/18 text-white">Демо-рекомендация</Badge>
             <h2 className="mt-3 text-2xl font-black tracking-[-0.05em]">{recommendation.title}</h2>
             <p className="mt-2 text-sm text-white/80">{recommendation.time} · {recommendation.intensity}</p>
           </div>
           <div className="space-y-4 p-5">
-            <p className="rounded-2xl bg-ayla-background p-4 text-sm leading-6 text-ayla-muted">{recommendation.explanation}</p>
-            {safetyMessage && <p className="text-sm font-semibold text-ayla-primary">{safetyMessage}</p>}
+            <p className="rounded-2xl bg-mira-background p-4 text-sm leading-6 text-mira-muted">{recommendation.explanation}</p>
+            {safetyMessage && <p className="text-sm font-semibold text-mira-primary">{safetyMessage}</p>}
             {!stopped && (
               <>
                 <WorkoutBlock title="Разминка" items={[recommendation.warmup]} />
                 <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.16em] text-ayla-muted">Основная часть</h3>
+                  <h3 className="text-sm font-black uppercase tracking-[0.16em] text-mira-muted">Основная часть</h3>
                   <div className="mt-2 space-y-2">
                     {exercises.map((exercise, index) => (
                       <WorkoutExerciseCard
@@ -896,8 +896,8 @@ function WorkoutScreen({
       )}
 
       <Card className="border-dashed bg-white/60">
-        <p className="text-sm font-semibold text-ayla-muted">История тренировок</p>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Здесь появятся завершённые тренировки и заметки о том, как они ощущались.</p>
+        <p className="text-sm font-semibold text-mira-muted">История тренировок</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появятся завершённые тренировки и заметки о том, как они ощущались.</p>
       </Card>
     </div>
   );
@@ -913,14 +913,14 @@ function WorkoutExerciseCard({
   onReplace: () => void;
 }) {
   return (
-    <div className="rounded-2xl bg-ayla-background p-4">
+    <div className="rounded-2xl bg-mira-background p-4">
       <div className="flex items-start gap-3">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-black text-ayla-primary">{index + 1}</span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-black text-mira-primary">{index + 1}</span>
         <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-bold text-ayla-text">{exercise.name}</h4>
-          <p className="mt-1 text-sm text-ayla-primary">{exercise.prescription} · отдых {exercise.rest}</p>
-          <p className="mt-2 text-xs leading-5 text-ayla-muted">{exercise.cue}</p>
-          <button className="mt-3 text-xs font-bold text-ayla-primary" onClick={onReplace} type="button">Заменить</button>
+          <h4 className="text-sm font-bold text-mira-text">{exercise.name}</h4>
+          <p className="mt-1 text-sm text-mira-primary">{exercise.prescription} · отдых {exercise.rest}</p>
+          <p className="mt-2 text-xs leading-5 text-mira-muted">{exercise.cue}</p>
+          <button className="mt-3 text-xs font-bold text-mira-primary" onClick={onReplace} type="button">Заменить</button>
         </div>
       </div>
     </div>
@@ -960,15 +960,15 @@ type CalendarDay = {
 };
 
 const calendarLayers: Array<{ id: CalendarLayer; label: string; dot: string }> = [
-  { id: "period", label: "Менструация", dot: "bg-ayla-cycle" },
-  { id: "predicted-period", label: "Прогноз менструации", dot: "border border-dashed border-ayla-cycle" },
+  { id: "period", label: "Менструация", dot: "bg-mira-cycle" },
+  { id: "predicted-period", label: "Прогноз менструации", dot: "border border-dashed border-mira-cycle" },
   { id: "fertile", label: "Фертильное окно", dot: "bg-[#d9d4ee]" },
-  { id: "ovulation", label: "Овуляция", dot: "bg-ayla-primary" },
+  { id: "ovulation", label: "Овуляция", dot: "bg-mira-primary" },
   { id: "symptoms", label: "Симптомы", dot: "bg-[#bc8992]" },
   { id: "mood", label: "Настроение", dot: "bg-[#f0d8ac]" },
   { id: "energy", label: "Энергия", dot: "bg-[#a7c7b0]" },
   { id: "workload", label: "Работа", dot: "bg-[#98a7bb]" },
-  { id: "workouts", label: "Тренировки", dot: "bg-ayla-ink" },
+  { id: "workouts", label: "Тренировки", dot: "bg-mira-ink" },
   { id: "nutrition", label: "Питание", dot: "bg-[#c4b06f]" },
   { id: "notes", label: "Заметки", dot: "bg-[#d9d4ee]" }
 ];
@@ -1015,9 +1015,9 @@ function CalendarScreen({
   return (
     <div className="space-y-4 pb-12">
       <section className="px-1">
-        <p className="text-sm font-semibold text-ayla-muted">Календарь тела</p>
+        <p className="text-sm font-semibold text-mira-muted">Календарь тела</p>
         <h1 className="mt-1 capitalize text-3xl font-black tracking-[-0.05em]">{monthName}</h1>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Слои помогают заметить контекст. Они не являются медицинским прогнозом.</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Слои помогают заметить контекст. Они не являются медицинским прогнозом.</p>
       </section>
 
       <section className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
@@ -1028,7 +1028,7 @@ function CalendarScreen({
               key={layer.id}
               className={cn(
                 "flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition",
-                active ? "border-ayla-primary bg-white text-ayla-text shadow-soft" : "border-transparent bg-white/50 text-ayla-muted"
+                active ? "border-mira-primary bg-white text-mira-text shadow-soft" : "border-transparent bg-white/50 text-mira-muted"
               )}
               onClick={() => toggleLayer(layer.id)}
               type="button"
@@ -1041,15 +1041,15 @@ function CalendarScreen({
       </section>
 
       {activeLayers.length === 0 && (
-        <div aria-live="polite" className="rounded-2xl bg-ayla-background px-4 py-3 text-sm leading-6 text-ayla-muted" role="status">
+        <div aria-live="polite" className="rounded-2xl bg-mira-background px-4 py-3 text-sm leading-6 text-mira-muted" role="status">
           Все слои скрыты. Включи один или несколько, чтобы увидеть отметки в календаре.
         </div>
       )}
 
       <Card className="p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm font-bold text-ayla-text">Неделя вокруг выбранного дня</p>
-          <Badge className="bg-ayla-background text-ayla-muted">День {selected.cycleDay}</Badge>
+          <p className="text-sm font-bold text-mira-text">Неделя вокруг выбранного дня</p>
+          <Badge className="bg-mira-background text-mira-muted">День {selected.cycleDay}</Badge>
         </div>
         <div className="grid grid-cols-7 gap-1">
           {weekDays.map((day) => (
@@ -1057,7 +1057,7 @@ function CalendarScreen({
               key={day.day}
               className={cn(
                 "flex min-h-16 flex-col items-center justify-center rounded-2xl text-xs font-bold transition",
-                day.day === selectedDay ? "bg-ayla-ink text-white" : "bg-ayla-background text-ayla-text"
+                day.day === selectedDay ? "bg-mira-ink text-white" : "bg-mira-background text-mira-text"
               )}
               onClick={() => {
                 setSelectedDay(day.day);
@@ -1075,7 +1075,7 @@ function CalendarScreen({
       <Card className="p-4">
         <div className="grid grid-cols-7 gap-y-3 text-center">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => (
-            <span key={day} className="text-[11px] font-bold text-ayla-muted">{day}</span>
+            <span key={day} className="text-[11px] font-bold text-mira-muted">{day}</span>
           ))}
           {Array.from({ length: monthOffset }).map((_, index) => <span key={`empty-${index}`} />)}
           {calendarDays.map((day) => (
@@ -1094,7 +1094,7 @@ function CalendarScreen({
         </div>
       </Card>
 
-      <p className="px-1 text-xs leading-5 text-ayla-muted">
+      <p className="px-1 text-xs leading-5 text-mira-muted">
         Данные в этом календаре демонстрационные. Реальные записи и прогнозы появятся после подключения сохранения данных.
       </p>
 
@@ -1131,9 +1131,9 @@ function CalendarDayButton({
       aria-label={`Открыть ${day.day} число`}
       className={cn(
         "relative grid aspect-square place-items-center rounded-2xl text-sm font-bold transition",
-        isSelected ? "bg-ayla-ink text-white shadow-soft" : hasPeriodLayer ? "bg-ayla-cycle/35 text-ayla-text" : "text-ayla-text hover:bg-ayla-background",
+        isSelected ? "bg-mira-ink text-white shadow-soft" : hasPeriodLayer ? "bg-mira-cycle/35 text-mira-text" : "text-mira-text hover:bg-mira-background",
         hasFertileLayer && !isSelected ? "ring-1 ring-[#d9d4ee]" : "",
-        isToday && !isSelected ? "border border-ayla-primary" : ""
+        isToday && !isSelected ? "border border-mira-primary" : ""
       )}
       onClick={onClick}
       type="button"
@@ -1167,9 +1167,9 @@ function CalendarDaySheet({ date, day, onClose }: { date: Date; day: CalendarDay
       <Card className="rounded-t-[2rem] border-b-0 bg-white p-5 shadow-[0_-18px_60px_rgba(28,28,30,0.16)]">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="capitalize text-sm font-semibold text-ayla-muted">{dateLabel}</p>
+            <p className="capitalize text-sm font-semibold text-mira-muted">{dateLabel}</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">День цикла {day.cycleDay}</h2>
-            <p className="mt-1 text-sm text-ayla-primary">{day.phase}</p>
+            <p className="mt-1 text-sm text-mira-primary">{day.phase}</p>
           </div>
           <Button aria-label="Закрыть детали дня" className="h-10 w-10 p-0" variant="ghost" onClick={onClose}>
             <span aria-hidden="true">×</span>
@@ -1185,8 +1185,8 @@ function CalendarDaySheet({ date, day, onClose }: { date: Date; day: CalendarDay
           {day.note && <CalendarDetail label="Заметка" value={day.note} />}
         </div>
         <div className="mt-4 rounded-2xl bg-[#f2f7f1] p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ayla-muted">Рекомендация на день</p>
-          <p className="mt-2 text-sm leading-6 text-ayla-text">{day.recommendation}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-mira-muted">Рекомендация на день</p>
+          <p className="mt-2 text-sm leading-6 text-mira-text">{day.recommendation}</p>
         </div>
       </Card>
     </div>
@@ -1196,8 +1196,8 @@ function CalendarDaySheet({ date, day, onClose }: { date: Date; day: CalendarDay
 function CalendarDetail({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-5 border-b border-black/5 pb-3 last:border-0 last:pb-0">
-      <span className="shrink-0 font-semibold text-ayla-muted">{label}</span>
-      <span className="text-right leading-5 text-ayla-text">{value}</span>
+      <span className="shrink-0 font-semibold text-mira-muted">{label}</span>
+      <span className="text-right leading-5 text-mira-text">{value}</span>
     </div>
   );
 }
@@ -1295,26 +1295,26 @@ function NutritionScreen({
   return (
     <div className="space-y-4 pb-8">
       <section className="px-1">
-        <p className="text-sm font-semibold text-ayla-muted">Питание сегодня</p>
+        <p className="text-sm font-semibold text-mira-muted">Питание сегодня</p>
         <h1 className="mt-1 text-3xl font-black tracking-[-0.05em]">Контекст, а не контроль</h1>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Ayla помогает заметить, что может поддержать энергию и самочувствие, без оценок еды.</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Mira помогает заметить, что может поддержать энергию и самочувствие, без оценок еды.</p>
       </section>
 
       <Card className="bg-[#f2f7f1]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Сводка за сегодня</p>
+            <p className="text-sm font-semibold text-mira-muted">Сводка за сегодня</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">{analysisVisible ? "1 приём пищи" : "Пока без записей"}</h2>
           </div>
-          <Badge className="bg-white/80 text-ayla-text">Демо</Badge>
+          <Badge className="bg-white/80 text-mira-text">Демо</Badge>
         </div>
-        <p className="mt-3 text-sm leading-6 text-ayla-muted">
+        <p className="mt-3 text-sm leading-6 text-mira-muted">
           {analysisVisible ? "Есть один приблизительный анализ. Ты всегда сможешь уточнить его позже." : "Добавь фото или посмотри демо-анализ, чтобы увидеть, как это работает."}
         </p>
       </Card>
 
       <Card className="overflow-hidden p-0">
-        <div className="bg-ayla-ink p-5 text-white">
+        <div className="bg-mira-ink p-5 text-white">
           <p className="text-sm font-semibold text-white/60">Приём пищи</p>
           <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">Покажи, что на тарелке</h2>
           <p className="mt-2 text-sm leading-6 text-white/70">Фото помогает сделать ориентировочную запись. Это не точный подсчёт.</p>
@@ -1330,49 +1330,49 @@ function NutritionScreen({
         <Card>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-ayla-muted">Анализ блюда</p>
+              <p className="text-sm font-semibold text-mira-muted">Анализ блюда</p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">Ориентировочная оценка</h2>
             </div>
-            <Badge className="bg-ayla-background text-ayla-text">Уверенность {demoMealAnalysis.confidence}</Badge>
+            <Badge className="bg-mira-background text-mira-text">Уверенность {demoMealAnalysis.confidence}</Badge>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {demoMealAnalysis.foods.map((food) => (
-              <span key={food} className="rounded-full bg-ayla-background px-3 py-2 text-xs font-semibold text-ayla-text">{food}</span>
+              <span key={food} className="rounded-full bg-mira-background px-3 py-2 text-xs font-semibold text-mira-text">{food}</span>
             ))}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-ayla-background p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-ayla-muted">Калорийность</p>
-              <p className="mt-1 text-sm font-bold text-ayla-text">{demoMealAnalysis.calories}</p>
+            <div className="rounded-2xl bg-mira-background p-3">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Калорийность</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.calories}</p>
             </div>
-            <div className="rounded-2xl bg-ayla-background p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-ayla-muted">Белки</p>
-              <p className="mt-1 text-sm font-bold text-ayla-text">{demoMealAnalysis.protein}</p>
+            <div className="rounded-2xl bg-mira-background p-3">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Белки</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.protein}</p>
             </div>
-            <div className="rounded-2xl bg-ayla-background p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-ayla-muted">Углеводы</p>
-              <p className="mt-1 text-sm font-bold text-ayla-text">{demoMealAnalysis.carbs}</p>
+            <div className="rounded-2xl bg-mira-background p-3">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Углеводы</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.carbs}</p>
             </div>
-            <div className="rounded-2xl bg-ayla-background p-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-ayla-muted">Жиры</p>
-              <p className="mt-1 text-sm font-bold text-ayla-text">{demoMealAnalysis.fat}</p>
+            <div className="rounded-2xl bg-mira-background p-3">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Жиры</p>
+              <p className="mt-1 text-sm font-bold text-mira-text">{demoMealAnalysis.fat}</p>
             </div>
           </div>
           <div className="mt-4 rounded-2xl bg-[#fff6f4] p-4">
-            <p className="text-sm font-semibold text-ayla-text">Что может повлиять на оценку</p>
-            <p className="mt-1 text-sm leading-6 text-ayla-muted">{demoMealAnalysis.uncertainty.join(", ")}. Фото-анализ всегда приблизительный.</p>
+            <p className="text-sm font-semibold text-mira-text">Что может повлиять на оценку</p>
+            <p className="mt-1 text-sm leading-6 text-mira-muted">{demoMealAnalysis.uncertainty.join(", ")}. Фото-анализ всегда приблизительный.</p>
           </div>
         </Card>
       )}
 
       <Card>
-        <p className="text-sm font-semibold text-ayla-muted">Что может поддержать дальше</p>
-        <p className="mt-2 text-sm leading-6 text-ayla-text">{recommendation}</p>
+        <p className="text-sm font-semibold text-mira-muted">Что может поддержать дальше</p>
+        <p className="mt-2 text-sm leading-6 text-mira-text">{recommendation}</p>
       </Card>
 
       <Card className="border-dashed bg-white/60">
-        <p className="text-sm font-semibold text-ayla-muted">История питания</p>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Здесь появятся сохранённые приёмы пищи и твои уточнения к оценкам.</p>
+        <p className="text-sm font-semibold text-mira-muted">История питания</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Здесь появятся сохранённые приёмы пищи и твои уточнения к оценкам.</p>
       </Card>
 
       {photoFlowOpen && (
@@ -1408,17 +1408,17 @@ function MealPhotoFlow({ onClose, onShowDemo }: { onClose: () => void; onShowDem
       <Card className="rounded-t-[2rem] border-b-0 bg-white p-5 shadow-[0_-18px_60px_rgba(28,28,30,0.16)]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Фото блюда</p>
+            <p className="text-sm font-semibold text-mira-muted">Фото блюда</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Добавь фото, когда будешь готова</h2>
           </div>
           <Button aria-label="Закрыть фото блюда" className="h-10 w-10 shrink-0 p-0" variant="ghost" onClick={onClose}>
             <span aria-hidden="true">×</span>
           </Button>
         </div>
-        <label className="mt-5 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-ayla-primary/40 bg-ayla-background px-5 text-center">
-          <Camera className="h-6 w-6 text-ayla-primary" />
-          <span className="mt-3 text-sm font-bold text-ayla-text">{fileName || "Сделать или выбрать фото"}</span>
-          <span className="mt-1 text-xs leading-5 text-ayla-muted">В этом демо фото остаётся на устройстве и не отправляется на анализ.</span>
+        <label className="mt-5 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-mira-primary/40 bg-mira-background px-5 text-center">
+          <Camera className="h-6 w-6 text-mira-primary" />
+          <span className="mt-3 text-sm font-bold text-mira-text">{fileName || "Сделать или выбрать фото"}</span>
+          <span className="mt-1 text-xs leading-5 text-mira-muted">В этом демо фото остаётся на устройстве и не отправляется на анализ.</span>
           <input
             className="sr-only"
             type="file"
@@ -1426,8 +1426,8 @@ function MealPhotoFlow({ onClose, onShowDemo }: { onClose: () => void; onShowDem
             onChange={(event) => selectPhoto(event.target.files?.[0])}
           />
         </label>
-        {fileError && <p className="mt-3 rounded-2xl bg-[#fff6f4] p-3 text-sm leading-6 text-ayla-text" role="alert">{fileError}</p>}
-        <p className="mt-4 text-sm leading-6 text-ayla-muted">Пока можно посмотреть демо-анализ с диапазонами и видимой неопределённостью.</p>
+        {fileError && <p className="mt-3 rounded-2xl bg-[#fff6f4] p-3 text-sm leading-6 text-mira-text" role="alert">{fileError}</p>}
+        <p className="mt-4 text-sm leading-6 text-mira-muted">Пока можно посмотреть демо-анализ с диапазонами и видимой неопределённостью.</p>
         <Button className="mt-4 w-full" size="lg" onClick={onShowDemo}>Показать демо-анализ</Button>
       </Card>
     </div>
@@ -1447,30 +1447,30 @@ function AnalyticsScreen({
   const insights = [
     "В недели с более высокой рабочей нагрузкой энергия в демо-данных чаще ниже к вечеру.",
     "Когда появляются тяга и усталость, более регулярный следующий приём пищи может ощущаться поддерживающе.",
-    `В фазе «${plan.phase.toLowerCase()}» Ayla предлагает оставлять нагрузку гибкой и ориентироваться на самоотчёт.`
+    `В фазе «${plan.phase.toLowerCase()}» Mira предлагает оставлять нагрузку гибкой и ориентироваться на самоотчёт.`
   ];
 
   return (
     <div className="space-y-4 pb-8">
       <section className="px-1">
-        <p className="text-sm font-semibold text-ayla-muted">Аналитика</p>
+        <p className="text-sm font-semibold text-mira-muted">Аналитика</p>
         <h1 className="mt-1 text-3xl font-black tracking-[-0.05em]">Паттерны, а не оценки</h1>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Это демо-данные для наблюдения за ритмом. Они не объясняют причины и не заменяют профессиональную помощь.</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Это демо-данные для наблюдения за ритмом. Они не объясняют причины и не заменяют профессиональную помощь.</p>
       </section>
 
       <Card>
-        <p className="text-sm font-semibold text-ayla-muted">Цикл</p>
+        <p className="text-sm font-semibold text-mira-muted">Цикл</p>
         <div className="mt-4 grid grid-cols-3 gap-3">
           <AnalyticsMetric label="Средняя длина" value="28 дн." />
           <AnalyticsMetric label="Менструация" value="5 дн." />
           <AnalyticsMetric label="Вариативность" value="±2 дн." />
         </div>
-        <p className="mt-4 text-sm leading-6 text-ayla-muted">Текущая фаза: {plan.phase}. Оценки цикла остаются ориентировочными.</p>
+        <p className="mt-4 text-sm leading-6 text-mira-muted">Текущая фаза: {plan.phase}. Оценки цикла остаются ориентировочными.</p>
       </Card>
 
       <Card>
-        <p className="text-sm font-semibold text-ayla-muted">Симптомы и состояние</p>
-        <p className="mt-1 text-sm leading-6 text-ayla-muted">Небольшие шкалы показывают частоту отметок в демо-неделе.</p>
+        <p className="text-sm font-semibold text-mira-muted">Симптомы и состояние</p>
+        <p className="mt-1 text-sm leading-6 text-mira-muted">Небольшие шкалы показывают частоту отметок в демо-неделе.</p>
         <div className="mt-4 space-y-4">
           <AnalyticsTrend label="Боль" values={[1, 2, 1, 3, 1, 1, 0]} note="Чаще отмечалась после насыщенных дней." />
           <AnalyticsTrend label="Настроение" values={[6, 7, 6, 5, 7, 8, 7]} note={`Сегодня: ${checkIn.mood}/10.`} positive />
@@ -1481,32 +1481,32 @@ function AnalyticsScreen({
       </Card>
 
       <Card className="bg-[#fff6f4]">
-        <p className="text-sm font-semibold text-ayla-muted">Работа и ресурс</p>
+        <p className="text-sm font-semibold text-mira-muted">Работа и ресурс</p>
         <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Нагрузка на работе может менять план</h2>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">В демо-истории в дни с высокой нагрузкой тренировки чаще становились короче, а усталость отмечалась чаще. {currentContext}</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">В демо-истории в дни с высокой нагрузкой тренировки чаще становились короче, а усталость отмечалась чаще. {currentContext}</p>
       </Card>
 
       <Card>
-        <p className="text-sm font-semibold text-ayla-muted">Тренировки</p>
+        <p className="text-sm font-semibold text-mira-muted">Тренировки</p>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <AnalyticsMetric label="Завершено" value="6 из 8" />
           <AnalyticsMetric label="Пропущено" value="2 дня" />
           <AnalyticsMetric label="Восстановление" value="3 дня" />
           <AnalyticsMetric label="Замены из-за боли" value="1 раз" />
         </div>
-        <p className="mt-4 text-sm leading-6 text-ayla-muted">Восстановительные дни - часть плана, а не пропуск результата.</p>
+        <p className="mt-4 text-sm leading-6 text-mira-muted">Восстановительные дни - часть плана, а не пропуск результата.</p>
       </Card>
 
       <Card>
-        <p className="text-sm font-semibold text-ayla-muted">Питание</p>
+        <p className="text-sm font-semibold text-mira-muted">Питание</p>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <AnalyticsMetric label="Белок" value="5 из 7 дней" />
           <AnalyticsMetric label="Отметки тяги" value="3 дня" />
         </div>
-        <p className="mt-4 text-sm leading-6 text-ayla-muted">В демо-данных тяга чаще появляется в дни с меньшим ресурсом. Это повод заметить контекст, а не ограничивать еду.</p>
+        <p className="mt-4 text-sm leading-6 text-mira-muted">В демо-данных тяга чаще появляется в дни с меньшим ресурсом. Это повод заметить контекст, а не ограничивать еду.</p>
       </Card>
 
-      <Card className="bg-ayla-ink text-white">
+      <Card className="bg-mira-ink text-white">
         <p className="text-sm font-semibold text-white/60">ИИ-наблюдения · демо</p>
         <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Три полезных паттерна</h2>
         <ol className="mt-4 space-y-3">
@@ -1526,9 +1526,9 @@ function AnalyticsScreen({
 
 function AnalyticsMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-ayla-background p-3">
-      <p className="text-xs font-bold uppercase tracking-[0.12em] text-ayla-muted">{label}</p>
-      <p className="mt-1 text-sm font-black text-ayla-text">{value}</p>
+    <div className="rounded-2xl bg-mira-background p-3">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">{label}</p>
+      <p className="mt-1 text-sm font-black text-mira-text">{value}</p>
     </div>
   );
 }
@@ -1549,14 +1549,14 @@ function AnalyticsTrend({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-4">
-        <p className="text-sm font-bold text-ayla-text">{label}</p>
-        <p className="text-right text-xs text-ayla-muted">{note}</p>
+        <p className="text-sm font-bold text-mira-text">{label}</p>
+        <p className="text-right text-xs text-mira-muted">{note}</p>
       </div>
       <div className="mt-2 flex h-10 items-end gap-1.5">
         {values.map((value, index) => (
           <span
             key={`${label}-${index}`}
-            className={cn("flex-1 rounded-t-md", positive ? "bg-ayla-success" : "bg-ayla-cycle")}
+            className={cn("flex-1 rounded-t-md", positive ? "bg-mira-success" : "bg-mira-cycle")}
             style={{ height: `${Math.max(18, (value / max) * 100)}%` }}
           />
         ))}
@@ -1602,28 +1602,28 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
     urgent: "Срочно"
   };
   const levelClass: Record<HealthSignalLevel, string> = {
-    observe: "bg-ayla-success text-ayla-text",
-    consider: "bg-[#fff0d8] text-ayla-text",
-    urgent: "bg-[#f6dedc] text-ayla-text"
+    observe: "bg-mira-success text-mira-text",
+    consider: "bg-[#fff0d8] text-mira-text",
+    urgent: "bg-[#f6dedc] text-mira-text"
   };
 
   return (
     <section className="space-y-4">
       <Card className="bg-[#f2f7f1]">
-        <p className="text-sm font-semibold text-ayla-muted">Навигатор здоровья</p>
+        <p className="text-sm font-semibold text-mira-muted">Навигатор здоровья</p>
         <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">Понять, что стоит обсудить</h2>
-        <p className="mt-2 text-sm leading-6 text-ayla-muted">Это спокойный обзор паттернов из самоотчёта, а не медицинская оценка.</p>
+        <p className="mt-2 text-sm leading-6 text-mira-muted">Это спокойный обзор паттернов из самоотчёта, а не медицинская оценка.</p>
 
         <div className="mt-4 rounded-2xl bg-white/80 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-ayla-muted">Сигнал здоровья · демо</p>
-              <h3 className="mt-1 text-base font-black text-ayla-text">{selectedSignal.title}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-mira-muted">Сигнал здоровья · демо</p>
+              <h3 className="mt-1 text-base font-black text-mira-text">{selectedSignal.title}</h3>
             </div>
             <Badge className={levelClass[selectedSignal.level]}>{levelLabel[selectedSignal.level]}</Badge>
           </div>
-          <p className="mt-2 text-sm leading-6 text-ayla-muted">{selectedSignal.explanation}</p>
-          <p className="mt-3 text-xs font-semibold text-ayla-muted">Это не диагноз.</p>
+          <p className="mt-2 text-sm leading-6 text-mira-muted">{selectedSignal.explanation}</p>
+          <p className="mt-3 text-xs font-semibold text-mira-muted">Это не диагноз.</p>
           <Button className="mt-4 w-full" variant="secondary" onClick={() => setDetailsOpen((current) => !current)}>
             {detailsOpen ? "Скрыть детали" : "Открыть детали сигнала"}
           </Button>
@@ -1633,19 +1633,19 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
       {detailsOpen && (
         <Card className="space-y-5">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Примеры сигналов · демо</p>
+            <p className="text-sm font-semibold text-mira-muted">Примеры сигналов · демо</p>
             <div className="mt-3 space-y-2">
               {demoHealthSignals.map((signal) => (
                 <button
                   key={signal.level}
                   className={cn(
                     "w-full rounded-2xl border p-3 text-left transition",
-                    selectedLevel === signal.level ? "border-ayla-primary bg-ayla-background" : "border-black/5 bg-white"
+                    selectedLevel === signal.level ? "border-mira-primary bg-mira-background" : "border-black/5 bg-white"
                   )}
                   onClick={() => setSelectedLevel(signal.level)}
                   type="button"
                 >
-                  <span className="flex items-center justify-between gap-3 text-sm font-bold text-ayla-text">
+                  <span className="flex items-center justify-between gap-3 text-sm font-bold text-mira-text">
                     {levelLabel[signal.level]}
                     <span className={cn("rounded-full px-2 py-1 text-xs", levelClass[signal.level])}>{signal.title}</span>
                   </span>
@@ -1655,8 +1655,8 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">К кому можно обратиться</p>
-            <div className="mt-3 space-y-2 text-sm leading-6 text-ayla-text">
+            <p className="text-sm font-semibold text-mira-muted">К кому можно обратиться</p>
+            <div className="mt-3 space-y-2 text-sm leading-6 text-mira-text">
               <p><strong>Гинеколог:</strong> для обсуждения цикла, боли или характера кровотечения.</p>
               <p><strong>Гинеколог-эндокринолог:</strong> если хочется обсудить цикл вместе с другими гормональными вопросами.</p>
               <p><strong>Терапевт / врач общей практики:</strong> чтобы начать общий разговор о самочувствии и усталости.</p>
@@ -1665,15 +1665,15 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Что подготовить к визиту</p>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-ayla-text">
+            <p className="text-sm font-semibold text-mira-muted">Что подготовить к визиту</p>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-mira-text">
               <li>Историю цикла и даты менструаций.</li>
               <li>Историю симптомов и уровень боли.</li>
               <li>Наблюдения за характером кровотечения.</li>
               <li>Список принимаемых лекарств и добавок.</li>
               <li>Вопросы, которые хочется задать специалисту.</li>
             </ul>
-            <p className="mt-3 text-sm leading-6 text-ayla-muted">A clinician may discuss whether tests are needed. Ayla не подсказывает, какие именно обследования или лечение нужны.</p>
+            <p className="mt-3 text-sm leading-6 text-mira-muted">A clinician may discuss whether tests are needed. Mira не подсказывает, какие именно обследования или лечение нужны.</p>
           </div>
 
           <Button className="w-full" onClick={() => setReportOpen((current) => !current)}>
@@ -1684,14 +1684,14 @@ function HealthNavigator({ checkIn }: { checkIn: CheckInState }) {
 
       {reportOpen && (
         <Card>
-          <p className="text-sm font-semibold text-ayla-muted">Сводка для визита · демо</p>
-          <div className="mt-3 space-y-2 text-sm leading-6 text-ayla-text">
+          <p className="text-sm font-semibold text-mira-muted">Сводка для визита · демо</p>
+          <div className="mt-3 space-y-2 text-sm leading-6 text-mira-text">
             <p><strong>Цикл:</strong> средняя длина 28 дней, вариативность ±2 дня.</p>
             <p><strong>Текущая отметка:</strong> боль {checkIn.painLevel}/10, симптомы: {checkIn.symptoms.length ? checkIn.symptoms.join(", ") : "не отмечены"}.</p>
             <p><strong>Самочувствие:</strong> энергия {checkIn.energy}/10, настроение {checkIn.mood}/10, сон {checkIn.sleep.toLowerCase()}.</p>
             <p><strong>Заметка пользователя:</strong> {checkIn.note || "нет"}.</p>
           </div>
-          <p className="mt-4 text-xs leading-5 text-ayla-muted">Это preview, а не медицинский документ. Ничего не отправляется и не сохраняется вне текущей сессии.</p>
+          <p className="mt-4 text-xs leading-5 text-mira-muted">Это preview, а не медицинский документ. Ничего не отправляется и не сохраняется вне текущей сессии.</p>
         </Card>
       )}
     </section>
@@ -1720,7 +1720,7 @@ function ProfileScreen({
   return (
     <section className="pb-28">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm font-semibold text-ayla-muted">Профиль и настройки</p>
+        <p className="text-sm font-semibold text-mira-muted">Профиль и настройки</p>
         <Button
           aria-label="Закрыть настройки"
           className="h-10 w-10 p-0"
@@ -1732,12 +1732,12 @@ function ProfileScreen({
       </div>
       <div className="space-y-4">
         <Card>
-          <p className="text-sm font-semibold text-ayla-muted">Профиль</p>
+          <p className="text-sm font-semibold text-mira-muted">Профиль</p>
           <h1 className="mt-2 text-3xl font-black tracking-[-0.05em]">Настройки и приватность</h1>
-          <p className="mt-2 text-sm leading-6 text-ayla-muted">Ты управляешь тем, что Ayla использует и показывает. Все действия ниже работают в демо-режиме.</p>
+          <p className="mt-2 text-sm leading-6 text-mira-muted">Ты управляешь тем, что Mira использует и показывает. Все действия ниже работают в демо-режиме.</p>
         </Card>
 
-        <Card className="space-y-3 text-sm text-ayla-muted">
+        <Card className="space-y-3 text-sm text-mira-muted">
           <ProfileRow label="Цель" value={profile.goal} />
           <ProfileRow label="Тренировки" value={`${profile.trainingPlace}, ${profile.level}`} />
           <ProfileRow label="Ритм недели" value={`${profile.workoutsPerWeek} тренировки`} />
@@ -1746,7 +1746,7 @@ function ProfileScreen({
 
         <Card className="space-y-4">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Приватность</p>
+            <p className="text-sm font-semibold text-mira-muted">Приватность</p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">Понятные настройки данных</h2>
           </div>
           <SettingsToggle
@@ -1783,8 +1783,8 @@ function ProfileScreen({
 
         <Card className="space-y-5">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Язык и единицы</p>
-            <p className="mt-1 text-sm leading-6 text-ayla-muted">Эти параметры меняют отображение, а не твои данные.</p>
+            <p className="text-sm font-semibold text-mira-muted">Язык и единицы</p>
+            <p className="mt-1 text-sm leading-6 text-mira-muted">Эти параметры меняют отображение, а не твои данные.</p>
           </div>
           <Field label="Язык">
             <ChoiceGrid options={["Русский", "Английский"]} value={language} onChange={setLanguage} />
@@ -1796,17 +1796,17 @@ function ProfileScreen({
 
         <Card className="space-y-3">
           <div>
-            <p className="text-sm font-semibold text-ayla-muted">Твои данные</p>
+            <p className="text-sm font-semibold text-mira-muted">Твои данные</p>
             <h2 className="mt-1 text-xl font-black tracking-[-0.04em]">Экспорт и удаление всегда на виду</h2>
           </div>
-          <p className="text-sm leading-6 text-ayla-muted">В готовой версии здесь можно будет выгрузить или навсегда удалить свои записи. Сейчас это безопасные демо-действия.</p>
+          <p className="text-sm leading-6 text-mira-muted">В готовой версии здесь можно будет выгрузить или навсегда удалить свои записи. Сейчас это безопасные демо-действия.</p>
           <Button className="w-full" variant="secondary" onClick={() => setActionStatus("Демо: подготовили бы экспорт твоих данных. Ничего не скачано и не отправлено.")}>Экспортировать данные</Button>
           {!deleteConfirmOpen ? (
             <Button className="w-full" variant="outline" onClick={() => setDeleteConfirmOpen(true)}>Удалить данные</Button>
           ) : (
             <div className="rounded-2xl bg-[#fff6f4] p-4">
-              <p className="text-sm font-semibold text-ayla-text">Удалить демо-данные?</p>
-              <p className="mt-1 text-sm leading-6 text-ayla-muted">В готовой версии это действие будет необратимым. Сейчас данные не удаляются.</p>
+              <p className="text-sm font-semibold text-mira-text">Удалить демо-данные?</p>
+              <p className="mt-1 text-sm leading-6 text-mira-muted">В готовой версии это действие будет необратимым. Сейчас данные не удаляются.</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setDeleteConfirmOpen(false)}>Отмена</Button>
                 <Button size="sm" variant="outline" onClick={() => {
@@ -1816,12 +1816,12 @@ function ProfileScreen({
               </div>
             </div>
           )}
-          {actionStatus && <p className="rounded-2xl bg-ayla-background p-3 text-sm leading-6 text-ayla-muted">{actionStatus}</p>}
+          {actionStatus && <p className="rounded-2xl bg-mira-background p-3 text-sm leading-6 text-mira-muted">{actionStatus}</p>}
         </Card>
 
         <Card className="space-y-3">
-          <p className="text-sm font-semibold text-ayla-muted">Начать заново</p>
-          <p className="text-sm leading-6 text-ayla-muted">Можно снова пройти стартовую настройку и изменить базовые параметры. Это не удаляет демо-данные.</p>
+          <p className="text-sm font-semibold text-mira-muted">Начать заново</p>
+          <p className="text-sm leading-6 text-mira-muted">Можно снова пройти стартовую настройку и изменить базовые параметры. Это не удаляет демо-данные.</p>
           <Button className="w-full" variant="secondary" onClick={onRestart}>Перезапустить настройку</Button>
         </Card>
       </div>
@@ -1843,15 +1843,15 @@ function SettingsToggle({
   return (
     <div className="flex items-start justify-between gap-4 border-b border-black/5 pb-4 last:border-0 last:pb-0">
       <div>
-        <p className="text-sm font-bold text-ayla-text">{label}</p>
-        <p className="mt-1 text-sm leading-5 text-ayla-muted">{description}</p>
+        <p className="text-sm font-bold text-mira-text">{label}</p>
+        <p className="mt-1 text-sm leading-5 text-mira-muted">{description}</p>
       </div>
       <button
         aria-checked={checked}
         aria-label={label}
         className={cn(
           "mt-1 flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition",
-          checked ? "bg-ayla-primary" : "bg-black/10"
+          checked ? "bg-mira-primary" : "bg-black/10"
         )}
         onClick={() => onChange(!checked)}
         role="switch"
@@ -1871,7 +1871,7 @@ function AppHeader({ onOpenProfile }: { onOpenProfile: () => void }) {
         <Badge className="bg-white/80">Прототип</Badge>
         <button
           aria-label="Открыть профиль и настройки"
-          className="grid h-11 w-11 place-items-center rounded-full bg-ayla-primary text-white shadow-soft"
+          className="grid h-11 w-11 place-items-center rounded-full bg-mira-primary text-white shadow-soft"
           onClick={onOpenProfile}
           type="button"
         >
@@ -1898,7 +1898,7 @@ function BottomNav({
             key={item.id}
             className={cn(
               "flex min-h-12 flex-col items-center justify-center gap-1 rounded-full px-1 py-2 text-[10px] font-bold transition",
-              active === item.id ? "bg-ayla-ink text-white" : "text-ayla-muted"
+              active === item.id ? "bg-mira-ink text-white" : "text-mira-muted"
             )}
             aria-current={active === item.id ? "page" : undefined}
             onClick={() => setActive(item.id)}
@@ -1930,8 +1930,8 @@ function ChoiceGrid({
           className={cn(
             "rounded-2xl border px-4 py-3 text-left text-sm font-bold transition",
             value === option
-              ? "border-ayla-primary bg-ayla-primary text-white shadow-glow"
-              : "border-black/5 bg-ayla-background text-ayla-text"
+              ? "border-mira-primary bg-mira-primary text-white shadow-glow"
+              : "border-black/5 bg-mira-background text-mira-text"
           )}
           onClick={() => onChange(option)}
           type="button"
@@ -1956,9 +1956,9 @@ function StepShell({
 }) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-      <p className="text-sm font-bold uppercase tracking-[0.18em] text-ayla-primary">{eyebrow}</p>
+      <p className="text-sm font-bold uppercase tracking-[0.18em] text-mira-primary">{eyebrow}</p>
       <h1 className="mt-3 text-4xl font-black tracking-[-0.06em]">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-ayla-muted">{subtitle}</p>
+      <p className="mt-3 text-sm leading-6 text-mira-muted">{subtitle}</p>
       <div className="mt-8 space-y-5">{children}</div>
     </motion.div>
   );
@@ -1967,7 +1967,7 @@ function StepShell({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-bold text-ayla-text">{label}</span>
+      <span className="mb-2 block text-sm font-bold text-mira-text">{label}</span>
       {children}
     </label>
   );
@@ -1989,16 +1989,16 @@ function PlanCard({
   return (
     <Card>
       <div className="flex gap-4">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-ayla-background text-ayla-primary [&_svg]:h-5 [&_svg]:w-5">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-mira-background text-mira-primary [&_svg]:h-5 [&_svg]:w-5">
           {icon}
         </div>
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-ayla-muted">{label}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-mira-muted">{label}</p>
           <h3 className="mt-1 text-xl font-black tracking-[-0.04em]">{title}</h3>
-          <p className="text-sm font-semibold text-ayla-primary">{detail}</p>
+          <p className="text-sm font-semibold text-mira-primary">{detail}</p>
           <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-bold text-ayla-text">Почему?</summary>
-            <p className="mt-2 text-sm leading-6 text-ayla-muted">{reason}</p>
+            <summary className="cursor-pointer text-sm font-bold text-mira-text">Почему?</summary>
+            <p className="mt-2 text-sm leading-6 text-mira-muted">{reason}</p>
           </details>
         </div>
       </div>
@@ -2009,10 +2009,10 @@ function PlanCard({
 function WorkoutBlock({ title, items }: { title: string; items: string[] }) {
   return (
     <div>
-      <h3 className="text-sm font-black uppercase tracking-[0.16em] text-ayla-muted">{title}</h3>
+      <h3 className="text-sm font-black uppercase tracking-[0.16em] text-mira-muted">{title}</h3>
       <div className="mt-2 space-y-2">
         {items.map((item, index) => (
-          <div key={item} className="flex items-center gap-3 rounded-2xl bg-ayla-background p-3">
+          <div key={item} className="flex items-center gap-3 rounded-2xl bg-mira-background p-3">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-xs font-black">
               {index + 1}
             </span>
@@ -2027,7 +2027,7 @@ function WorkoutBlock({ title, items }: { title: string; items: string[] }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-3xl bg-white/82 p-4 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ayla-muted">{label}</p>
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-mira-muted">{label}</p>
       <p className="mt-2 text-xl font-black tracking-[-0.04em]">{value}</p>
     </div>
   );
@@ -2035,9 +2035,9 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-ayla-background px-4 py-3">
+    <div className="flex items-center justify-between rounded-2xl bg-mira-background px-4 py-3">
       <span>{label}</span>
-      <strong className="text-ayla-text">{value}</strong>
+      <strong className="text-mira-text">{value}</strong>
     </div>
   );
 }
@@ -2045,12 +2045,12 @@ function ProfileRow({ label, value }: { label: string; value: string }) {
 function LogoMark() {
   return (
     <div className="flex items-center gap-3">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-ayla-ink text-white shadow-soft">
+      <div className="grid h-12 w-12 place-items-center rounded-2xl bg-mira-ink text-white shadow-soft">
         <Sparkles className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-lg font-black tracking-[-0.05em]">Ayla</p>
-        <p className="text-xs font-semibold text-ayla-muted">ИИ-коуч для тела</p>
+        <p className="text-lg font-black tracking-[-0.05em]">Mira</p>
+        <p className="text-xs font-semibold text-mira-muted">ИИ-коуч для тела</p>
       </div>
     </div>
   );

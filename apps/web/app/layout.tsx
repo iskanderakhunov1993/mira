@@ -9,7 +9,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Ayla — ИИ-коуч для тела",
+  title: "Mira — ИИ-коуч для тела",
   description: "Ежедневный ИИ-коуч для женщин: движение, восстановление и контекст дня."
 };
 

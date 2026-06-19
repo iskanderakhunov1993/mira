@@ -22,7 +22,7 @@ export function NutritionScreen({ onAddMeal }: NutritionScreenProps) {
           <p className="eyebrow">БЕЗ РУЧНОГО ПОДСЧЁТА</p>
           <h1>Питание сегодня</h1>
           <p className="lead">
-            Показывай Ayla еду. Она сама собирает картину и подсказывает мягко,
+            Показывай Mira еду. Она сама собирает картину и подсказывает мягко,
             без давления цифр.
           </p>
         </div>
@@ -103,7 +103,7 @@ export function NutritionScreen({ onAddMeal }: NutritionScreenProps) {
         <button className="photo-dropzone" onClick={onAddMeal}>
           <ImagePlus size={25} />
           <strong>Добавить фото следующего приёма пищи</strong>
-          <span>Ayla распознает блюдо и покажет confidence score</span>
+          <span>Mira распознает блюдо и покажет confidence score</span>
           <ChevronRight size={18} />
         </button>
       </section>

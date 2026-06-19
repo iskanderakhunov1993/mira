@@ -1,8 +1,8 @@
-# Ayla AI Specification
+# Mira AI Specification
 
 ## AI Architecture
 
-Ayla uses a hybrid decision system. Deterministic policy owns safety,
+Mira uses a hybrid decision system. Deterministic policy owns safety,
 eligibility, and exercise constraints. AI is limited to structured composition,
 summarization, and bounded image-assisted estimates. AI never bypasses safety
 rules or invents exercises outside the curated library.

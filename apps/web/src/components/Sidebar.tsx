@@ -33,13 +33,13 @@ export function Sidebar({ active, onNavigate }: SidebarProps) {
           <Crown size={16} />
         </span>
         <span>
-          <small>Ayla Premium</small>
+          <small>Mira Premium</small>
           <strong>Go to premium</strong>
         </span>
         <ChevronRight size={17} />
       </button>
       <p className="safety-note">
-        Ayla не ставит диагнозы и не заменяет консультацию врача.
+        Mira не ставит диагнозы и не заменяет консультацию врача.
       </p>
     </aside>
   );

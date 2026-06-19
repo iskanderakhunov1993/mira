@@ -1,6 +1,6 @@
 export function Logo() {
   return (
-    <div className="logo" aria-label="Ayla">
+    <div className="logo" aria-label="Mira">
       <span className="logo-mark" aria-hidden="true">
         <svg viewBox="0 0 40 40" role="img">
           <path
@@ -15,7 +15,7 @@ export function Logo() {
         </svg>
       </span>
       <span className="logo-copy">
-        <strong>Ayla</strong>
+        <strong>Mira</strong>
         <small>body intelligence</small>
       </span>
     </div>

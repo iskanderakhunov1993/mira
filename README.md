@@ -1,6 +1,6 @@
-# Ayla
+# Mira
 
-Ayla — body-aware AI fitness & wellness coach для женщин. Продукт каждый день
+Mira — body-aware AI fitness & wellness coach для женщин. Продукт каждый день
 отвечает на вопрос: «Что лучше для моего тела сегодня?»
 
 ## Web MVP
@@ -23,7 +23,7 @@ check-in, адаптивную генерацию тренировки, заме
 питание по фото, body scan history и профиль.
 
 Без настроенного backend экран питания работает в demo-режиме. Архитектура
-production-версии описана в [docs/AYLA_ARCHITECTURE.md](docs/AYLA_ARCHITECTURE.md).
+production-версии описана в [docs/MIRA_ARCHITECTURE.md](docs/MIRA_ARCHITECTURE.md).
 
 ## AI-анализ еды по фото
 
@@ -66,4 +66,4 @@ supabase functions deploy analyze-body
 ## Legacy iOS prototype
 
 Предыдущий SwiftUI-прототип сохранён в `FitFlow/`. После проверки веб-гипотезы
-интерфейс Ayla переносится в Expo/React Native с общей доменной логикой.
+интерфейс Mira переносится в Expo/React Native с общей доменной логикой.

@@ -1,8 +1,8 @@
-# Ayla: MVP architecture
+# Mira: MVP architecture
 
 ## Product principle
 
-Ayla is not a calorie tracker or a static workout plan. Its primary product
+Mira is not a calorie tracker or a static workout plan. Its primary product
 object is a daily decision:
 
 > Given the woman's current state, what type of movement and support is useful
@@ -19,11 +19,11 @@ it with minimal input.
 2. Select self-reported limitations without diagnosis language.
 3. Optionally add cycle context and symptoms.
 4. Complete a guided front, side and back body scan.
-5. Receive the first explanation of how Ayla will adapt the next day.
+5. Receive the first explanation of how Mira will adapt the next day.
 
 ### Daily loop
 
-1. Ayla imports sleep and activity when available.
+1. Mira imports sleep and activity when available.
 2. User completes a sub-minute energy, mood, soreness and pain check-in.
 3. Decision engine computes readiness and chooses a session policy.
 4. AI generates a structured workout from an approved exercise library.
@@ -60,7 +60,7 @@ supabase/
   migrations/          PostgreSQL schema and RLS
   functions/           Secure AI orchestration
 docs/
-  AYLA_ARCHITECTURE.md
+  MIRA_ARCHITECTURE.md
 ```
 
 The current MVP implements `apps/web`. When mobile work begins, pure functions
@@ -252,7 +252,7 @@ Principles:
 - uncertainty and confidence are visible, not hidden
 - motion communicates adaptation, never urgency
 - no red failure states for missed workouts or food choices
-- the Ayla mark combines an `A`, a body silhouette and an adaptive orbit
+- the Mira mark combines an `M`, a body silhouette and an adaptive orbit
 
 ## Roadmap
 

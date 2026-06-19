@@ -42,7 +42,7 @@ export function FoodScanModal({ onClose }: FoodScanModalProps) {
 
   return (
     <Modal
-      title="Покажи Ayla свою еду"
+      title="Покажи Mira свою еду"
       eyebrow="AI FOOD VISION"
       onClose={onClose}
       className="food-modal"

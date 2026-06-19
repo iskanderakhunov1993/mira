@@ -126,7 +126,7 @@ export function TodayScreen({
       <section className="coach-section">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">AYLA INSIGHT</p>
+            <p className="eyebrow">MIRA INSIGHT</p>
             <h2>Что лучше для тела сегодня</h2>
           </div>
           <span className="ai-badge">
@@ -169,7 +169,7 @@ export function TodayScreen({
               Сгенерировать тренировку
             </button>
             <small>
-              Ayla учтёт сон, цикл, энергию, ограничения и вчерашнюю нагрузку.
+              Mira учтёт сон, цикл, энергию, ограничения и вчерашнюю нагрузку.
             </small>
           </article>
         </div>
@@ -185,7 +185,7 @@ export function TodayScreen({
             <h3>Белка пока немного меньше твоего ритма</h3>
             <p>
               Не нужно ничего считать. Сфотографируй следующий приём пищи, и
-              Ayla обновит картину дня.
+              Mira обновит картину дня.
             </p>
           </div>
         </div>

@@ -40,7 +40,7 @@ export function CheckInModal({
       className="checkin-modal"
     >
       <p className="modal-intro">
-        Здесь нет правильных ответов. Ayla адаптирует рекомендации под твой
+        Здесь нет правильных ответов. Mira адаптирует рекомендации под твой
         реальный ресурс.
       </p>
       <div className="checkin-fields">
