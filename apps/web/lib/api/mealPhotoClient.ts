@@ -17,30 +17,12 @@ export async function analyzeMealPhoto(
   image: File,
   context: Omit<AnalyzeMealInput, "imageName">
 ): Promise<MealPhotoAnalysisResult> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !anonKey) {
-    return {
-      analysis: createDemoMealAnalysis(),
-      source: "demo",
-      message: "AI-анализ пока не настроен, поэтому показан пример приблизительной оценки."
-    };
-  }
-
   const formData = new FormData();
   formData.append("image", image);
   formData.append("context", JSON.stringify({ ...context, imageName: image.name }));
 
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/analyze-meal`, {
-      method: "POST",
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`
-      },
-      body: formData
-    });
+    const response = await fetch("/api/analyze-meal", { method: "POST", body: formData });
     const body: unknown = await response.json();
 
     if (response.ok && isRecord(body) && isMealEnvelope(body)) {
