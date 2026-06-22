@@ -175,30 +175,62 @@ function parseModelJson(outputText: string): unknown {
 
 async function analyzeWithYandex(apiKey: string, folderId: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
   const model = process.env.YANDEX_MEAL_MODEL ?? "qwen3.6-35b-a3b/latest";
-  const response = await fetch("https://ai.api.cloud.yandex.net/v1/responses", {
+  const visionResponse = await fetch("https://ai.api.cloud.yandex.net/v1/responses", {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Api-Key ${apiKey}`,
+      "OpenAI-Project": folderId,
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
       model: `gpt://${folderId}/${model}`,
       temperature: 0.1,
-      instructions: mealSystemPrompt,
+      instructions: "Identify only visible foods in the image. Reply in Russian JSON only: {\"foods\": [\"...\"], \"uncertainty\": \"...\"}. Be conservative and do not estimate nutrition.",
       input: [{
         role: "user",
         content: [
-          { type: "input_text", text: mealPrompt(context.energy, context.symptoms) },
+          { type: "input_text", text: "What foods are visible in this meal photo?" },
           { type: "input_image", image_url: `data:${mimeType};base64,${imageBase64}` }
         ]
       }],
       max_output_tokens: 1800
-    })
+    }),
+    signal: AbortSignal.timeout(120_000)
   });
-  const result: unknown = await response.json();
-  const outputText = readOutputText(result);
-  if (!response.ok || !outputText) {
-    console.error("Yandex meal analysis error", result);
+  const visionResult: unknown = await visionResponse.json();
+  const visionOutput = readOutputText(visionResult);
+  const foods = parseModelJson(visionOutput);
+  if (!visionResponse.ok || !isObject(foods) || !Array.isArray(foods.foods) || !foods.foods.every((food) => typeof food === "string")) {
+    console.error("Yandex vision analysis error", visionResult);
     throw new Error("Yandex meal analysis is unavailable");
   }
+
+  const nutritionResponse = await fetch("https://llm.api.cloud.yandex.net/foundationModels/v1/completion", {
+    method: "POST",
+    headers: { Authorization: `Api-Key ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      modelUri: `gpt://${folderId}/${process.env.YANDEX_TEXT_MODEL ?? "yandexgpt/latest"}`,
+      completionOptions: { stream: false, temperature: 0.1, maxTokens: "700" },
+      messages: [{
+        role: "user",
+        text: `${mealSystemPrompt}\n\nVisible foods: ${foods.foods.join(", ")}. Visual uncertainty: ${typeof foods.uncertainty === "string" ? foods.uncertainty : "not provided"}. ${mealPrompt(context.energy, context.symptoms)}`
+      }]
+    }),
+    signal: AbortSignal.timeout(30_000)
+  });
+  const nutritionResult: unknown = await nutritionResponse.json();
+  const outputText = readYandexFoundationText(nutritionResult);
+  if (!nutritionResponse.ok || !outputText) {
+    console.error("Yandex nutrition analysis error", nutritionResult);
+    throw new Error("Yandex nutrition analysis is unavailable");
+  }
   return { outputText };
+}
+
+function readYandexFoundationText(value: unknown) {
+  if (!isObject(value) || !isObject(value.result) || !Array.isArray(value.result.alternatives)) return "";
+  const first = value.result.alternatives[0];
+  return isObject(first) && isObject(first.message) && typeof first.message.text === "string" ? first.message.text : "";
 }
 
 async function analyzeWithGroq(apiKey: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
