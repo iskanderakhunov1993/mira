@@ -93,10 +93,11 @@ function mealPrompt(energy: number | undefined, symptoms: string[] | undefined) 
 }
 
 export async function POST(request: Request) {
+  const groqApiKey = process.env.GROQ_API_KEY;
   const ollamaModel = process.env.OLLAMA_MEAL_MODEL;
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const openAiApiKey = process.env.OPENAI_API_KEY;
-  if (!ollamaModel && !geminiApiKey && !openAiApiKey) {
+  if (!groqApiKey && !ollamaModel && !geminiApiKey && !openAiApiKey) {
     return NextResponse.json({
       data: createDemoMealAnalysis(),
       source: "demo",
@@ -123,11 +124,13 @@ export async function POST(request: Request) {
     if (!parsed.success) return NextResponse.json({ error: "Контекст фото некорректен." }, { status: 400 });
 
     const imageBase64 = Buffer.from(await image.arrayBuffer()).toString("base64");
-    const { outputText } = ollamaModel
-      ? await analyzeWithOllama(ollamaModel, imageBase64, parsed.data)
-      : geminiApiKey
-        ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
-        : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
+    const { outputText } = groqApiKey
+      ? await analyzeWithGroq(groqApiKey, image.type, imageBase64, parsed.data)
+      : ollamaModel
+        ? await analyzeWithOllama(ollamaModel, imageBase64, parsed.data)
+        : geminiApiKey
+          ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
+          : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
     const analysis: unknown = outputText ? JSON.parse(outputText) : null;
     if (!isMealAnalysisOutput(analysis) && ollamaModel) {
       console.warn("Ollama meal analysis needs an experimental fallback", analysis);
@@ -147,6 +150,38 @@ export async function POST(request: Request) {
     console.error("Meal analysis failed", error);
     return NextResponse.json({ error: "Не удалось проанализировать фото. Попробуй ещё раз или добавь приём пищи вручную." }, { status: 500 });
   }
+}
+
+async function analyzeWithGroq(apiKey: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: process.env.GROQ_MEAL_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct",
+      temperature: 0.1,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: mealSystemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: mealPrompt(context.energy, context.symptoms) },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+          ]
+        }
+      ]
+    })
+  });
+  const result: unknown = await response.json();
+  if (!response.ok || !isObject(result) || !Array.isArray(result.choices)) {
+    console.error("Groq meal analysis error", result);
+    throw new Error("Groq meal analysis is unavailable");
+  }
+  const firstChoice = result.choices[0];
+  const outputText = isObject(firstChoice) && isObject(firstChoice.message) && typeof firstChoice.message.content === "string"
+    ? firstChoice.message.content
+    : "";
+  return { outputText };
 }
 
 function createExperimentalMealAnalysis(): AnalyzeMealOutput {
