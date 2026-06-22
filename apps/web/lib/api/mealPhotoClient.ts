@@ -26,7 +26,11 @@ export async function analyzeMealPhoto(
     const body: unknown = await response.json();
 
     if (response.ok && isRecord(body) && isMealEnvelope(body)) {
-      return { analysis: body.data, source: body.source };
+      return {
+        analysis: body.data,
+        source: body.source,
+        message: typeof body.message === "string" ? body.message : undefined
+      };
     }
 
     return {
@@ -43,6 +47,6 @@ export async function analyzeMealPhoto(
   }
 }
 
-function isMealEnvelope(value: Record<string, unknown>): value is AiEnvelope<AnalyzeMealOutput> {
+function isMealEnvelope(value: Record<string, unknown>): value is AiEnvelope<AnalyzeMealOutput> & { message?: unknown } {
   return isMealAnalysisOutput(value.data) && (value.source === "ai" || value.source === "demo" || value.source === "fallback");
 }

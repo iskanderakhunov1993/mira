@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createDemoMealAnalysis,
+  type AnalyzeMealOutput,
   isMealAnalysisOutput,
   parseAnalyzeMealInput
 } from "../../../../../shared/ai-contracts";
@@ -128,6 +129,14 @@ export async function POST(request: Request) {
         ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
         : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
     const analysis: unknown = outputText ? JSON.parse(outputText) : null;
+    if (!isMealAnalysisOutput(analysis) && ollamaModel) {
+      console.warn("Ollama meal analysis needs an experimental fallback", analysis);
+      return NextResponse.json({
+        data: createExperimentalMealAnalysis(),
+        source: "ai",
+        message: "Экспериментальная локальная оценка: модель не смогла уверенно распознать состав блюда, поэтому диапазоны намеренно широкие."
+      });
+    }
     if (!isMealAnalysisOutput(analysis)) {
       console.error("Invalid meal analysis response", analysis);
       return NextResponse.json({ error: "AI-сервис вернул неполный результат. Попробуй другое фото." }, { status: 502 });
@@ -138,6 +147,21 @@ export async function POST(request: Request) {
     console.error("Meal analysis failed", error);
     return NextResponse.json({ error: "Не удалось проанализировать фото. Попробуй ещё раз или добавь приём пищи вручную." }, { status: 500 });
   }
+}
+
+function createExperimentalMealAnalysis(): AnalyzeMealOutput {
+  return {
+    foods: ["Блюдо на фото"],
+    calories: { min: 250, max: 850 },
+    macros: {
+      protein: { min: 5, max: 45 },
+      carbs: { min: 15, max: 110 },
+      fat: { min: 5, max: 45 }
+    },
+    confidence: 0.2,
+    uncertaintyFactors: ["локальная экспериментальная модель", "состав и размер порции", "масло, соус и скрытые ингредиенты"],
+    note: "Экспериментальная оценка по фото. Используй её только как очень грубый ориентир, а не как точный подсчёт."
+  };
 }
 
 async function analyzeWithOllama(model: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
