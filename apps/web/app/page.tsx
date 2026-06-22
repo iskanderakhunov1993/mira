@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
+  AtSign,
   BriefcaseBusiness,
   CalendarDays,
   Camera,
   ChartNoAxesCombined,
+  Check,
   ClipboardCheck,
   Dumbbell,
   HeartPulse,
+  LockKeyhole,
   Moon,
   Salad,
+  ShieldCheck,
   Sparkles,
   UserRound
 } from "lucide-react";
@@ -38,12 +43,14 @@ import {
   readMiraLocalData,
   writeMiraLocalData,
   type DailyReflection,
+  type MiraAccount,
   type MealLog,
   type MiraLocalData,
   type WorkoutLog
 } from "@/lib/localStore";
 import { analyzeMealPhoto } from "@/lib/api/mealPhotoClient";
 import { generateWorkoutWithAi } from "@/lib/api/workoutGenerationClient";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { AnalyzeMealOutput } from "../../../shared/ai-contracts";
 
@@ -110,6 +117,7 @@ const defaultGym: GymState = {
 
 export default function MiraMvp() {
   const [started, setStarted] = useState(false);
+  const [accountReady, setAccountReady] = useState(false);
   const [onboarded, setOnboarded] = useState(false);
   const [step, setStep] = useState(0);
   const [active, setActive] = useState<(typeof nav)[number]["id"]>("today");
@@ -138,6 +146,7 @@ export default function MiraMvp() {
       setCheckIn(next.checkIns[localDateKey()]?.value ?? defaultCheckIn);
       setOnboarded(true);
       setStarted(true);
+      setAccountReady(true);
     }
     setIsRestoringLocalData(false);
   }, []);
@@ -202,6 +211,18 @@ export default function MiraMvp() {
     return <Landing onStart={() => setStarted(true)} />;
   }
 
+  if (!accountReady) {
+    return (
+      <AccountEntry
+        onBack={() => setStarted(false)}
+        onComplete={(account) => {
+          persistLocalData({ ...localData, account });
+          setAccountReady(true);
+        }}
+      />
+    );
+  }
+
   if (!onboarded) {
     return (
       <Onboarding
@@ -234,6 +255,7 @@ export default function MiraMvp() {
               setStep(0);
               setOnboarded(false);
               setProfileOpen(false);
+              setAccountReady(true);
               persistLocalData({ ...localData, profile: undefined });
             }}
           />
@@ -292,73 +314,122 @@ function MiraLoadingScreen() {
 }
 
 function Landing({ onStart }: { onStart: () => void }) {
-  return (
-    <main className="soft-grid min-h-screen overflow-hidden px-5 py-6 text-mira-text">
-      <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:grid lg:grid-cols-[1fr_420px] lg:items-center">
-        <section className="pt-6 lg:pt-16">
-          <Badge className="mb-6 border-mira-primary/15 bg-mira-card/80 text-mira-primary">
-            ИИ-коуч для тела на каждый день
-          </Badge>
-          <motion.h1
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl text-5xl font-black leading-[0.95] tracking-[-0.08em] sm:text-7xl"
-          >
-            Что лучше для моего тела сегодня?
-          </motion.h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-mira-muted">
-            Mira превращает цикл, энергию, сон, стресс, настроение и историю тренировок
-            в спокойный персональный план дня. Меньше трекинга. Больше ясности.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" onClick={onStart}>
-              Начать за минуту <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button size="lg" variant="secondary" onClick={onStart}>
-              Посмотреть демо-план
-            </Button>
-          </div>
-          <div className="mt-10 grid max-w-xl grid-cols-3 gap-3">
-            {["Без диагнозов", "Без одержимости калориями", "Решения на день"].map((item) => (
-              <Card key={item} className="p-4 text-sm font-bold">
-                <span className="font-bold">{item}</span>
-              </Card>
-            ))}
-          </div>
-        </section>
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const headlineY = useTransform(scrollYProgress, [0, 1], [0, -72]);
+  const dashboardY = useTransform(scrollYProgress, [0, 1], [0, -132]);
+  const orbitY = useTransform(scrollYProgress, [0, 1], [0, 100]);
 
-        <motion.section
-          initial={{ opacity: 0, y: 24, rotate: 2 }}
-          animate={{ opacity: 1, y: 0, rotate: 0 }}
-          transition={{ duration: 0.5 }}
-          className="phone-shell relative mx-auto w-full max-w-sm rounded-[3rem] border border-white/70 bg-mira-card/70 p-3 backdrop-blur"
-        >
-          <div className="rounded-[2.4rem] bg-mira-background p-5">
-            <div className="mb-6 flex items-center justify-between">
+  return (
+    <main className="soft-grid overflow-hidden text-mira-text">
+      <section ref={heroRef} className="relative min-h-[840px] px-5 pb-16 pt-6 sm:min-h-[760px]">
+        <motion.div style={{ y: orbitY }} className="pointer-events-none absolute -right-16 top-36 h-64 w-64 rounded-full border-[26px] border-mira-primary/10" />
+        <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr_430px] lg:items-center lg:pt-12">
+          <motion.section style={{ y: headlineY }} className="pt-4 lg:pt-10">
+            <div className="mb-8 flex items-center justify-between lg:hidden">
               <LogoMark />
-              <Badge>Сегодня</Badge>
+              <span className="text-sm font-semibold text-mira-muted">Mira</span>
             </div>
-            <Card className="bg-mira-primary p-6 text-mira-ink">
-              <p className="text-sm text-mira-ink/70">Твоё тело сегодня</p>
-              <h2 className="mt-3 text-4xl font-black tracking-[-0.05em]">В балансе</h2>
-              <p className="mt-3 text-sm leading-6 text-mira-ink/75">
-                Умеренное движение, белок раньше и более спокойный вечер.
-              </p>
-            </Card>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Metric label="Энергия" value="6/10" />
-              <Metric label="Стресс" value="4/10" />
-              <Metric label="Сон" value="Нормально" />
-              <Metric label="Цикл" value="День 14" />
+            <Badge className="mb-6 border-mira-primary/15 bg-mira-card/80 text-mira-primary">Твой личный ритм</Badge>
+            <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl text-5xl font-black leading-[0.95] tracking-[-0.07em] sm:text-7xl">
+              Понять себя. Выбрать, что делать сегодня.
+            </motion.h1>
+            <p className="mt-6 max-w-xl text-lg leading-8 text-mira-muted">
+              Mira соединяет цикл, сон, энергию, нагрузку и питание в один спокойный ориентир на день.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" onClick={onStart}>Создать личный план <ArrowRight className="h-4 w-4" /></Button>
+              <a className="inline-flex h-14 items-center justify-center rounded-full px-6 text-sm font-semibold text-mira-primary transition hover:bg-white/5" href="#how-it-works">Как это работает</a>
             </div>
-            <Button className="mt-5 w-full" size="lg" onClick={onStart}>
-              Я в зале
-            </Button>
+            <p className="mt-4 text-sm text-mira-muted">Без диагнозов. Без оценок тела. Ты решаешь, чем делиться.</p>
+          </motion.section>
+
+          <motion.section style={{ y: dashboardY }} initial={{ opacity: 0, y: 36, rotate: 2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: 0.6 }} className="phone-shell relative mx-auto w-full max-w-sm rounded-[2.5rem] border border-white/10 bg-mira-card p-3">
+            <div className="rounded-[2rem] bg-mira-background p-5">
+              <div className="mb-7 flex items-center justify-between"><LogoMark /><Badge>Сегодня</Badge></div>
+              <Card className="bg-mira-primary p-6 text-mira-ink">
+                <p className="text-sm font-semibold text-mira-ink/65">Ресурс на сегодня</p>
+                <h2 className="mt-3 text-4xl font-black tracking-[-0.05em]">В балансе</h2>
+                <p className="mt-3 text-sm leading-6 text-mira-ink/75">Умеренное движение, привычная еда и более спокойный вечер.</p>
+              </Card>
+              <div className="mt-4 grid grid-cols-2 gap-3"><Metric label="Энергия" value="6/10" /><Metric label="Сон" value="Нормально" /><Metric label="Цикл" value="День 14" /><Metric label="Нагрузка" value="Средняя" /></div>
+            </div>
+          </motion.section>
+        </div>
+      </section>
+
+      <section id="how-it-works" className="border-y border-white/10 bg-[#20201e] px-5 py-16">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-sm font-bold uppercase tracking-[0.12em] text-mira-primary">Три шага</p>
+          <h2 className="mt-3 max-w-xl text-3xl font-black tracking-[-0.05em]">Меньше полей. Больше понятных решений.</h2>
+          <div className="mt-8 grid gap-3 md:grid-cols-3">
+            {[{ n: "01", title: "Отметь состояние", text: "Энергия, сон, настроение и дискомфорт - только то, что важно сегодня." }, { n: "02", title: "Увидь контекст", text: "Цикл и привычки становятся ориентиром, а не жёстким правилом." }, { n: "03", title: "Выбери свой темп", text: "Mira предлагает движение, питание и восстановление без давления." }].map((item) => <Card key={item.n} className="min-h-48 p-5"><p className="text-sm font-bold text-mira-primary">{item.n}</p><h3 className="mt-7 text-xl font-black tracking-[-0.04em]">{item.title}</h3><p className="mt-3 text-sm leading-6 text-mira-muted">{item.text}</p></Card>)}
           </div>
+          <Button className="mt-8 w-full sm:w-auto" size="lg" onClick={onStart}>Начать с личного ритма <ArrowRight className="h-4 w-4" /></Button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function AccountEntry({ onBack, onComplete }: { onBack: () => void; onComplete: (account: MiraAccount) => void }) {
+  const [mode, setMode] = useState<"create" | "sign-in">("create");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedHealthContext, setAcceptedHealthContext] = useState(false);
+  const [status, setStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isCreate = mode === "create";
+  const canSubmit = email.includes("@") && password.length >= 8 && (!isCreate || (name.trim().length > 1 && acceptedTerms && acceptedHealthContext));
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    setStatus("");
+    try {
+      if (supabase) {
+        const result = isCreate
+          ? await supabase.auth.signUp({ email, password, options: { data: { name: name.trim() } } })
+          : await supabase.auth.signInWithPassword({ email, password });
+        if (result.error) throw result.error;
+        onComplete({ name: name.trim() || email.split("@")[0], email, storage: "cloud", createdAt: new Date().toISOString() });
+        return;
+      }
+      onComplete({ name: name.trim() || email.split("@")[0], email, storage: "local", createdAt: new Date().toISOString() });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Не удалось продолжить. Проверь данные и попробуй ещё раз.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen px-5 py-6 text-mira-text">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-md flex-col">
+        <div className="flex items-center justify-between"><button aria-label="Назад" className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-mira-text" onClick={onBack}><ArrowLeft className="h-5 w-5" /></button><LogoMark /><span className="w-11" /></div>
+        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="my-auto py-10">
+          <div className="mb-7 grid h-16 w-16 place-items-center rounded-[1.25rem] bg-mira-primary text-mira-ink"><ShieldCheck className="h-8 w-8" /></div>
+          <p className="text-sm font-semibold text-mira-primary">Твой личный ритм</p>
+          <h1 className="mt-3 text-4xl font-black leading-[1.02] tracking-[-0.06em]">{isCreate ? "Создадим твой профиль" : "Рады видеть тебя снова"}</h1>
+          <p className="mt-4 text-sm leading-6 text-mira-muted">{isCreate ? "С ним можно сохранить настройки и продолжить на другом устройстве." : "Войди, чтобы открыть сохранённый контекст и свой день."}</p>
+          <div className="mt-8 space-y-3">
+            {isCreate && <label className="block"><span className="mb-2 block text-sm font-semibold text-mira-muted">Как к тебе обращаться</span><div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-mira-card px-4"><UserRound className="h-5 w-5 text-mira-primary" /><input className="h-14 min-w-0 flex-1 bg-transparent text-mira-text outline-none" maxLength={40} onChange={(event) => setName(event.target.value)} placeholder="Имя" value={name} /></div></label>}
+            <label className="block"><span className="mb-2 block text-sm font-semibold text-mira-muted">Электронная почта</span><div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-mira-card px-4"><AtSign className="h-5 w-5 text-mira-primary" /><input className="h-14 min-w-0 flex-1 bg-transparent text-mira-text outline-none" onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" value={email} /></div></label>
+            <label className="block"><span className="mb-2 block text-sm font-semibold text-mira-muted">Пароль</span><div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-mira-card px-4"><LockKeyhole className="h-5 w-5 text-mira-primary" /><input className="h-14 min-w-0 flex-1 bg-transparent text-mira-text outline-none" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="Не меньше 8 символов" type="password" value={password} /></div></label>
+          </div>
+          {isCreate && <div className="mt-6 space-y-3 text-sm leading-5 text-mira-muted"><ConsentRow checked={acceptedTerms} label="Я принимаю условия использования и политику конфиденциальности." onChange={setAcceptedTerms} /><ConsentRow checked={acceptedHealthContext} label="Я разрешаю использовать мои отметки только для персонального контекста в Mira. Согласие можно изменить в настройках." onChange={setAcceptedHealthContext} /></div>}
+          {status && <p className="mt-4 text-sm font-semibold text-mira-cycle" role="alert">{status}</p>}
         </motion.section>
+        <div className="pb-4"><Button className="w-full" disabled={!canSubmit || isSubmitting} size="lg" onClick={submit}>{isSubmitting ? "Проверяем данные..." : isCreate ? "Создать профиль" : "Войти"} <ArrowRight className="h-4 w-4" /></Button><button className="mt-5 w-full text-sm font-semibold text-mira-primary" onClick={() => { setMode(isCreate ? "sign-in" : "create"); setStatus(""); }}>{isCreate ? "У меня уже есть аккаунт" : "Создать новый аккаунт"}</button><p className="mt-5 text-center text-xs leading-5 text-mira-muted">{supabase ? "Аккаунт хранится в защищённом сервисе авторизации." : "Сейчас включён локальный режим: данные останутся на этом устройстве до подключения облачной синхронизации."}</p></div>
       </div>
     </main>
   );
+}
+
+function ConsentRow({ checked, label, onChange }: { checked: boolean; label: string; onChange: (value: boolean) => void }) {
+  return <button className="flex w-full items-start gap-3 text-left" onClick={() => onChange(!checked)} type="button"><span className={cn("mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border", checked ? "border-mira-primary bg-mira-primary text-mira-ink" : "border-white/25 bg-mira-card")}><Check className={cn("h-3.5 w-3.5", checked ? "opacity-100" : "opacity-0")} /></span><span>{label}</span></button>;
 }
 
 function Onboarding({
@@ -377,22 +448,30 @@ function Onboarding({
   onDone: () => void;
 }) {
   const progress = ((step + 1) / 5) * 100;
+  const stageNames = ["Цель", "Цикл", "Ритм", "Фокус", "Первый план"];
+  const stageIcons = [Sparkles, CalendarDays, Moon, HeartPulse, Check];
+  const StageIcon = stageIcons[step];
 
   return (
-    <main className="min-h-screen px-5 py-6 text-mira-text">
+    <main className="min-h-screen overflow-hidden px-5 py-6 text-mira-text">
       <div className="mx-auto max-w-md">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-8 flex items-center justify-between">
           <LogoMark />
-          <Badge>{step + 1} из 5</Badge>
+          <span className="text-sm font-semibold text-mira-muted">{stageNames[step]} · {step + 1}/5</span>
         </div>
-        <div className="mb-8 h-2 rounded-full bg-mira-card">
+        <div className="mb-3 flex gap-1.5" aria-label={`Шаг ${step + 1} из 5`}>
+          {stageNames.map((name, index) => <span key={name} className={cn("h-1.5 flex-1 rounded-full transition-colors", index <= step ? "bg-mira-primary" : "bg-mira-card")} />)}
+        </div>
+        <div className="mb-8 h-1 overflow-hidden rounded-full bg-mira-card" aria-hidden="true">
           <div
             className="h-full rounded-full bg-mira-primary transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <Card className="min-h-[570px] p-6">
+        <motion.div key={step} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.28 }}>
+        <Card className="min-h-[570px] p-6 sm:p-7">
+          <div className="mb-7 flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-mira-primary text-mira-ink"><StageIcon className="h-6 w-6" /></div><span className="text-sm font-semibold text-mira-muted">Настройка Mira</span></div>
           {step === 0 && (
             <StepShell
               eyebrow="Начнём с важного"
@@ -536,6 +615,7 @@ function Onboarding({
             </StepShell>
           )}
         </Card>
+        </motion.div>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Button variant="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>

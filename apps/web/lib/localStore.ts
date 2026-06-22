@@ -40,8 +40,16 @@ export type PlanFeedback = {
   value: "useful" | "too_much" | "too_little" | "not_relevant";
 };
 
+export type MiraAccount = {
+  name: string;
+  email: string;
+  storage: "local" | "cloud";
+  createdAt: string;
+};
+
 export type MiraLocalData = {
   version: typeof miraLocalDataVersion;
+  account?: MiraAccount;
   profile?: OnboardingState;
   checkIns: Record<string, DailyCheckInRecord>;
   workouts: WorkoutLog[];
@@ -108,6 +116,7 @@ function parseMiraLocalData(value: unknown): MiraLocalData | undefined {
 
   return {
     version: miraLocalDataVersion,
+    account: isMiraAccount(value.account) ? value.account : undefined,
     profile: isOnboardingState(value.profile) ? value.profile : undefined,
     checkIns,
     workouts: parseArray(value.workouts, isWorkoutLog),
@@ -116,6 +125,16 @@ function parseMiraLocalData(value: unknown): MiraLocalData | undefined {
     reflections: parseReflections(value.reflections),
     planFeedback: parsePlanFeedback(value.planFeedback)
   };
+}
+
+function isMiraAccount(value: unknown): value is MiraAccount {
+  return Boolean(
+    isObject(value) &&
+      typeof value.name === "string" &&
+      typeof value.email === "string" &&
+      (value.storage === "local" || value.storage === "cloud") &&
+      typeof value.createdAt === "string"
+  );
 }
 
 function parseCheckIns(value: unknown): Record<string, DailyCheckInRecord> | undefined {
