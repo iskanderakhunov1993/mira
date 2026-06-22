@@ -67,13 +67,30 @@ function readOutputText(response: unknown) {
     .join("");
 }
 
+function readGeminiOutputText(response: unknown) {
+  if (!isObject(response) || !Array.isArray(response.candidates)) return "";
+  return response.candidates
+    .flatMap((candidate) => (isObject(candidate) && isObject(candidate.content) && Array.isArray(candidate.content.parts) ? candidate.content.parts : []))
+    .filter((part) => isObject(part) && typeof part.text === "string")
+    .map((part) => part.text as string)
+    .join("");
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const mealSystemPrompt =
+  "You analyze a single meal photo for Mira, a wellbeing app. Return only an approximate visual estimate, never exact nutrition facts. Identify visible foods conservatively. Give calorie and macro ranges wide enough to reflect uncertain portions, oils, sauces, hidden ingredients, and perspective. Never shame food, give dieting advice, diagnose health conditions, or claim the image proves what the person ate. Confidence reflects visual certainty, not nutritional truth. Do not describe the person's body. Respond in Russian.";
+
+function mealPrompt(energy: number | undefined, symptoms: string[] | undefined) {
+  return `Analyze this meal photo. Self-reported energy: ${energy ?? "not provided"}/10. Symptoms: ${symptoms?.join(", ") || "not provided"}. Return JSON only with fields foods, calories {min,max}, macros {protein {min,max}, carbs {min,max}, fat {min,max}}, confidence, uncertaintyFactors, note.`;
+}
+
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const openAiApiKey = process.env.OPENAI_API_KEY;
+  if (!geminiApiKey && !openAiApiKey) {
     return NextResponse.json({
       data: createDemoMealAnalysis(),
       source: "demo",
@@ -99,36 +116,10 @@ export async function POST(request: Request) {
     const parsed = parseAnalyzeMealInput(context);
     if (!parsed.success) return NextResponse.json({ error: "Контекст фото некорректен." }, { status: 400 });
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MEAL_MODEL ?? "gpt-4.1-mini",
-        store: false,
-        input: [
-          {
-            role: "system",
-            content: "You analyze a single meal photo for Mira, a wellbeing app. Return only an approximate visual estimate, never exact nutrition facts. Identify visible foods conservatively. Give calorie and macro ranges wide enough to reflect uncertain portions, oils, sauces, hidden ingredients, and perspective. Never shame food, give dieting advice, diagnose health conditions, or claim the image proves what the person ate. Confidence reflects visual certainty, not nutritional truth. Do not describe the person's body. Respond in Russian."
-          },
-          {
-            role: "user",
-            content: [
-              { type: "input_text", text: `Analyze this meal photo. Self-reported energy: ${parsed.data.energy ?? "not provided"}/10. Symptoms: ${parsed.data.symptoms?.join(", ") || "not provided"}. Return an approximate meal estimate using the schema.` },
-              { type: "input_image", image_url: `data:${image.type};base64,${Buffer.from(await image.arrayBuffer()).toString("base64")}`, detail: "high" }
-            ]
-          }
-        ],
-        text: { format: { type: "json_schema", name: "mira_meal_analysis", strict: true, schema: mealAnalysisSchema } }
-      })
-    });
-
-    const result: unknown = await response.json();
-    if (!response.ok) {
-      console.error("OpenAI meal analysis error", result);
-      return NextResponse.json({ error: "AI-сервис временно недоступен. Попробуй чуть позже." }, { status: 502 });
-    }
-
-    const outputText = readOutputText(result);
+    const imageBase64 = Buffer.from(await image.arrayBuffer()).toString("base64");
+    const { outputText } = geminiApiKey
+      ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
+      : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
     const analysis: unknown = outputText ? JSON.parse(outputText) : null;
     if (!isMealAnalysisOutput(analysis)) {
       console.error("Invalid meal analysis response", analysis);
@@ -140,4 +131,45 @@ export async function POST(request: Request) {
     console.error("Meal analysis failed", error);
     return NextResponse.json({ error: "Не удалось проанализировать фото. Попробуй ещё раз или добавь приём пищи вручную." }, { status: 500 });
   }
+}
+
+async function analyzeWithGemini(apiKey: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
+  const model = process.env.GEMINI_MEAL_MODEL ?? "gemini-3.5-flash";
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: mealSystemPrompt }] },
+      contents: [{ role: "user", parts: [{ text: mealPrompt(context.energy, context.symptoms) }, { inlineData: { mimeType, data: imageBase64 } }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    })
+  });
+  const result: unknown = await response.json();
+  if (!response.ok) {
+    console.error("Gemini meal analysis error", result);
+    throw new Error("Gemini meal analysis is unavailable");
+  }
+  return { result, outputText: readGeminiOutputText(result) };
+}
+
+async function analyzeWithOpenAi(apiKey: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MEAL_MODEL ?? "gpt-4.1-mini",
+      store: false,
+      input: [
+        { role: "system", content: mealSystemPrompt },
+        { role: "user", content: [{ type: "input_text", text: mealPrompt(context.energy, context.symptoms) }, { type: "input_image", image_url: `data:${mimeType};base64,${imageBase64}`, detail: "high" }] }
+      ],
+      text: { format: { type: "json_schema", name: "mira_meal_analysis", strict: true, schema: mealAnalysisSchema } }
+    })
+  });
+  const result: unknown = await response.json();
+  if (!response.ok) {
+    console.error("OpenAI meal analysis error", result);
+    throw new Error("OpenAI meal analysis is unavailable");
+  }
+  return { result, outputText: readOutputText(result) };
 }
