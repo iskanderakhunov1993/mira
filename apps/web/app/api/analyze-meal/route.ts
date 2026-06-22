@@ -124,13 +124,20 @@ export async function POST(request: Request) {
     if (!parsed.success) return NextResponse.json({ error: "Контекст фото некорректен." }, { status: 400 });
 
     const imageBase64 = Buffer.from(await image.arrayBuffer()).toString("base64");
-    const { outputText } = groqApiKey
-      ? await analyzeWithGroq(groqApiKey, image.type, imageBase64, parsed.data)
-      : ollamaModel
-        ? await analyzeWithOllama(ollamaModel, imageBase64, parsed.data)
-        : geminiApiKey
-          ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
-          : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
+    let outputText: string;
+    try {
+      ({ outputText } = groqApiKey
+        ? await analyzeWithGroq(groqApiKey, image.type, imageBase64, parsed.data)
+        : ollamaModel
+          ? await analyzeWithOllama(ollamaModel, imageBase64, parsed.data)
+          : geminiApiKey
+            ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
+            : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data));
+    } catch (error) {
+      if (!groqApiKey || !ollamaModel) throw error;
+      console.warn("Groq failed; using the experimental local meal fallback");
+      ({ outputText } = await analyzeWithOllama(ollamaModel, imageBase64, parsed.data));
+    }
     const analysis: unknown = outputText ? JSON.parse(outputText) : null;
     if (!isMealAnalysisOutput(analysis) && ollamaModel) {
       console.warn("Ollama meal analysis needs an experimental fallback", analysis);
