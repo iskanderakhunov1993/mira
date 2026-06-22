@@ -88,9 +88,10 @@ function mealPrompt(energy: number | undefined, symptoms: string[] | undefined) 
 }
 
 export async function POST(request: Request) {
+  const ollamaModel = process.env.OLLAMA_MEAL_MODEL;
   const geminiApiKey = process.env.GEMINI_API_KEY;
   const openAiApiKey = process.env.OPENAI_API_KEY;
-  if (!geminiApiKey && !openAiApiKey) {
+  if (!ollamaModel && !geminiApiKey && !openAiApiKey) {
     return NextResponse.json({
       data: createDemoMealAnalysis(),
       source: "demo",
@@ -117,9 +118,11 @@ export async function POST(request: Request) {
     if (!parsed.success) return NextResponse.json({ error: "Контекст фото некорректен." }, { status: 400 });
 
     const imageBase64 = Buffer.from(await image.arrayBuffer()).toString("base64");
-    const { outputText } = geminiApiKey
-      ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
-      : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
+    const { outputText } = ollamaModel
+      ? await analyzeWithOllama(ollamaModel, imageBase64, parsed.data)
+      : geminiApiKey
+        ? await analyzeWithGemini(geminiApiKey, image.type, imageBase64, parsed.data)
+        : await analyzeWithOpenAi(openAiApiKey!, image.type, imageBase64, parsed.data);
     const analysis: unknown = outputText ? JSON.parse(outputText) : null;
     if (!isMealAnalysisOutput(analysis)) {
       console.error("Invalid meal analysis response", analysis);
@@ -131,6 +134,28 @@ export async function POST(request: Request) {
     console.error("Meal analysis failed", error);
     return NextResponse.json({ error: "Не удалось проанализировать фото. Попробуй ещё раз или добавь приём пищи вручную." }, { status: 500 });
   }
+}
+
+async function analyzeWithOllama(model: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
+  const response = await fetch(`${process.env.OLLAMA_URL ?? "http://127.0.0.1:11434"}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      prompt: `${mealSystemPrompt}\n\n${mealPrompt(context.energy, context.symptoms)}`,
+      images: [imageBase64],
+      format: "json",
+      stream: false,
+      options: { temperature: 0.1 }
+    }),
+    signal: AbortSignal.timeout(120_000)
+  });
+  const result: unknown = await response.json();
+  if (!response.ok || !isObject(result) || typeof result.response !== "string") {
+    console.error("Ollama meal analysis error", result);
+    throw new Error("Ollama meal analysis is unavailable");
+  }
+  return { outputText: result.response };
 }
 
 async function analyzeWithGemini(apiKey: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
