@@ -60,6 +60,11 @@ export type WorkoutPlan = {
   cooldown: string;
 };
 
+export type AiWorkoutContent = Pick<
+  WorkoutPlan,
+  "title" | "intensity" | "explanation" | "factors" | "nutritionSupport" | "warmup" | "exercises" | "cooldown"
+>;
+
 export function getCycleDay(periodStart: string, cycleLength: number) {
   if (!periodStart) return 18;
   const start = new Date(periodStart);

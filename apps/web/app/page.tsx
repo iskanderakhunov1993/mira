@@ -22,11 +22,14 @@ import { Card } from "@/components/ui/card";
 import {
   buildDailyPlan,
   buildWorkout,
+  getCycleDay,
+  getCyclePhase,
   getResourceToday,
   type CheckInState,
   type GymState,
   type OnboardingState,
-  type WorkoutExercise
+  type WorkoutExercise,
+  type WorkoutPlan
 } from "@/lib/recommendations";
 import {
   createEmptyMiraLocalData,
@@ -40,6 +43,7 @@ import {
   type WorkoutLog
 } from "@/lib/localStore";
 import { analyzeMealPhoto } from "@/lib/api/mealPhotoClient";
+import { generateWorkoutWithAi } from "@/lib/api/workoutGenerationClient";
 import { cn } from "@/lib/utils";
 import type { AnalyzeMealOutput } from "../../../shared/ai-contracts";
 
@@ -1128,26 +1132,75 @@ function WorkoutScreen({
   const [stopped, setStopped] = useState(false);
   const [safetyMessage, setSafetyMessage] = useState("");
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
+  const [generatedPlan, setGeneratedPlan] = useState<WorkoutPlan | null>(null);
+  const [generationSource, setGenerationSource] = useState<"ai" | "fallback">("fallback");
   const highPain = checkIn.painLevel >= 5;
   const todayWorkouts = localData.workouts.filter((entry) => entry.date === localDateKey());
+  const displayPlan = generatedPlan ?? recommendation;
 
   const updateGym = (next: Partial<GymState>) => {
     setGym({ ...gym, ...next });
     setGenerated(false);
+    setGeneratedPlan(null);
     setIsGenerating(false);
     setStopped(false);
     setSafetyMessage("");
   };
 
-  const generateWorkout = () => {
+  const generateWorkout = async () => {
     setIsGenerating(true);
-    window.setTimeout(() => {
+    setSafetyMessage("");
+    setStopped(false);
+
+    if (highPain) {
+      setGeneratedPlan(recommendation);
+      setGenerationSource("fallback");
       setExercises(recommendation.exercises);
       setGenerated(true);
-      setStopped(false);
-      setSafetyMessage(highPain ? "Выбран режим восстановления без силовой нагрузки." : "План собран под твой сегодняшний контекст.");
       setIsGenerating(false);
-    }, 320);
+      setSafetyMessage("Выбран режим восстановления без силовой нагрузки.");
+      return;
+    }
+
+    try {
+      const cycleDay = getCycleDay(profile.periodStart, profile.cycleLength);
+      const result = await generateWorkoutWithAi({
+        profile: {
+          trainingPlace: profile.trainingPlace,
+          level: profile.level,
+          workoutsPerWeek: profile.workoutsPerWeek
+        },
+        checkIn,
+        gym,
+        cycle: { day: cycleDay, phase: getCyclePhase(cycleDay) },
+        nutrition: {
+          mealsToday: todayMeals.length,
+          summary: todayMeals.slice(-3).map((meal) => {
+            const calories = meal.energyKcal ? `, примерно ${meal.energyKcal.min}-${meal.energyKcal.max} ккал` : "";
+            return `${meal.label}${calories}`;
+          })
+        }
+      });
+      const aiPlan: WorkoutPlan = {
+        ...recommendation,
+        ...result.workout,
+        time: gym.time,
+        readinessScore: recommendation.readinessScore
+      };
+      setGeneratedPlan(aiPlan);
+      setGenerationSource(result.source);
+      setExercises(aiPlan.exercises);
+      setGenerated(true);
+      setSafetyMessage(result.message ?? (result.source === "ai" ? "План Mira AI собран по твоему сегодняшнему контексту." : "Выбран бережный восстановительный режим."));
+    } catch {
+      setGeneratedPlan(recommendation);
+      setGenerationSource("fallback");
+      setExercises(recommendation.exercises);
+      setGenerated(true);
+      setSafetyMessage("AI сейчас недоступен, поэтому использован локальный расчёт по твоим сегодняшним данным.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const replaceExercise = (index: number, softer = false) => {
@@ -1180,10 +1233,10 @@ function WorkoutScreen({
       <Card className="space-y-4">
         <div className="flex items-start justify-between gap-4">
           <p className="text-sm font-semibold text-mira-muted">Почему именно такой план</p>
-          <Badge className="bg-mira-background text-mira-text">Нагрузка {recommendation.readinessScore}/100</Badge>
+          <Badge className="bg-mira-background text-mira-text">Нагрузка {displayPlan.readinessScore}/100</Badge>
         </div>
         <div className="flex flex-wrap gap-2">
-          {recommendation.factors.map((factor) => (
+          {displayPlan.factors.map((factor) => (
             <span key={factor} className="rounded-full bg-mira-background px-3 py-2 text-xs font-semibold text-mira-muted">
               {factor}
             </span>
@@ -1228,22 +1281,22 @@ function WorkoutScreen({
       {generated && (
         <Card className="overflow-hidden p-0">
           <div className="bg-mira-primary p-5 text-mira-ink">
-            <Badge className="border-mira-ink/10 bg-mira-ink/10 text-mira-ink">Локальный алгоритм</Badge>
-            <h2 className="mt-3 text-2xl font-black tracking-[-0.05em]">{recommendation.title}</h2>
-            <p className="mt-2 text-sm text-mira-ink/75">{recommendation.time} · {recommendation.intensity}</p>
+            <Badge className="border-mira-ink/10 bg-mira-ink/10 text-mira-ink">{generationSource === "ai" ? "План Mira AI" : "Локальный алгоритм"}</Badge>
+            <h2 className="mt-3 text-2xl font-black tracking-[-0.05em]">{displayPlan.title}</h2>
+            <p className="mt-2 text-sm text-mira-ink/75">{displayPlan.time} · {displayPlan.intensity}</p>
           </div>
           <div className="space-y-4 p-5">
-            <p className="rounded-2xl bg-mira-background p-4 text-sm leading-6 text-mira-muted">{recommendation.explanation}</p>
-            {recommendation.nutritionSupport && (
+            <p className="rounded-2xl bg-mira-background p-4 text-sm leading-6 text-mira-muted">{displayPlan.explanation}</p>
+            {displayPlan.nutritionSupport && (
               <div className="rounded-2xl bg-[#30272b] p-4 text-sm leading-6 text-mira-muted">
                 <p className="font-bold text-mira-text">Контекст питания</p>
-                <p className="mt-1">{recommendation.nutritionSupport}</p>
+                <p className="mt-1">{displayPlan.nutritionSupport}</p>
               </div>
             )}
             {safetyMessage && <p className="text-sm font-semibold text-mira-primary">{safetyMessage}</p>}
             {!stopped && (
               <>
-                <WorkoutBlock title="Разминка" items={[recommendation.warmup]} />
+                <WorkoutBlock title="Разминка" items={[displayPlan.warmup]} />
                 <div>
                   <h3 className="text-sm font-black uppercase tracking-[0.16em] text-mira-muted">Основная часть</h3>
                   <div className="mt-2 space-y-2">
@@ -1257,12 +1310,12 @@ function WorkoutScreen({
                     ))}
                   </div>
                 </div>
-                <WorkoutBlock title="Завершение" items={[recommendation.cooldown]} />
+                <WorkoutBlock title="Завершение" items={[displayPlan.cooldown]} />
                 <Button className="w-full" size="lg" onClick={() => {
                   onSaveWorkout({
                     status: highPain ? "recovery" : "completed",
-                    title: recommendation.title,
-                    durationMinutes: Number.parseInt(recommendation.time, 10)
+                    title: displayPlan.title,
+                    durationMinutes: Number.parseInt(displayPlan.time, 10)
                   });
                   setStopped(true);
                   setSafetyMessage(highPain ? "Восстановительная сессия сохранена. Спасибо, что выбрала комфортный темп." : "Тренировка сохранена. Вечером можно добавить короткую отметку о самочувствии.");
@@ -1292,7 +1345,7 @@ function WorkoutScreen({
                     setStopped(true);
                     onSaveWorkout({
                       status: "skipped",
-                      title: recommendation.title,
+                      title: displayPlan.title,
                       durationMinutes: 0,
                       note: "Остановлена до завершения"
                     });
