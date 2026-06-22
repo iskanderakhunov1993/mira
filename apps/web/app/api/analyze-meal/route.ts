@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       console.warn("Remote meal provider failed; using the experimental local meal fallback");
       ({ outputText } = await analyzeWithOllama(ollamaModel, imageBase64, parsed.data));
     }
-    const analysis = parseModelJson(outputText);
+    const analysis = normalizeMealAnalysis(parseModelJson(outputText));
     if (!isMealAnalysisOutput(analysis) && ollamaModel) {
       console.warn("Ollama meal analysis needs an experimental fallback", analysis);
       return NextResponse.json({
@@ -171,6 +171,17 @@ function parseModelJson(outputText: string): unknown {
   } catch {
     return null;
   }
+}
+
+function normalizeMealAnalysis(value: unknown): unknown {
+  if (!isObject(value) || typeof value.confidence !== "string") return value;
+  const confidence = value.confidence.toLowerCase();
+  const mappedConfidence = confidence === "high" || confidence === "высокая"
+    ? 0.8
+    : confidence === "low" || confidence === "низкая"
+      ? 0.35
+      : 0.6;
+  return { ...value, confidence: mappedConfidence };
 }
 
 async function analyzeWithYandex(apiKey: string, folderId: string, mimeType: string, imageBase64: string, context: { energy?: number; symptoms?: string[] }) {
