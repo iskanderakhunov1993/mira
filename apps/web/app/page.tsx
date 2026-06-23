@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -115,6 +115,16 @@ const defaultGym: GymState = {
   goal: "Ноги и ягодицы"
 };
 
+const tourSteps = [
+  { target: "cycle-card", text: "Здесь Mira показывает день цикла и текущую фазу" },
+  { target: "checkin-button", text: "Отметь состояние за 15 секунд — это основа рекомендаций" },
+  { target: "recommendation-card", text: "План дня подстраивается под твоё самочувствие" },
+  { target: "nav-calendar", text: "В календаре видно весь цикл и записи по дням" },
+  { target: "nav-workouts", text: "AI подберёт нагрузку под сегодняшнее состояние" }
+] as const;
+
+const TOUR_STORAGE_KEY = "mira:tour-completed";
+
 export default function MiraMvp() {
   const [started, setStarted] = useState(false);
   const [accountReady, setAccountReady] = useState(false);
@@ -127,6 +137,8 @@ export default function MiraMvp() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [localData, setLocalData] = useState<MiraLocalData>(createEmptyMiraLocalData);
   const [isRestoringLocalData, setIsRestoringLocalData] = useState(true);
+  const [tourStep, setTourStep] = useState(0);
+  const [tourReady, setTourReady] = useState(false);
 
   const plan = useMemo(() => buildDailyPlan(profile, checkIn), [profile, checkIn]);
 
@@ -147,6 +159,11 @@ export default function MiraMvp() {
       setOnboarded(true);
       setStarted(true);
       setAccountReady(true);
+    }
+    const tourDone = window.localStorage.getItem(TOUR_STORAGE_KEY) === "true";
+    if (next.profile && !tourDone) {
+      setTourStep(1);
+      setTourReady(true);
     }
     setIsRestoringLocalData(false);
   }, []);
@@ -234,6 +251,11 @@ export default function MiraMvp() {
         onDone={() => {
           persistLocalData({ ...localData, profile });
           setOnboarded(true);
+          const tourDone = window.localStorage.getItem(TOUR_STORAGE_KEY) === "true";
+          if (!tourDone) {
+            setTourStep(1);
+            setTourReady(true);
+          }
         }}
       />
     );
@@ -273,11 +295,14 @@ export default function MiraMvp() {
                 profile={profile}
                 checkIn={checkIn}
                 localData={localData}
+                account={localData.account}
                 onSaveCheckIn={saveCheckIn}
                 onSaveReflection={saveReflection}
                 onCalendar={() => setActive("calendar")}
                 onWorkouts={() => setActive("workouts")}
                 onNutrition={() => setActive("nutrition")}
+                onSetProfile={setProfile}
+                onPersistLocalData={persistLocalData}
               />
             )}
             {active === "calendar" && <CalendarScreen profile={profile} plan={plan} localData={localData} onToday={() => setActive("today")} />}
@@ -298,7 +323,127 @@ export default function MiraMvp() {
 
         <BottomNav active={active} setActive={setActive} />
       </div>
+      {tourReady && tourStep >= 1 && tourStep <= tourSteps.length && (
+        <GuidedTour
+          step={tourStep}
+          onNext={() => {
+            const next = tourStep + 1;
+            if (next > tourSteps.length) {
+              setTourStep(0);
+              setTourReady(false);
+              window.localStorage.setItem(TOUR_STORAGE_KEY, "true");
+            } else {
+              setTourStep(next);
+            }
+          }}
+          onSkip={() => {
+            setTourStep(0);
+            setTourReady(false);
+            window.localStorage.setItem(TOUR_STORAGE_KEY, "true");
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+function GuidedTour({
+  step,
+  onNext,
+  onSkip
+}: {
+  step: number;
+  onNext: () => void;
+  onSkip: () => void;
+}) {
+  const currentStep = tourSteps[step - 1];
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  const measure = useCallback(() => {
+    if (!currentStep) return;
+    const element = document.querySelector(`[data-tour="${currentStep.target}"]`);
+    if (element) {
+      setRect(element.getBoundingClientRect());
+    } else {
+      setRect(null);
+    }
+  }, [currentStep]);
+
+  useEffect(() => {
+    measure();
+    const handleResize = () => measure();
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+    const timer = setTimeout(measure, 100);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+      clearTimeout(timer);
+    };
+  }, [measure]);
+
+  if (!currentStep) return null;
+
+  const padding = 8;
+  const tooltipTop = rect ? rect.bottom + padding + 12 : "50%";
+  const tooltipOverflows = rect ? rect.bottom + 200 > window.innerHeight : false;
+  const tooltipAbove = tooltipOverflows && rect ? rect.top - padding - 12 : null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key={`tour-${step}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="fixed inset-0 z-50"
+        aria-modal="true"
+        role="dialog"
+        aria-label={`Подсказка ${step} из ${tourSteps.length}`}
+      >
+        <div className="absolute inset-0 bg-black/60" onClick={onSkip} />
+
+        {rect && (
+          <div
+            className="absolute rounded-2xl border-2 border-mira-primary shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]"
+            style={{
+              top: rect.top - padding,
+              left: rect.left - padding,
+              width: rect.width + padding * 2,
+              height: rect.height + padding * 2
+            }}
+          />
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, y: tooltipAbove ? 8 : -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.1 }}
+          className="absolute left-4 right-4 mx-auto max-w-sm rounded-2xl bg-mira-card p-5 shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
+          style={{
+            top: tooltipAbove ?? tooltipTop
+          }}
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-mira-primary">
+            {step} из {tourSteps.length}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-mira-text">{currentStep.text}</p>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <button
+              className="text-sm font-semibold text-mira-muted transition hover:text-mira-text"
+              onClick={onSkip}
+              type="button"
+            >
+              Пропустить
+            </button>
+            <Button size="sm" onClick={onNext}>
+              {step === tourSteps.length ? "Готово" : "Далее"}
+            </Button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -635,24 +780,31 @@ function TodayScreen({
   profile,
   checkIn,
   localData,
+  account,
   onSaveCheckIn,
   onSaveReflection,
   onCalendar,
   onWorkouts,
-  onNutrition
+  onNutrition,
+  onSetProfile,
+  onPersistLocalData
 }: {
   plan: ReturnType<typeof buildDailyPlan>;
   profile: OnboardingState;
   checkIn: CheckInState;
   localData: MiraLocalData;
+  account?: MiraAccount;
   onSaveCheckIn: (checkIn: CheckInState) => void;
   onSaveReflection: (value: Omit<DailyReflection, "date">) => void;
   onCalendar: () => void;
   onWorkouts: () => void;
   onNutrition: () => void;
+  onSetProfile: (profile: OnboardingState) => void;
+  onPersistLocalData: (next: MiraLocalData) => void;
 }) {
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [reflectionOpen, setReflectionOpen] = useState(false);
+  const [periodConfirmed, setPeriodConfirmed] = useState(false);
   const resource = getResourceToday(checkIn);
   const hasSavedCheckIn = Boolean(localData.checkIns[localDateKey()]);
   const reflection = localData.reflections[localDateKey()];
@@ -685,20 +837,43 @@ function TodayScreen({
         ? `Твоя заметка на сегодня: ${checkIn.note}`
       : "Стабильный ритм и умеренная нагрузка могут поддержать ощущение ресурса сегодня.";
 
+  const currentHour = new Date().getHours();
+  const timeGreeting = currentHour < 12 ? "Доброе утро" : currentHour < 17 ? "Добрый день" : "Добрый вечер";
+  const userName = account?.name;
+  const greetingText = userName ? `${timeGreeting}, ${userName}` : timeGreeting;
+
+  const markPeriodStart = () => {
+    const todayDate = new Date().toISOString().slice(0, 10);
+    const updatedProfile = { ...profile, periodStart: todayDate };
+    onSetProfile(updatedProfile);
+    onPersistLocalData({ ...localData, profile: updatedProfile });
+    setPeriodConfirmed(true);
+    setTimeout(() => setPeriodConfirmed(false), 3000);
+  };
+
   return (
     <div className="space-y-4">
       <section className="px-1 pt-1">
         <p className="capitalize text-sm font-semibold text-mira-muted">{today}</p>
-        <h1 className="mt-2 text-4xl font-black tracking-[-0.06em]">Доброе утро, Алина</h1>
+        <h1 className="mt-2 text-4xl font-black tracking-[-0.06em]">{greetingText}</h1>
         <p className="mt-2 text-sm leading-6 text-mira-muted">Посмотрим на твой сегодняшний контекст без лишнего давления.</p>
       </section>
 
-      <Card className="bg-[#30272b]">
+      <Card className="bg-[#30272b]" data-tour="cycle-card">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-mira-muted">Цикл</p>
             <h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">День {plan.cycleDay}</h2>
             <p className="mt-1 text-sm text-mira-primary">{plan.phase} фаза</p>
+            {(plan.cycleDay > 20 || !profile.periodStart) && !periodConfirmed && (
+              <button
+                className="mt-2 rounded-full bg-mira-cycle/20 px-3 py-1 text-xs font-bold text-mira-cycle transition hover:bg-mira-cycle/30"
+                onClick={markPeriodStart}
+                type="button"
+              >
+                Начались
+              </button>
+            )}
           </div>
           <CycleDial cycleDay={plan.cycleDay} cycleLength={profile.cycleLength} />
         </div>
@@ -713,6 +888,30 @@ function TodayScreen({
           </div>
         </div>
       </Card>
+
+      {(plan.cycleDay > 20 || !profile.periodStart) && !periodConfirmed && (
+        <Card className="border-mira-cycle/30 bg-[#30272b]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-mira-muted">Менструация</p>
+              <h2 className="mt-1 text-lg font-black tracking-[-0.04em]">Начались месячные?</h2>
+              <p className="mt-1 text-sm leading-5 text-mira-muted">Отметка обновит день цикла и сделает рекомендации точнее.</p>
+            </div>
+          </div>
+          <Button className="mt-4 w-full" variant="secondary" onClick={markPeriodStart}>
+            <HeartPulse className="h-4 w-4 text-mira-cycle" />
+            Отметить начало менструации
+          </Button>
+        </Card>
+      )}
+      {periodConfirmed && (
+        <Card className="border-mira-primary/30 bg-[#1d302b]">
+          <div className="flex items-center gap-3">
+            <Check className="h-5 w-5 text-mira-primary" />
+            <p className="text-sm font-semibold text-mira-text">Начало менструации отмечено. Цикл пересчитан.</p>
+          </div>
+        </Card>
+      )}
 
       <DashboardCalendar profile={profile} plan={plan} localData={localData} onOpenCalendar={onCalendar} />
 
@@ -729,7 +928,7 @@ function TodayScreen({
         </Card>
       )}
 
-      <Card className="border-mira-primary/30 bg-[#1d302b]">
+      <Card className="border-mira-primary/30 bg-[#1d302b]" data-tour="checkin-button">
         <p className="text-sm font-semibold text-mira-muted">Следующий шаг</p>
         <h2 className="mt-2 text-xl font-black tracking-[-0.04em]">
           {!hasSavedCheckIn ? "Отметь, как ты сейчас" : checkIn.painLevel > 0 ? "Сегодня выбираем восстановление" : "План на сегодня готов"}
@@ -766,7 +965,7 @@ function TodayScreen({
         </div>
       </Card>
 
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden p-0" data-tour="recommendation-card">
         <div className="bg-mira-ink p-5 text-white">
           <p className="text-sm font-semibold text-white/60">Главная рекомендация</p>
           <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">Поддерживающий план на сегодня</h2>
@@ -789,24 +988,34 @@ function TodayScreen({
 
       <section>
         <p className="mb-3 px-1 text-sm font-semibold text-mira-muted">Ещё сегодня</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={() => setCheckInOpen(true)}>
-            <ClipboardCheck className="h-5 w-5 text-mira-primary" />
-            Чек-ин
+        {!hasSavedCheckIn ? (
+          <Button className="w-full" size="lg" data-tour="checkin-button" onClick={() => setCheckInOpen(true)}>
+            <ClipboardCheck className="h-5 w-5" />
+            Как ты сегодня?
           </Button>
-          <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={onWorkouts}>
-            <Dumbbell className="h-5 w-5 text-mira-primary" />
-            Собрать тренировку
-          </Button>
-          <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={onNutrition}>
-            <Camera className="h-5 w-5 text-mira-primary" />
-            Сфотографировать еду
-          </Button>
-          <Button className="h-auto min-h-24 flex-col whitespace-normal px-3 py-4 text-center" variant="secondary" onClick={() => setCheckInOpen(true)}>
-            <BriefcaseBusiness className="h-5 w-5 text-mira-primary" />
-            Добавить контекст работы
-          </Button>
-        </div>
+        ) : currentHour < 17 ? (
+          <div className="space-y-3">
+            <Button className="w-full" size="lg" onClick={onWorkouts}>
+              <Dumbbell className="h-5 w-5" />
+              Открыть тренировку
+            </Button>
+            <Button className="w-full" variant="secondary" onClick={onNutrition}>
+              <Camera className="h-4 w-4 text-mira-primary" />
+              Добавить еду
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Button className="w-full" size="lg" onClick={() => setReflectionOpen(true)}>
+              <Moon className="h-5 w-5" />
+              Как прошёл день?
+            </Button>
+            <Button className="w-full" variant="secondary" onClick={onNutrition}>
+              <Camera className="h-4 w-4 text-mira-primary" />
+              Добавить еду
+            </Button>
+          </div>
+        )}
       </section>
 
       {checkInOpen && (
@@ -985,6 +1194,7 @@ function DailyCheckIn({
   onSave: (checkIn: CheckInState) => void;
 }) {
   const [draft, setDraft] = useState(initial);
+  const [expanded, setExpanded] = useState(false);
 
   const toggleListValue = (key: "symptoms" | "painAreas", value: string) => {
     setDraft((current) => ({
@@ -1001,7 +1211,7 @@ function DailyCheckIn({
         <div>
           <p className="text-sm font-semibold text-mira-muted">Быстрый чек-ин</p>
           <h2 className="text-xl font-black tracking-[-0.04em]">Как ты сегодня?</h2>
-          <p className="mt-1 text-sm leading-5 text-mira-muted">Обычно хватает 30-60 секунд. Отмечай только то, что сейчас важно.</p>
+          <p className="mt-1 text-sm leading-5 text-mira-muted">4 поля за 10 секунд. Остальное можно добавить ниже.</p>
         </div>
         <Button aria-label="Закрыть чек-ин" className="h-10 w-10 shrink-0 p-0" variant="ghost" onClick={onClose}>
           <span aria-hidden="true">×</span>
@@ -1019,16 +1229,6 @@ function DailyCheckIn({
             onChange={(event) => setDraft({ ...draft, energy: Number(event.target.value) })}
           />
         </Field>
-        <Field label={`Настроение: ${draft.mood}/10`}>
-          <input
-            className="slider w-full"
-            type="range"
-            min={1}
-            max={10}
-            value={draft.mood}
-            onChange={(event) => setDraft({ ...draft, mood: Number(event.target.value) })}
-          />
-        </Field>
         <Field label="Сон">
           <ChoiceGrid
             options={["Плохо", "Нормально", "Хорошо"]}
@@ -1044,44 +1244,6 @@ function DailyCheckIn({
             max={10}
             value={draft.painLevel}
             onChange={(event) => setDraft({ ...draft, painLevel: Number(event.target.value) })}
-          />
-        </Field>
-        {draft.painLevel > 0 && (
-          <Field label="Где ощущается боль или дискомфорт?">
-            <div className="flex flex-wrap gap-2">
-              {painAreas.map((area) => (
-                <button
-                  key={area}
-                  className={cn(
-                    "rounded-full border px-3 py-2 text-sm font-semibold transition",
-                    draft.painAreas.includes(area)
-                      ? "border-mira-primary bg-mira-primary text-mira-ink"
-                      : "border-white/10 bg-mira-background text-mira-muted"
-                  )}
-                  onClick={() => toggleListValue("painAreas", area)}
-                  type="button"
-                >
-                  {area}
-                </button>
-              ))}
-            </div>
-          </Field>
-        )}
-        <Field label="Рабочая нагрузка">
-          <ChoiceGrid
-            options={["Лёгкая", "Обычная", "Высокая"]}
-            value={draft.workload}
-            onChange={(workload) => setDraft({ ...draft, workload: workload as CheckInState["workload"] })}
-          />
-        </Field>
-        <Field label={`Стресс: ${draft.stress}/10`}>
-          <input
-            className="slider w-full"
-            type="range"
-            min={1}
-            max={10}
-            value={draft.stress}
-            onChange={(event) => setDraft({ ...draft, stress: Number(event.target.value) })}
           />
         </Field>
         <Field label="Симптомы, если хочется отметить">
@@ -1103,15 +1265,74 @@ function DailyCheckIn({
             ))}
           </div>
         </Field>
-        <Field label="Заметка (необязательно)">
-          <textarea
-            className="min-h-20 w-full resize-y rounded-2xl border border-white/10 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
-            maxLength={280}
-            placeholder="Например: много встреч, хочу оставить вечер спокойнее"
-            value={draft.note}
-            onChange={(event) => setDraft({ ...draft, note: event.target.value })}
-          />
-        </Field>
+
+        {!expanded && (
+          <Button className="w-full" variant="ghost" onClick={() => setExpanded(true)}>
+            Добавить больше
+          </Button>
+        )}
+
+        {expanded && (
+          <>
+            <Field label={`Настроение: ${draft.mood}/10`}>
+              <input
+                className="slider w-full"
+                type="range"
+                min={1}
+                max={10}
+                value={draft.mood}
+                onChange={(event) => setDraft({ ...draft, mood: Number(event.target.value) })}
+              />
+            </Field>
+            <Field label={`Стресс: ${draft.stress}/10`}>
+              <input
+                className="slider w-full"
+                type="range"
+                min={1}
+                max={10}
+                value={draft.stress}
+                onChange={(event) => setDraft({ ...draft, stress: Number(event.target.value) })}
+              />
+            </Field>
+            <Field label="Рабочая нагрузка">
+              <ChoiceGrid
+                options={["Лёгкая", "Обычная", "Высокая"]}
+                value={draft.workload}
+                onChange={(workload) => setDraft({ ...draft, workload: workload as CheckInState["workload"] })}
+              />
+            </Field>
+            {draft.painLevel > 0 && (
+              <Field label="Где ощущается боль или дискомфорт?">
+                <div className="flex flex-wrap gap-2">
+                  {painAreas.map((area) => (
+                    <button
+                      key={area}
+                      className={cn(
+                        "rounded-full border px-3 py-2 text-sm font-semibold transition",
+                        draft.painAreas.includes(area)
+                          ? "border-mira-primary bg-mira-primary text-mira-ink"
+                          : "border-white/10 bg-mira-background text-mira-muted"
+                      )}
+                      onClick={() => toggleListValue("painAreas", area)}
+                      type="button"
+                    >
+                      {area}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            )}
+            <Field label="Заметка (необязательно)">
+              <textarea
+                className="min-h-20 w-full resize-y rounded-2xl border border-white/10 bg-mira-background px-4 py-3 text-sm text-mira-text outline-none transition focus:border-mira-primary"
+                maxLength={280}
+                placeholder="Например: много встреч, хочу оставить вечер спокойнее"
+                value={draft.note}
+                onChange={(event) => setDraft({ ...draft, note: event.target.value })}
+              />
+            </Field>
+          </>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3 pt-1">
         <Button variant="secondary" onClick={onClose}>Отмена</Button>
@@ -2637,6 +2858,7 @@ function BottomNav({
               active === item.id ? "bg-mira-ink text-white" : "text-mira-muted"
             )}
             aria-current={active === item.id ? "page" : undefined}
+            data-tour={item.id === "calendar" ? "nav-calendar" : item.id === "workouts" ? "nav-workouts" : undefined}
             onClick={() => setActive(item.id)}
             type="button"
           >
