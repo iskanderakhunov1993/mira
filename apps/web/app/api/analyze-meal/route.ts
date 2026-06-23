@@ -86,10 +86,10 @@ function isUploadedImage(value: FormDataEntryValue | null): value is File {
 }
 
 const mealSystemPrompt =
-  "You analyze a single meal photo for Mira, a wellbeing app. Return only an approximate visual estimate, never exact nutrition facts. Identify visible foods conservatively. Give calorie and macro ranges wide enough to reflect uncertain portions, oils, sauces, hidden ingredients, and perspective. Never shame food, give dieting advice, diagnose health conditions, or claim the image proves what the person ate. Confidence reflects visual certainty, not nutritional truth. Do not describe the person's body. Respond in Russian.";
+  "Ты анализируешь фото одного приёма пищи для Mira — приложения о самочувствии. Возвращай только приблизительную визуальную оценку, никогда не точные данные. Определяй видимые продукты консервативно. Давай широкие диапазоны калорий и БЖУ, учитывая неизвестный размер порции, масло, соусы, скрытые ингредиенты и ракурс съёмки. Никогда не стыди за еду, не давай диетических советов, не ставь диагнозов и не утверждай, что фото доказывает что именно человек съел. Confidence — это визуальная уверенность (число от 0 до 1), а не точность нутриентов. Не описывай тело человека. Отвечай строго на русском языке.";
 
 function mealPrompt(energy: number | undefined, symptoms: string[] | undefined) {
-  return `Analyze this meal photo. Self-reported energy: ${energy ?? "not provided"}/10. Symptoms: ${symptoms?.join(", ") || "not provided"}. Return JSON only with fields foods, calories {min,max}, macros {protein {min,max}, carbs {min,max}, fat {min,max}}, confidence, uncertaintyFactors, note.`;
+  return `Проанализируй это фото еды. Энергия пользователя: ${energy ?? "не указана"}/10. Симптомы: ${symptoms?.join(", ") || "не указаны"}. Верни только JSON с полями: foods (массив строк — названия продуктов на русском), calories {min, max}, macros {protein {min, max}, carbs {min, max}, fat {min, max}}, confidence (число 0–1), uncertaintyFactors (массив строк на русском), note (строка на русском).`;
 }
 
 export async function POST(request: Request) {
