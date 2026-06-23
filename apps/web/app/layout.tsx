@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     title: "Mira"
   },
   icons: {
-    icon: "/mira-icon.svg",
+    icon: "/favicon.svg",
     apple: "/mira-icon.svg"
   }
 };
