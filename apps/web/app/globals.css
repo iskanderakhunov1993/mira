@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  color: #2D2A26;
-  background: #FBF8F5;
+  color: #2D2640;
+  background: #F8F5FE;
 }
 
 * {
@@ -17,70 +17,31 @@ html {
 
 body {
   min-height: 100vh;
-  background: #FBF8F5;
-  color: #2D2A26;
+  background: #F8F5FE;
+  color: #2D2640;
 }
 
 @media (min-width: 1024px) {
   body {
     background:
-      radial-gradient(circle at 85% 8%, rgba(155, 142, 196, 0.08), transparent 28%),
-      #FAF8FE;
+      radial-gradient(circle at 80% 5%, rgba(212, 204, 230, 0.3), transparent 30%),
+      radial-gradient(circle at 15% 80%, rgba(232, 180, 200, 0.12), transparent 30%),
+      #F8F5FE;
   }
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+::selection {
+  background: rgba(155, 142, 196, 0.2);
 }
 
-button,
-input,
-select,
-textarea {
-  -webkit-tap-highlight-color: transparent;
+:focus-visible {
+  outline: 3px solid rgba(155, 142, 196, 0.4);
+  outline-offset: 2px;
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid rgba(155, 142, 196, 0.5);
-  outline-offset: 3px;
-}
-
-.soft-grid {
-  background: #FBF8F5;
-}
-
-.phone-shell {
-  box-shadow:
-    0 32px 90px rgba(45, 42, 38, 0.12),
-    inset 0 0 0 1px rgba(45, 42, 38, 0.06);
-}
-
-.slider {
-  appearance: none;
-  height: 8px;
-  border-radius: 999px;
-  background: #E8E4DE;
-  outline: none;
-}
-
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: #FFFFFF;
-  border: 5px solid #9B8EC4;
-  box-shadow: 0 4px 12px rgba(155, 142, 196, 0.3);
-}
-
-@media (max-width: 380px) {
-  body {
-    font-size: 15px;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

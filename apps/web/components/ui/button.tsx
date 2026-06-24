@@ -3,18 +3,19 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mira-primary/30 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mira-primary/30 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-mira-primary text-white shadow-glow hover:bg-[#8A7DB8]",
-        secondary: "bg-[#F0EDF5] text-mira-text hover:bg-[#E4DFF0]",
-        ghost: "text-mira-text hover:bg-[#F3EFEA]",
-        outline: "border border-[#E8E4DE] bg-white text-mira-text hover:bg-[#F3EFEA]"
+        default: "bg-mira-primary text-white shadow-glow hover:bg-mira-primary-deep",
+        secondary: "bg-mira-lavender-light text-mira-text hover:bg-mira-lavender/40",
+        ghost: "text-mira-text hover:bg-mira-lavender-light",
+        outline: "border border-mira-lavender bg-white text-mira-text hover:bg-mira-lavender-light",
+        cycle: "bg-gradient-to-r from-mira-cycle to-mira-primary text-white shadow-glow hover:opacity-90"
       },
       size: {
         default: "h-12 px-5",
-        sm: "h-10 px-4",
+        sm: "h-10 px-4 text-xs",
         lg: "h-14 px-7 text-base"
       }
     },
