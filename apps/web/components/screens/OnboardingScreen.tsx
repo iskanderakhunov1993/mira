@@ -146,7 +146,7 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
   const isResult = step === totalSteps - 1;
 
   const bgStyle = isWelcome
-    ? { background: "linear-gradient(165deg, #E0D4F0 0%, #C8B8E4 25%, #B8A5D8 50%, #A898CC 75%, #9B8EC4 100%)" }
+    ? { background: "linear-gradient(145deg, #D8CCF0 0%, #C4B0E8 20%, #B8A0E0 40%, #A890D0 60%, #9880C8 80%, #8870B8 100%)" }
     : isResult
       ? { background: `linear-gradient(165deg, ${phaseColors[currentPhase]}30 0%, #F8F5FE 50%, #F8F5FE 100%)` }
       : (isPhaseEducation || isAgeStep)
@@ -161,19 +161,36 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
       case 0:
         return (
           <div className="flex flex-col items-center text-center">
-            <MiraLogo size={100} />
-            <h1 className="mt-6 text-4xl font-bold tracking-tight text-white">Моя Норма</h1>
-            <p className="mt-3 text-base text-white/80">Твоё тело проходит через 4 фазы каждый цикл.</p>
-            <p className="mt-1 text-sm text-white/60">Мы поможем тебе понять, что происходит и почему.</p>
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, rotate: -10 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 150, damping: 15, delay: 0.1 }}
+              className="animate-float"
+            >
+              <MiraLogo size={110} />
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-6 text-5xl font-bold tracking-tight text-white drop-shadow-lg"
+            >
+              Моя Норма
+            </motion.h1>
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+              className="mt-3 text-base text-white/80">Твоё тело проходит через 4 фазы каждый цикл.</motion.p>
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
+              className="mt-1 text-sm text-white/50">Мы поможем тебе понять, что происходит и почему.</motion.p>
 
-            <div className="mt-10 w-full space-y-3">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}
+              className="mt-10 w-full space-y-3">
               <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Как тебя зовут?"
-                className="w-full rounded-2xl border border-white/20 bg-white/15 px-4 py-3.5 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none" />
+                className="w-full rounded-2xl border border-white/25 bg-white/15 px-5 py-4 text-sm text-white placeholder:text-white/50 backdrop-blur-md focus:border-white/50 focus:bg-white/20 focus:outline-none transition-all duration-200 shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]" />
               <button onClick={next}
-                className="w-full rounded-2xl bg-white/20 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30 active:scale-[0.98]">
+                className="w-full rounded-2xl bg-white/20 py-4 text-sm font-bold text-white backdrop-blur-md transition-all duration-200 hover:bg-white/30 hover:shadow-[0_8px_32px_rgba(255,255,255,0.1)] active:scale-[0.97] border border-white/10">
                 Узнать свою норму <ChevronRight className="ml-1 inline h-4 w-4" />
               </button>
-            </div>
+            </motion.div>
           </div>
         );
 

@@ -285,41 +285,75 @@ export function CareScreen({ data, persist }: ScreenProps) {
         <div className="space-y-5">
           <Card className="p-6">
             <div className="flex flex-col items-center">
-              <div className="relative h-40 w-40 mb-4">
-                <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-                  <circle cx="50" cy="50" r="42" fill="none" stroke="#EDE8F5" strokeWidth="8" />
-                  <motion.circle
-                    cx="50" cy="50" r="42" fill="none" stroke="#7BAF8D" strokeWidth="8"
-                    strokeLinecap="round"
-                    initial={{ strokeDasharray: "0 264" }}
-                    animate={{ strokeDasharray: `${Math.min(waterEntry.glasses / waterEntry.goal, 1) * 264} ${264 - Math.min(waterEntry.glasses / waterEntry.goal, 1) * 264}` }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
+              {/* Bottle visualization */}
+              <div className="relative h-48 w-24 mb-5">
+                {/* Bottle shape */}
+                <div className="absolute inset-0 rounded-[16px] rounded-t-[8px] border-2 border-[#7BAF8D]/30 bg-[#E0F5E8]/20 overflow-hidden">
+                  {/* Bottle neck */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-4 bg-[#7BAF8D]/20 rounded-t-lg border-x-2 border-t-2 border-[#7BAF8D]/30" />
+                  {/* Water fill */}
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#7BAF8D] to-[#A0D4B0]"
+                    style={{ borderRadius: "0 0 14px 14px" }}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.min((waterEntry.glasses / waterEntry.goal) * 100, 100)}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
                   />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <GlassWater className="h-5 w-5 text-mira-success mb-1" />
-                  <span className="text-3xl font-bold text-mira-text">{waterEntry.glasses}</span>
-                  <span className="text-xs text-mira-muted">из {waterEntry.goal}</span>
+                  {/* Cap */}
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-10 h-3 bg-[#7BAF8D] rounded-t-lg" />
+                </div>
+                {/* Volume label */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+                  <span className="text-2xl font-bold text-white drop-shadow-md">{waterEntry.glasses * 250}</span>
+                  <span className="text-[10px] font-semibold text-white/80 drop-shadow-sm">мл</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <button onClick={() => persist(removeWaterGlass(data))}
-                  className="flex h-12 w-12 items-center justify-center rounded-full border border-mira-lavender/30 bg-white text-mira-muted transition hover:border-mira-primary/30 active:scale-95">
-                  <Minus className="h-5 w-5" />
-                </button>
-                <button onClick={() => persist(addWaterGlass(data))}
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-mira-success text-white shadow-lg transition hover:bg-mira-success/90 active:scale-95">
-                  <Plus className="h-6 w-6" strokeWidth={2.5} />
-                </button>
+
+              {/* Goal */}
+              <p className="text-sm text-mira-muted mb-4">
+                Цель: <span className="font-bold text-mira-text">{waterEntry.goal * 250} мл</span> ({waterEntry.goal} стаканов)
+              </p>
+
+              {/* Volume buttons */}
+              <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">Я выпила</p>
+              <div className="grid grid-cols-4 gap-2 w-full mb-3">
+                {[
+                  { label: "🥤 Стакан", ml: 250, add: 1 },
+                  { label: "🫗 Кружка", ml: 350, add: 1.4 },
+                  { label: "🧴 0.5л", ml: 500, add: 2 },
+                  { label: "🍶 1л", ml: 1000, add: 4 },
+                ].map(opt => (
+                  <button key={opt.label} onClick={() => {
+                    let d = data;
+                    for (let i = 0; i < Math.round(opt.add); i++) d = addWaterGlass(d);
+                    persist(d);
+                  }}
+                    className="flex flex-col items-center gap-1 rounded-2xl border-2 border-mira-lavender/20 bg-white p-3 transition-all hover:border-mira-success/30 hover:bg-[#E0F5E8]/20 active:scale-95">
+                    <span className="text-lg">{opt.label.split(" ")[0]}</span>
+                    <span className="text-[10px] font-semibold text-mira-text">{opt.label.split(" ")[1]}</span>
+                    <span className="text-[9px] text-mira-muted">{opt.ml} мл</span>
+                  </button>
+                ))}
               </div>
+
+              {/* Undo */}
+              <button onClick={() => persist(removeWaterGlass(data))}
+                className="text-xs text-mira-muted hover:text-mira-primary transition">
+                ← Убрать стакан
+              </button>
+
               {waterEntry.glasses >= waterEntry.goal && (
-                <motion.p initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                  className="mt-4 text-sm font-semibold text-mira-success">Цель достигнута!</motion.p>
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  className="mt-4 flex items-center gap-2">
+                  <span className="text-2xl">🎉</span>
+                  <p className="text-sm font-semibold text-mira-success">Норма выполнена!</p>
+                </motion.div>
               )}
             </div>
           </Card>
+
           <Card className="border-mira-success/10 bg-[#E0F5E8]/20 p-4">
-            <p className="text-xs text-mira-success font-semibold mb-1">Почему вода важна сейчас</p>
+            <p className="text-xs text-mira-success font-semibold mb-1">💧 Почему вода важна сейчас</p>
             <p className="text-xs text-mira-muted">
               {phase === "menstruation" && "Организм теряет больше жидкости. Тёплая вода помогает при спазмах."}
               {phase === "follicular" && "Энергия растёт — вода поддерживает метаболизм и концентрацию."}

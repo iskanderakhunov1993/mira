@@ -31,9 +31,12 @@ const config: Config = {
         sans: ["var(--font-jakarta)", "Inter", "system-ui", "sans-serif"]
       },
       boxShadow: {
-        soft: "0 8px 32px rgba(45, 38, 64, 0.06)",
-        glow: "0 12px 40px rgba(155, 142, 196, 0.2)",
-        card: "0 2px 12px rgba(45, 38, 64, 0.04)"
+        soft: "0 8px 32px rgba(45, 38, 64, 0.06), 0 0 0 1px rgba(212, 204, 230, 0.1)",
+        glow: "0 12px 40px rgba(155, 142, 196, 0.25)",
+        card: "0 2px 16px rgba(45, 38, 64, 0.04), 0 0 0 1px rgba(212, 204, 230, 0.12)",
+        "card-hover": "0 8px 30px rgba(45, 38, 64, 0.08), 0 0 0 1px rgba(155, 142, 196, 0.15)",
+        "inner-glow": "inset 0 1px 2px rgba(255, 255, 255, 0.5)",
+        glass: "0 8px 32px rgba(155, 142, 196, 0.1), inset 0 1px 0 rgba(255,255,255,0.4)"
       },
       borderRadius: {
         "3xl": "1.5rem",

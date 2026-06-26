@@ -481,8 +481,8 @@ export function CheckInModal({ open, onClose, data, persist }: Props) {
           return true;
         }).map(cat => (
           <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-mira-lavender/20 bg-white p-3 shadow-card transition hover:shadow-soft active:scale-[0.97]">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${cat.color}`}>
+            className="flex flex-col items-center gap-2.5 rounded-2xl border border-white/60 bg-white/80 backdrop-blur-sm p-3.5 shadow-card transition-all duration-200 hover:shadow-card-hover hover:translate-y-[-2px] active:scale-[0.95]">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${cat.color} shadow-inner-glow`}>
               <cat.icon className="h-5 w-5" />
             </div>
             <span className="text-[11px] font-semibold text-mira-text">{cat.label}</span>

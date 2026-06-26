@@ -26,28 +26,29 @@ export function BottomNav({
     ? [{ id: "islamic", label: "Ибада", icon: Moon }, { id: "report", label: "Отчёт", icon: FileText }]
     : [{ id: "care", label: "Забота", icon: HeartPulse }, { id: "report", label: "Отчёт", icon: FileText }];
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-mira-lavender/20 bg-white/80 backdrop-blur-xl lg:hidden">
-      <div className="relative flex items-end justify-around px-2 pb-[env(safe-area-inset-bottom,8px)] pt-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/40 bg-white/70 backdrop-blur-2xl lg:hidden" style={{ boxShadow: "0 -4px 30px rgba(155,142,196,0.08)" }}>
+      <div className="relative flex items-end justify-around px-3 pb-[env(safe-area-inset-bottom,8px)] pt-2">
         {left.map((item) => (
           <button
             key={item.id}
             onClick={() => onChange(item.id)}
             className={cn(
-              "flex flex-col items-center gap-1 py-1 transition-colors",
-              active === item.id ? "text-mira-primary" : "text-mira-muted"
+              "flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all duration-200",
+              active === item.id ? "text-mira-primary bg-mira-lavender-light/50" : "text-mira-muted"
             )}
           >
-            <item.icon className="h-5 w-5" />
+            <item.icon className={cn("h-5 w-5 transition-transform duration-200", active === item.id && "scale-110")} />
             <span className="text-[10px] font-semibold">{item.label}</span>
+            {active === item.id && <span className="h-1 w-1 rounded-full bg-mira-primary" />}
           </button>
         ))}
 
         {/* Center FAB */}
         <button
           onClick={onCheckIn}
-          className="relative -top-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-mira-primary to-mira-primary-deep shadow-glow transition active:scale-95"
+          className="relative -top-4 flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-br from-[#B8A5D8] via-mira-primary to-mira-primary-deep shadow-[0_8px_32px_rgba(155,142,196,0.4)] transition-all duration-200 active:scale-90 hover:shadow-[0_12px_40px_rgba(155,142,196,0.5)] hover:translate-y-[-2px] animate-pulse-glow"
         >
-          <Plus className="h-6 w-6 text-white" strokeWidth={2.5} />
+          <Plus className="h-6 w-6 text-white drop-shadow-sm" strokeWidth={2.5} />
         </button>
 
         {right.map((item) => (
@@ -55,12 +56,13 @@ export function BottomNav({
             key={item.id}
             onClick={() => onChange(item.id)}
             className={cn(
-              "flex flex-col items-center gap-1 py-1 transition-colors",
-              active === item.id ? "text-mira-primary" : "text-mira-muted"
+              "flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all duration-200",
+              active === item.id ? "text-mira-primary bg-mira-lavender-light/50" : "text-mira-muted"
             )}
           >
-            <item.icon className="h-5 w-5" />
+            <item.icon className={cn("h-5 w-5 transition-transform duration-200", active === item.id && "scale-110")} />
             <span className="text-[10px] font-semibold">{item.label}</span>
+            {active === item.id && <span className="h-1 w-1 rounded-full bg-mira-primary" />}
           </button>
         ))}
       </div>
