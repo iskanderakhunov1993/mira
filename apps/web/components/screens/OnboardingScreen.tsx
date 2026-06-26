@@ -83,6 +83,7 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
   const [name, setName] = useState("");
   const [age, setAge] = useState<number | undefined>();
   const [periodStart, setPeriodStart] = useState("");
+  const [prevPeriodStart, setPrevPeriodStart] = useState("");
   const [cycleLength, setCycleLength] = useState(28);
   const [periodLength, setPeriodLength] = useState(5);
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
@@ -121,14 +122,20 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
     if (selectedConcerns.includes("doctor")) trackingPrefs.push("nutrition");
     if (selectedConcerns.includes("pain")) trackingPrefs.push("intimacy");
 
+    const anchorStart = periodStart || new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
+    // Засеваем историю стартов: предыдущие месячные (если указаны) + последние.
+    // Так движок нормы получает 2 точки и считает реальную длину с первого дня.
+    const seededStarts = [prevPeriodStart, anchorStart].filter(Boolean).sort();
+
     const profile: UserProfile = {
       name: name.trim() || "Моя Норма",
       age,
       showCalories: false,
       cycleConfig: {
-        periodStart: periodStart || new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10),
+        periodStart: anchorStart,
         cycleLength,
         periodLength,
+        periodStarts: seededStarts,
       },
       trackingPreferences: trackingPrefs,
       additionalMode: "none",
@@ -313,6 +320,13 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
               </div>
 
               <div className="rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
+                <label className="text-xs font-semibold text-mira-text">А до этих — когда начинались? <span className="font-normal text-mira-muted">(необязательно)</span></label>
+                <p className="text-[10px] text-mira-muted mt-0.5">Поможет посчитать твою норму сразу, без ожидания</p>
+                <input type="date" value={prevPeriodStart} onChange={e => setPrevPeriodStart(e.target.value)}
+                  className="mt-2 w-full bg-transparent text-sm font-semibold text-mira-text focus:outline-none" />
+              </div>
+
+              <div className="rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
                 <label className="text-xs font-semibold text-mira-text">Сколько дней длятся месячные?</label>
                 <div className="mt-2 flex gap-1.5">
                   {[3, 4, 5, 6, 7].map(d => (
@@ -463,6 +477,21 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
               <h2 className="text-xl font-bold text-mira-text">{name ? `${name}, ` : ""}{phaseInsight.title}</h2>
               <p className="mt-2 text-sm text-mira-muted leading-relaxed max-w-xs mx-auto">{phaseInsight.body}</p>
             </div>
+
+            {/* Награда за предыдущие месячные — сразу считаем норму */}
+            {prevPeriodStart && periodStart && (() => {
+              const len = Math.round((new Date(periodStart).getTime() - new Date(prevPeriodStart).getTime()) / 86_400_000);
+              if (len < 15 || len > 60) return null;
+              return (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                  <Card className="mb-4 p-4 border-mira-primary/15 bg-mira-lavender-light/40 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-mira-primary mb-1">Твоя норма</p>
+                    <p className="text-2xl font-bold text-mira-text">{len} дней</p>
+                    <p className="text-xs text-mira-muted mt-0.5">Уже посчитала по твоим данным. Уточню с каждым циклом.</p>
+                  </Card>
+                </motion.div>
+              );
+            })()}
 
             <Card className="p-5 border-mira-success/15 bg-[#E0F5E8]/20">
               <p className="text-[10px] font-bold uppercase tracking-widest text-mira-success mb-3">Что может помочь сейчас</p>

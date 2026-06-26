@@ -29,13 +29,13 @@ export function NormMap({ data }: { data: MiraLocalData }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-mira-primary">
-            Карта твоей нормы
+            Что я уже изучила
           </p>
           <p className="mt-0.5 text-xs text-mira-muted">
-            {overallPercent < 20 ? "Только начинаем" :
-             overallPercent < 50 ? "Собираем данные" :
-             overallPercent < 80 ? "Предварительная норма" :
-             "Стабильная норма"}
+            {overallPercent < 20 ? "Только начинаем тебя узнавать" :
+             overallPercent < 50 ? "Собираю твои паттерны" :
+             overallPercent < 80 ? "Уже многое понятно" :
+             "Хорошо тебя знаю"}
           </p>
         </div>
         <div className="flex items-center gap-2">

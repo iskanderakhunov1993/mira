@@ -2,25 +2,22 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  ChevronRight, Heart, Shield, AlertTriangle, Bell,
-  Moon, Zap, FileText, BarChart3, HeartPulse, Pill,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  getCycleDay, getCyclePhase, getPhaseLabel,
-  getDaysUntilPeriod, getCheckIn, getWaterEntry, dateKey,
+  getCycleDay, getCyclePhase,
+  getDaysUntilPeriod, getCheckIn, getWaterEntry,
 } from "@/lib/store";
 import { getPeriodForecast } from "@/lib/cycleEngine";
-import { getSmartReminders, getRedFlags, getToughDayContent, getIronAlert } from "@/lib/alerts";
+import { getSmartReminders, getRedFlags, getToughDayContent } from "@/lib/alerts";
 import { getVitaminRecommendations } from "@/lib/vitamins";
-import { getDayStatus, getQadaStats, haydDuas, type Madhab } from "@/lib/islamic";
+import { getDayStatus, getQadaStats, type Madhab } from "@/lib/islamic";
 import { getAgeConfig } from "@/lib/ageMode";
-import { getNormOverallPercent, getNormMap } from "@/lib/insights";
+import { getHealthSummary, statusMeta } from "@/lib/healthScore";
 import type { ScreenProps } from "./types";
-import type { CyclePhase, DailyCheckIn } from "@/lib/types";
+import type { CyclePhase, DailyCheckIn, MiraLocalData } from "@/lib/types";
 
 type PhaseInfo = {
   emoji: string;
@@ -178,54 +175,81 @@ function CycleCalendar({ cycleDay, cycleLength, periodLength, checkIns, periodSt
   );
 }
 
-// ── Cycle Timeline ──
+// ── График-волна: энергия/гормоны по циклу ──
 
-function CycleTimeline({ cycleDay, cycleLength, periodLength }: {
+function CycleWaveChart({ cycleDay, cycleLength, periodLength }: {
   cycleDay: number; cycleLength: number; periodLength: number;
 }) {
-  const remaining = cycleLength - periodLength;
-  const segments = [
-    { label: "Менструация", days: periodLength, color: "bg-[#E8A0B8]" },
-    { label: "Рост", days: Math.round(remaining * 0.4), color: "bg-[#B8A5D8]" },
-    { label: "Пик", days: Math.round(remaining * 0.12), color: "bg-[#D4A0C8]" },
-    { label: "Подготовка", days: remaining - Math.round(remaining * 0.4) - Math.round(remaining * 0.12), color: "bg-[#D4CCE6]" },
-  ];
-  const position = ((cycleDay - 1) / (cycleLength - 1)) * 100;
+  const w = 300, h = 70;
+  // кривая энергии по дню цикла (низко в менструацию, пик в овуляцию, спад в лютеин)
+  const pts = Array.from({ length: cycleLength }, (_, i) => {
+    const p = (i + 1) / cycleLength;
+    const periodEnd = periodLength / cycleLength;
+    const ovul = (periodLength + (cycleLength - periodLength) * 0.4) / cycleLength;
+    let v: number;
+    if (p <= periodEnd) v = 22 + (p / periodEnd) * 8;
+    else if (p <= ovul) v = 30 + ((p - periodEnd) / (ovul - periodEnd)) * 62;
+    else if (p <= ovul + 0.06) v = 92;
+    else v = 88 - ((p - ovul - 0.06) / (1 - ovul - 0.06)) * 62;
+    return Math.max(12, Math.min(95, v));
+  });
+  const sx = w / (pts.length - 1);
+  // сглаживание Безье
+  const path = pts.map((v, i) => {
+    const x = i * sx, y = h - (v / 100) * h;
+    if (i === 0) return `M ${x.toFixed(1)} ${y.toFixed(1)}`;
+    const px = (i - 1) * sx, py = h - (pts[i - 1] / 100) * h;
+    return `C ${(px + sx * 0.4).toFixed(1)} ${py.toFixed(1)} ${(x - sx * 0.4).toFixed(1)} ${y.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+  const idx = Math.min(cycleDay - 1, pts.length - 1);
+  const tx = idx * sx, ty = h - (pts[idx] / 100) * h;
 
   return (
-    <div className="relative">
-      <div className="flex h-3 rounded-full overflow-hidden gap-[2px]">
-        {segments.map((seg, i) => (
-          <motion.div key={i} className={`${seg.color} rounded-full`} style={{ flex: seg.days }}
-            initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.5, delay: i * 0.1 }} />
-        ))}
-      </div>
-      <motion.div
-        className="absolute top-[-4px] h-5 w-5 rounded-full bg-white border-[3px] border-mira-primary shadow-glow"
-        style={{ left: `${Math.min(Math.max(position, 3), 97)}%`, transform: "translateX(-50%)" }}
-        initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.6, type: "spring" }}
-      />
-      <div className="flex justify-between mt-2">
-        {segments.map((seg, i) => (
-          <span key={i} className="text-[9px] text-mira-muted font-medium" style={{ flex: seg.days, textAlign: "center" }}>
-            {seg.label}
-          </span>
-        ))}
-      </div>
-    </div>
+    <svg viewBox={`-6 -6 ${w + 12} ${h + 16}`} className="w-full" style={{ height: h }}>
+      <defs>
+        <linearGradient id="wave" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#E8A0B8" /><stop offset="40%" stopColor="#B8A5D8" />
+          <stop offset="55%" stopColor="#D4A0C8" /><stop offset="100%" stopColor="#D4CCE6" />
+        </linearGradient>
+        <linearGradient id="waveFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.35" /><stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${path} L ${w} ${h + 6} L 0 ${h + 6} Z`} fill="url(#waveFill)" />
+      <motion.path d={path} fill="none" stroke="url(#wave)" strokeWidth="3" strokeLinecap="round"
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: "easeOut" }} />
+      <motion.circle cx={tx} cy={ty} r="6" fill="white" stroke="#9B8EC4" strokeWidth="3"
+        initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.8, type: "spring" }} />
+      <circle cx={tx} cy={ty} r="2.5" fill="#9B8EC4" />
+    </svg>
   );
 }
 
-function EnergyBar({ level }: { level: number }) {
+// ── Мини-светофор здоровья ──
+
+function MiniHealthStrip({ data, onOpen }: { data: MiraLocalData; onOpen: () => void }) {
+  const summary = getHealthSummary(data);
+  const hero = statusMeta[summary.overall];
+  const real = summary.metrics.filter(m => m.status !== "nodata");
   return (
-    <div className="flex items-center gap-2">
-      <Zap className="h-4 w-4 text-white/70" />
-      <div className="flex-1 h-2.5 rounded-full bg-white/30 overflow-hidden">
-        <motion.div className="h-full rounded-full bg-white/70"
-          initial={{ width: 0 }} animate={{ width: `${level}%` }} transition={{ duration: 1, delay: 0.3 }} />
+    <Card className="p-4 cursor-pointer" onClick={onOpen} style={{ background: `linear-gradient(135deg, ${hero.bg}, white)` }}>
+      <div className="flex items-center gap-3">
+        <span className="text-2xl">
+          {summary.overall === "ok" ? "✅" : summary.overall === "watch" ? "🟡" : summary.overall === "concern" ? "🔴" : "📊"}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-mira-text">{summary.headline}</p>
+          <p className="text-[11px] text-mira-muted truncate">{summary.subtext}</p>
+        </div>
+        {/* цветные точки по метрикам */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {real.slice(0, 5).map(m => (
+            <span key={m.id} className="h-2.5 w-2.5 rounded-full" style={{ background: statusMeta[m.status].color }} title={m.label} />
+          ))}
+          <ChevronRight className="h-4 w-4 text-mira-muted ml-0.5" />
+        </div>
       </div>
-      <span className="text-xs font-bold text-white/80">{level}%</span>
-    </div>
+    </Card>
   );
 }
 
@@ -245,251 +269,128 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
   const islamicStatus = isIslamic ? getDayStatus(data, (profile?.madhab ?? "hanafi") as Madhab) : null;
   const qadaStats = isIslamic ? getQadaStats(data) : null;
 
+
   const config = phaseConfig[phase];
-  const reminders = getSmartReminders(data);
-  const redFlags = getRedFlags(data);
   const toughDay = getToughDayContent(data);
-  const ironAlert = getIronAlert(data);
+  const redFlags = getRedFlags(data);
+  const reminders = getSmartReminders(data);
   const vitaminCard = getVitaminRecommendations(data);
-  const normPercent = getNormOverallPercent(data);
-  const normMap = getNormMap(data);
+  const forecast = getPeriodForecast(profile);
 
-  const daysRange = getPeriodForecast(profile).text;
+  // «Сегодня важное» — один блок по приоритету
+  const reminder = reminders[0];
+  const important =
+    toughDay
+      ? { emoji: "🤍", title: toughDay.greeting, body: toughDay.tips[0], tone: "rose" as const }
+      : redFlags.length > 0
+        ? { emoji: "⚠️", title: redFlags[0].title, body: redFlags[0].body.split(".")[0] + ".", tone: "rose" as const }
+        : reminder
+          ? { emoji: reminder.type === "clothing" ? "👗" : reminder.type === "firstaid" ? "💊" : reminder.type === "delay" ? "⚠️" : "🔔", title: reminder.title, body: reminder.body, tone: "warm" as const }
+          : { emoji: "💡", title: "Совет на сегодня", body: config.recommendation, tone: "lavender" as const };
 
-  const quickButtons = isIslamic || !ageConfig.showSex
-    ? [{ l: "✅", t: "Всё ок" }, { l: "😣", t: "Боль" }, { l: "😴", t: "Плохой сон" }, { l: "😤", t: "ПМС" }]
-    : [{ l: "✅", t: "Всё ок" }, { l: "😣", t: "Боль" }, { l: "😴", t: "Плохой сон" }, { l: "😤", t: "ПМС" }, { l: "❤️", t: "Секс" }];
+  const importantBg =
+    important.tone === "rose" ? "border-mira-cycle/15 bg-[#F8E8EE]/40"
+      : important.tone === "warm" ? "border-[#C4B07E]/15 bg-[#F5F0E0]/30"
+        : "border-mira-primary/10 bg-[#EDE8F5]/30";
 
   const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
   return (
-    <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.06 } } }}>
+    <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.07 } } }}>
 
-      {/* Tough day */}
-      {toughDay && (
-        <motion.div variants={fadeUp} className="mb-4">
-          <Card className="border-mira-cycle/20 bg-gradient-to-br from-mira-rose-light/40 to-white p-5">
-            <p className="text-lg font-bold text-mira-text mb-2">{toughDay.greeting}</p>
-            <div className="space-y-1.5">
-              {toughDay.tips.map(t => (
-                <p key={t} className="text-sm text-mira-text flex items-start gap-2"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-mira-success" />{t}</p>
-              ))}
-            </div>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Reminders */}
-      {reminders.slice(0, 3).map((r, i) => (
-        <motion.div key={i} variants={fadeUp} className="mb-3">
-          <Card className={`p-3.5 flex items-center gap-3 ${r.type === "delay" ? "border-[#C47E7E]/15 bg-[#F5E0E0]/15" : "border-[#C4B07E]/15 bg-[#F5F0E0]/15"}`}>
-            <span className="text-lg">{r.type === "clothing" ? "👗" : r.type === "firstaid" ? "💊" : r.type === "delay" ? "⚠️" : "🔔"}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-mira-text">{r.title}</p>
-              <p className="text-[10px] text-mira-muted">{r.body}</p>
-            </div>
-          </Card>
-        </motion.div>
-      ))}
-
-      {/* Red flags */}
-      {redFlags.length > 0 && (
-        <motion.div variants={fadeUp} className="mb-4">
-          <Card className="border-[#C47E7E]/15 bg-[#FFF5F5] p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-[#C47E7E]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#C47E7E]">Обрати внимание</span>
-            </div>
-            {redFlags.slice(0, 2).map((f, i) => (
-              <p key={i} className="text-xs text-mira-text mb-1"><span className="font-semibold">{f.title}</span> — {f.body.split(".")[0]}.</p>
-            ))}
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Header — Flo style: avatar left, date center, calendar right */}
+      {/* Header — avatar / date / calendar */}
       <motion.div variants={fadeUp} className="flex items-center justify-between mb-4">
-        {/* Profile avatar */}
         <button onClick={() => navigate("profile")}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-mira-rose-light to-mira-lavender-light text-base font-bold text-mira-primary shadow-card transition active:scale-95">
           {name.charAt(0).toUpperCase()}
         </button>
-
-        {/* Date center */}
-        <div className="text-center">
-          <p className="text-sm font-semibold text-mira-text">
-            {new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-          </p>
-        </div>
-
-        {/* Full calendar button */}
+        <p className="text-sm font-semibold text-mira-text">
+          {new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+        </p>
         <button onClick={() => navigate("analytics")}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-mira-lavender/30 bg-white text-mira-muted shadow-card transition hover:border-mira-primary/30 active:scale-95">
           <span className="text-lg">📅</span>
         </button>
       </motion.div>
 
-      {/* Cycle Calendar */}
+      {/* Calendar pills */}
       <motion.div variants={fadeUp} className="mb-5">
         <CycleCalendar
-          cycleDay={cycleDay}
-          cycleLength={cycleLength}
-          periodLength={periodLength}
-          checkIns={data.checkIns}
-          periodStart={profile?.cycleConfig.periodStart ?? ""}
-          onCheckIn={onCheckIn}
-          persist={persist}
-          data={data}
+          cycleDay={cycleDay} cycleLength={cycleLength} periodLength={periodLength}
+          checkIns={data.checkIns} periodStart={profile?.cycleConfig.periodStart ?? ""}
+          onCheckIn={onCheckIn} persist={persist} data={data}
         />
       </motion.div>
 
-      {/* Timeline */}
-      <motion.div variants={fadeUp} className="mb-5">
-        <Card className="p-5">
-          <CycleTimeline cycleDay={cycleDay} cycleLength={cycleLength} periodLength={periodLength} />
-        </Card>
-      </motion.div>
-
-      {/* Status card */}
-      <motion.div variants={fadeUp} className="mb-5">
+      {/* Phase hero with wave graph */}
+      <motion.div variants={fadeUp} className="mb-4">
         <Card className={`p-5 bg-gradient-to-br ${config.gradient} border-0`}>
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-3xl">{config.emoji}</span>
+          <div className="flex items-start justify-between mb-1">
             <div>
-              <p className="text-lg font-bold text-mira-text">{config.title}</p>
+              <p className="text-xl font-bold text-mira-text">{config.title}</p>
               <p className="text-sm text-mira-text/70">{config.subtitle}</p>
             </div>
+            <span className="text-3xl">{config.emoji}</span>
           </div>
-          <p className="text-xs text-mira-text/60 mb-3">Месячные {daysRange}</p>
-          <EnergyBar level={config.energyLevel} />
-          {isIslamic && islamicStatus && (
-            <div className="mt-3 flex items-center gap-2 bg-white/30 rounded-full px-3 py-1.5 w-fit">
-              <Moon className="h-3.5 w-3.5 text-mira-text/70" />
-              <span className="text-xs font-bold text-mira-text">
-                {islamicStatus.status === "hayd" ? "Хайд" : islamicStatus.status === "purity" ? "Чистота" : islamicStatus.status === "istihada" ? "Истихада" : ""}
+
+          <CycleWaveChart cycleDay={cycleDay} cycleLength={cycleLength} periodLength={periodLength} />
+
+          <div className="flex items-center justify-between mt-1">
+            <span className="rounded-full bg-white/35 px-3 py-1 text-xs font-bold text-mira-text">День {cycleDay}</span>
+            {isIslamic && islamicStatus ? (
+              <span className="rounded-full bg-white/35 px-3 py-1 text-xs font-bold text-mira-text">
+                {islamicStatus.status === "hayd" ? "Хайд" : islamicStatus.status === "purity" ? "Чистота" : islamicStatus.status === "istihada" ? "Истихада" : "—"}
               </span>
-            </div>
-          )}
-        </Card>
-      </motion.div>
-
-      {/* Metrics */}
-      <motion.div variants={fadeUp} className="grid grid-cols-3 gap-2 mb-5">
-        <Card className="p-3 text-center">
-          <span className="text-xl">{config.moodEmoji}</span>
-          <p className="text-[10px] text-mira-muted mt-1">{config.moodLabel}</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <span className="text-xl">😴</span>
-          <p className="text-[10px] text-mira-muted mt-1">{checkIn?.sleep?.hours ? `${checkIn.sleep.hours}ч сна` : "сон"}</p>
-        </Card>
-        <Card className="p-3 text-center">
-          <span className="text-xl">🍶</span>
-          <p className="text-[10px] text-mira-muted mt-1">{waterEntry.glasses * 250} мл</p>
-        </Card>
-      </motion.div>
-
-      {/* Grouped: Article + Recommendation + Clothing + Vitamin + Fertility */}
-      <motion.div variants={fadeUp} className="grid grid-cols-2 gap-3 mb-5">
-        {/* Article — full width */}
-        <Card className="p-3.5 col-span-2 border-0 bg-gradient-to-br from-white to-[#F8F5FE]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-mira-primary">📖 Полезное</span>
-            <Badge className="text-[9px] py-0.5">{config.article.tag}</Badge>
+            ) : (
+              <span className="text-xs text-mira-text/60">Месячные {forecast.text}</span>
+            )}
           </div>
-          <p className="text-sm font-bold text-mira-text mb-0.5">{config.article.title}</p>
-          <p className="text-xs text-mira-muted leading-relaxed">{config.article.body}</p>
         </Card>
-
-        {/* Recommendation */}
-        <Card className="p-3.5 border-mira-primary/10 bg-[#EDE8F5]/15">
-          <span className="text-lg">💡</span>
-          <p className="text-xs font-semibold text-mira-text mt-1.5 leading-relaxed">{config.recommendation.split(".")[0]}.</p>
-        </Card>
-
-        {/* Clothing */}
-        <Card className="p-3.5 border-[#C4B07E]/10 bg-[#F5F0E0]/15">
-          <span className="text-lg">👗</span>
-          <p className="text-xs text-mira-text mt-1.5 leading-relaxed">{config.clothing.split(".")[0]}.</p>
-        </Card>
-
-        {/* Vitamin */}
-        {vitaminCard && vitaminCard.recs.length > 0 && (
-          <Card className="p-3.5 border-mira-success/10 bg-[#E0F5E8]/15">
-            <span className="text-lg">{vitaminCard.recs[0].icon}</span>
-            <p className="text-xs font-bold text-mira-text mt-1.5">{vitaminCard.recs[0].name} {vitaminCard.recs[0].dose}</p>
-            <p className="text-[10px] text-mira-success">{vitaminCard.recs[0].how.split(".")[0]}.</p>
-          </Card>
-        )}
-
-        {/* Fertility */}
-        {config.fertility && !isIslamic && ageConfig.showFertility && (
-          <Card className={`p-3.5 ${config.fertility.level === "Высокая" ? "border-[#C47E7E]/15 bg-[#F5E0E0]/10" : ""}`}>
-            <span className="text-lg">{config.fertility.emoji}</span>
-            <p className="text-xs font-bold text-mira-text mt-1.5">Фертильность: {config.fertility.level}</p>
-            <p className="text-[10px] text-mira-muted">{config.fertility.note.split(".")[0]}.</p>
-          </Card>
-        )}
-
-        {/* Iron alert — full width */}
-        {ironAlert && (
-          <Card className="p-3.5 border-[#C4887E]/10 bg-[#FFF5F0] col-span-2">
-            <div className="flex items-center gap-3">
-              <span className="text-lg">🩸</span>
-              <div className="flex-1">
-                <p className="text-xs font-bold text-mira-text">{ironAlert.title}</p>
-                <p className="text-[10px] text-mira-muted">{ironAlert.body.split(".")[0]}.</p>
-              </div>
-            </div>
-          </Card>
-        )}
       </motion.div>
 
-      {/* Islamic blocks */}
-      {isIslamic && (
-        <motion.div variants={fadeUp} className="grid grid-cols-2 gap-3 mb-5">
-          {qadaStats && qadaStats.remaining > 0 && (
-            <Card className="p-3.5 border-mira-primary/10 bg-mira-lavender-light/15 cursor-pointer" onClick={() => navigate("islamic")}>
-              <span className="text-lg">🕌</span>
-              <p className="text-xs font-bold text-mira-text mt-1.5">Каза: {qadaStats.remaining} дн.</p>
-              <p className="text-[10px] text-mira-muted">Пн и чт — сунна</p>
-            </Card>
-          )}
-          {islamicStatus?.status === "hayd" && (
-            <Card className="p-3.5 border-mira-primary/10 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-mira-primary mb-1">Зикр дня</p>
-              <p className="text-sm font-bold text-mira-text leading-relaxed" dir="rtl">
-                {haydDuas[new Date().getDate() % haydDuas.length].arabic}
-              </p>
-              <p className="text-[10px] text-mira-primary mt-1">{haydDuas[new Date().getDate() % haydDuas.length].transliteration}</p>
-            </Card>
-          )}
+      {/* Health traffic light */}
+      <motion.div variants={fadeUp} className="mb-4">
+        <MiniHealthStrip data={data} onOpen={() => navigate("analytics")} />
+      </motion.div>
+
+      {/* Сегодня важное — один блок */}
+      <motion.div variants={fadeUp} className="mb-4">
+        <Card className={`p-4 flex items-start gap-3 ${importantBg}`}>
+          <span className="text-xl shrink-0">{important.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-0.5">Сегодня важное</p>
+            <p className="text-sm font-semibold text-mira-text">{important.title}</p>
+            <p className="text-xs text-mira-muted mt-0.5">{important.body}</p>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Vitamin one-liner (если есть) */}
+      {vitaminCard && vitaminCard.recs.length > 0 && (
+        <motion.div variants={fadeUp} className="mb-4">
+          <Card className="p-3.5 flex items-center gap-3 border-mira-success/10 bg-[#E0F5E8]/20">
+            <span className="text-lg">{vitaminCard.recs[0].icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-mira-text">{vitaminCard.recs[0].name} {vitaminCard.recs[0].dose}</p>
+              <p className="text-[10px] text-mira-success">{vitaminCard.recs[0].how.split(".")[0]}.</p>
+            </div>
+          </Card>
         </motion.div>
       )}
 
-      {/* Norm */}
-      <motion.div variants={fadeUp} className="mb-5">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-mira-text">📊 Твоя норма</span>
-            <span className="text-lg font-bold text-mira-primary">{normPercent}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-mira-lavender-light overflow-hidden">
-            <motion.div className="h-full rounded-full bg-gradient-to-r from-mira-primary to-mira-cycle"
-              initial={{ width: 0 }} animate={{ width: `${normPercent}%` }} transition={{ duration: 1, delay: 0.3 }} />
-          </div>
-          <div className="flex justify-between mt-2">
-            {normMap.map(cat => (
-              <div key={cat.id} className="flex flex-col items-center gap-0.5">
-                <div className="h-1 w-5 rounded-full bg-mira-lavender-light overflow-hidden">
-                  <div className="h-full rounded-full bg-mira-primary" style={{ width: `${cat.percent}%` }} />
-                </div>
-                <span className="text-[8px] text-mira-muted">{cat.label}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </motion.div>
+      {/* Islamic: qada (если есть) */}
+      {isIslamic && qadaStats && qadaStats.remaining > 0 && (
+        <motion.div variants={fadeUp} className="mb-4">
+          <Card className="p-3.5 flex items-center gap-3 border-mira-primary/10 bg-mira-lavender-light/20 cursor-pointer" onClick={() => navigate("islamic")}>
+            <span className="text-lg">🕌</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-mira-text">Каза-посты: {qadaStats.remaining} дн.</p>
+              <p className="text-[10px] text-mira-muted">Пн и чт — сунна</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-mira-muted" />
+          </Card>
+        </motion.div>
+      )}
 
       {/* CTA */}
       <motion.div variants={fadeUp}>

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, TrendingUp, Moon, Brain, Zap, Activity, Lightbulb, Link2 } from "lucide-react";
 import { NormMap } from "./NormMap";
+import { HealthDashboard } from "./HealthDashboard";
 import { getSmartInsights } from "@/lib/insights";
 import { getPhaseCorrelations } from "@/lib/alerts";
 import { getCycleNorm } from "@/lib/cycleEngine";
@@ -73,7 +74,12 @@ export function AnalyticsScreen({ data }: ScreenProps) {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-mira-text">Аналитика</h1>
-        <p className="mt-1 text-sm text-mira-muted">Твоя личная норма и паттерны</p>
+        <p className="mt-1 text-sm text-mira-muted">Посмотри и сразу пойми — всё ли в норме</p>
+      </div>
+
+      {/* Health Dashboard — светофор статусов */}
+      <div className="mb-6">
+        <HealthDashboard data={data} />
       </div>
 
       {/* Norm Map */}

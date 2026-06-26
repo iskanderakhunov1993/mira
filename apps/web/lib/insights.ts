@@ -1,5 +1,6 @@
 import type { MiraLocalData, DailyCheckIn, CyclePhase } from "./types";
 import { getCycleDay, getCyclePhase } from "./store";
+import { getCycleNorm } from "./cycleEngine";
 
 export type Insight = {
   type: "observation" | "connection" | "action";
@@ -217,8 +218,21 @@ export function getNormMap(data: MiraLocalData): NormCategory[] {
     stable: "Норма сформирована",
   };
 
+  // Цикл: прогресс по РЕАЛЬНО наблюдённым циклам (нужно ~3 для стабильной нормы),
+  // а не по числу галочек.
+  const norm = getCycleNorm(data.profile);
+  const cycleStatus: NormCategory["status"] =
+    norm.observedCycles === 0 ? "empty" :
+    norm.observedCycles === 1 ? "building" :
+    norm.observedCycles < 3 ? "preliminary" : "stable";
+  const cyclePercent = Math.min(100, Math.round((norm.observedCycles / 3) * 100));
+  const cycleDesc =
+    norm.observedCycles === 0 ? "Отметь начало месячных" :
+    norm.observedCycles === 1 ? "1 цикл — нужно ещё" :
+    norm.observedCycles < 3 ? `${norm.observedCycles} цикла · уточняется` : "Норма сформирована";
+
   return [
-    { id: "cycle", label: "Цикл", percent: calcPercent(total), status: calcStatus(total), description: statusLabels[calcStatus(total)] },
+    { id: "cycle", label: "Цикл", percent: cyclePercent, status: cycleStatus, description: cycleDesc },
     { id: "pain", label: "Боль", percent: calcPercent(painCount), status: calcStatus(painCount), description: statusLabels[calcStatus(painCount)] },
     { id: "sleep", label: "Сон", percent: calcPercent(sleepCount), status: calcStatus(sleepCount), description: statusLabels[calcStatus(sleepCount)] },
     { id: "mood", label: "Настроение", percent: calcPercent(moodCount), status: calcStatus(moodCount), description: statusLabels[calcStatus(moodCount)] },
