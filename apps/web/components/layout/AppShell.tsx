@@ -88,7 +88,7 @@ export function AppShell() {
     <div className="min-h-screen bg-mira-bg text-mira-text lg:flex">
       <Sidebar active={page} onChange={setPage} onCheckIn={openCheckIn} isIslamic={isIslamic} />
       <main className="flex-1 pb-24 lg:pb-0">
-        <div className="mx-auto max-w-[960px] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[600px] px-4 py-6 sm:px-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={page}

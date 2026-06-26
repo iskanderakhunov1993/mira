@@ -254,6 +254,92 @@ function MiniHealthStrip({ data, onOpen }: { data: MiraLocalData; onOpen: () => 
   );
 }
 
+// ── Кольцо калорий + КБЖУ ──
+
+function NutritionRing({ data, phase, onOpen }: { data: MiraLocalData; phase: CyclePhase; onOpen: () => void }) {
+  const meals = getCheckIn(data)?.meals ?? [];
+  // оценка съеденного: по размеру приёма пищи
+  const sizeKcal: Record<string, number> = { small: 300, medium: 500, large: 750 };
+  const eaten = meals.reduce((sum, m) => {
+    const base = sizeKcal[m.size] ?? 450;
+    return sum + (m.type === "snack" ? base * 0.5 : base);
+  }, 0);
+  // цель: базово 2000, в лютеиновую фазу чуть выше (прогестерон ↑ аппетит)
+  const goal = phase === "luteal" ? 2150 : phase === "menstruation" ? 2050 : 2000;
+  const pct = Math.min(100, Math.round((eaten / goal) * 100));
+  const r = 30, c = 2 * Math.PI * r;
+
+  return (
+    <Card className="p-3.5 cursor-pointer" onClick={onOpen}>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">🍽️ Питание</p>
+      <div className="flex items-center gap-3">
+        <div className="relative h-[72px] w-[72px] shrink-0">
+          <svg viewBox="0 0 72 72" className="h-full w-full -rotate-90">
+            <circle cx="36" cy="36" r={r} fill="none" stroke="#EDE8F5" strokeWidth="6" />
+            <motion.circle cx="36" cy="36" r={r} fill="none" stroke="#7BAF8D" strokeWidth="6" strokeLinecap="round"
+              initial={{ strokeDasharray: `0 ${c}` }}
+              animate={{ strokeDasharray: `${(pct / 100) * c} ${c - (pct / 100) * c}` }}
+              transition={{ duration: 0.9 }} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-sm font-bold text-mira-text leading-none">{eaten}</span>
+            <span className="text-[8px] text-mira-muted">из {goal}</span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-mira-text mb-1.5">Цель ~{goal} ккал</p>
+          {/* КБЖУ — рекомендуемый баланс */}
+          {[
+            { l: "Б", pct: 30, color: "#C47E9B" },
+            { l: "Ж", pct: 30, color: "#C4B07E" },
+            { l: "У", pct: 40, color: "#7BAF8D" },
+          ].map(m => (
+            <div key={m.l} className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-[9px] font-bold w-2.5 text-mira-muted">{m.l}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-mira-lavender-light overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${m.pct}%`, background: m.color }} />
+              </div>
+              <span className="text-[8px] text-mira-muted w-6 text-right">{m.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ── Бутылка воды ──
+
+function WaterBottle({ data, onOpen }: { data: MiraLocalData; onOpen: () => void }) {
+  const entry = getWaterEntry(data);
+  const ml = entry.glasses * 250;
+  const goalMl = entry.goal * 250;
+  const fillPct = Math.min(100, (ml / goalMl) * 100);
+
+  return (
+    <Card className="p-3.5 cursor-pointer" onClick={onOpen}>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">💧 Вода</p>
+      <div className="flex items-center gap-3">
+        {/* Бутылка */}
+        <div className="relative h-[72px] w-9 shrink-0">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-[#7BAF8D]/40 rounded-t" />
+          <div className="absolute top-1.5 inset-x-0 bottom-0 rounded-[10px] rounded-t-md border-2 border-[#7BAF8D]/30 overflow-hidden bg-[#E0F5E8]/20">
+            <motion.div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#7BAF8D] to-[#A0D4B0]"
+              initial={{ height: 0 }} animate={{ height: `${fillPct}%` }} transition={{ duration: 0.7 }} />
+          </div>
+        </div>
+        <div className="flex-1">
+          <p className="text-lg font-bold text-mira-text leading-none">{(ml / 1000).toFixed(2)} <span className="text-xs font-normal text-mira-muted">л</span></p>
+          <p className="text-[10px] text-mira-muted mt-0.5">из {(goalMl / 1000).toFixed(1)} л</p>
+          {ml >= goalMl
+            ? <p className="text-[10px] text-mira-success font-semibold mt-1">Цель достигнута 💧</p>
+            : <p className="text-[10px] text-mira-primary font-semibold mt-1">+ добавить стакан</p>}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps) {
   const [hintDismissed, setHintDismissed] = useState(
     typeof window !== "undefined" && localStorage.getItem("mira:hint-today") === "done"
@@ -400,6 +486,12 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
             )}
           </div>
         </Card>
+      </motion.div>
+
+      {/* Питание + Вода */}
+      <motion.div variants={fadeUp} className="mb-4 grid grid-cols-2 gap-3">
+        <NutritionRing data={data} phase={phase} onOpen={() => navigate("care")} />
+        <WaterBottle data={data} onOpen={() => navigate("care")} />
       </motion.div>
 
       {/* Vitamin one-liner (если есть) */}
