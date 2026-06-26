@@ -19,18 +19,16 @@ html {
 body {
   min-height: 100vh;
   min-height: 100dvh;
-  background: #F8F5FE;
   color: #2D2640;
-}
-
-@media (min-width: 1024px) {
-  body {
-    background:
-      radial-gradient(circle at 80% 5%, rgba(212, 204, 230, 0.35), transparent 35%),
-      radial-gradient(circle at 15% 80%, rgba(232, 180, 200, 0.15), transparent 35%),
-      radial-gradient(circle at 50% 50%, rgba(155, 142, 196, 0.05), transparent 60%),
-      #F8F5FE;
-  }
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Живой «aurora» фон — мягкий, на всех экранах */
+  background:
+    radial-gradient(ellipse 70% 50% at 80% -5%, rgba(212, 204, 230, 0.45), transparent 60%),
+    radial-gradient(ellipse 60% 45% at 10% 10%, rgba(232, 180, 200, 0.22), transparent 55%),
+    radial-gradient(ellipse 80% 60% at 50% 110%, rgba(155, 142, 196, 0.12), transparent 60%),
+    #F8F5FE;
+  background-attachment: fixed;
 }
 
 ::selection {
@@ -103,3 +101,80 @@ body {
   transform: translateY(0);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
+
+/* Juice: тактильное нажатие для любой кликабельной карточки */
+.tap {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.tap:active {
+  transform: scale(0.97);
+}
+
+/* Juice: градиентный текст */
+.text-gradient {
+  background: linear-gradient(120deg, #9B8EC4, #C47E9B);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Juice: мягкое появление снизу */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Juice: блик-перелив для премиум-элементов */
+@keyframes sheen {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  60%, 100% { transform: translateX(220%) skewX(-18deg); }
+}
+.sheen { position: relative; overflow: hidden; }
+.sheen::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  transform: translateX(-120%) skewX(-18deg);
+  animation: sheen 4.5s ease-in-out infinite;
+}
+
+/* Juice: дыхание для акцентов */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.animate-breathe { animation: breathe 3.5s ease-in-out infinite; }
+
+/* Juice: переливающийся градиент (живой фон карточек) */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Juice: медленный дрейф aurora-фона */
+@keyframes aurora-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.9; }
+  50% { transform: translate(-2%, 1%) scale(1.05); opacity: 1; }
+}
+
+/* Juice: мягкое покачивание (для emoji-талисмана) */
+@keyframes wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-4deg); }
+  75% { transform: rotate(4deg); }
+}
+.animate-wobble { animation: wobble 3s ease-in-out infinite; }
+
+/* Juice: всплеск-радуга при успехе */
+@keyframes pop-in {
+  0% { transform: scale(0) rotate(-12deg); opacity: 0; }
+  60% { transform: scale(1.15) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.animate-pop { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }

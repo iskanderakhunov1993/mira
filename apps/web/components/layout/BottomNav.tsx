@@ -46,7 +46,7 @@ export function BottomNav({
         {/* Center FAB */}
         <button
           onClick={onCheckIn}
-          className="relative -top-4 flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-br from-[#B8A5D8] via-mira-primary to-mira-primary-deep shadow-[0_8px_32px_rgba(155,142,196,0.4)] transition-all duration-200 active:scale-90 hover:shadow-[0_12px_40px_rgba(155,142,196,0.5)] hover:translate-y-[-2px] animate-pulse-glow"
+          className="sheen relative -top-4 flex h-[58px] w-[58px] items-center justify-center rounded-full bg-gradient-to-br from-[#C4B0E8] via-mira-primary to-mira-primary-deep shadow-[0_8px_28px_rgba(155,142,196,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-200 active:scale-90 hover:shadow-[0_14px_44px_rgba(155,142,196,0.6)] hover:-translate-y-1 animate-pulse-glow"
         >
           <Plus className="h-6 w-6 text-white drop-shadow-sm" strokeWidth={2.5} />
         </button>

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/CountUp";
 import { getStreak, getGarden, getDailyRitual } from "@/lib/gamification";
 import type { MiraLocalData } from "@/lib/types";
 
@@ -15,12 +16,12 @@ export function GardenCard({ data, onCheckIn }: { data: MiraLocalData; onCheckIn
     : 100;
 
   return (
-    <Card className="p-4 border-0 bg-gradient-to-br from-[#EAF6EE] via-[#F2EDFA] to-white overflow-hidden">
+    <Card className="sheen p-4 border-0 bg-gradient-to-br from-[#EAF6EE] via-[#F2EDFA] to-white overflow-hidden animate-gradient">
       <div className="flex items-center gap-4">
         {/* Растение */}
         <motion.button
           onClick={() => onCheckIn?.()}
-          whileTap={{ scale: 0.9 }}
+          whileTap={{ scale: 0.85 }}
           className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-inner-glow"
         >
           <motion.span
@@ -28,7 +29,7 @@ export function GardenCard({ data, onCheckIn }: { data: MiraLocalData; onCheckIn
             initial={{ scale: 0.5, rotate: -8 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 12 }}
-            className="text-3xl"
+            className="text-3xl animate-wobble"
           >
             {garden.emoji}
           </motion.span>
@@ -45,9 +46,9 @@ export function GardenCard({ data, onCheckIn }: { data: MiraLocalData; onCheckIn
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-mira-text">{garden.title}</p>
             {/* Streak */}
-            <div className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5">
-              <span className="text-xs">🔥</span>
-              <span className="text-xs font-bold text-mira-text">{streak.current}</span>
+            <div className="flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 shadow-sm">
+              <span className="text-xs animate-breathe">🔥</span>
+              <span className="text-xs font-bold text-mira-text"><CountUp value={streak.current} /></span>
             </div>
           </div>
 

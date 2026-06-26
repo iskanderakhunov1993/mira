@@ -3,15 +3,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mira-primary/30 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50",
+  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-sm font-semibold transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-mira-primary/30 active:scale-[0.95] active:translate-y-0 disabled:pointer-events-none disabled:opacity-50 [&>*]:relative",
   {
     variants: {
       variant: {
-        default: "bg-gradient-to-b from-mira-primary to-mira-primary-deep text-white shadow-glow hover:shadow-[0_14px_44px_rgba(155,142,196,0.35)] hover:translate-y-[-1px]",
-        secondary: "bg-mira-lavender-light text-mira-text hover:bg-mira-lavender/40 hover:shadow-card",
+        // глянцевый: верхний внутренний блик + глубокая тень + лёгкий подъём
+        default: "bg-gradient-to-b from-[#A99BD0] via-mira-primary to-mira-primary-deep text-white shadow-[0_8px_24px_rgba(155,142,196,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] hover:shadow-[0_14px_40px_rgba(155,142,196,0.45),inset_0_1px_0_rgba(255,255,255,0.4)] hover:-translate-y-0.5",
+        secondary: "bg-mira-lavender-light text-mira-text shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] hover:bg-mira-lavender/40 hover:shadow-card hover:-translate-y-0.5",
         ghost: "text-mira-text hover:bg-mira-lavender-light/70",
-        outline: "border-2 border-mira-lavender/40 bg-white text-mira-text hover:border-mira-primary/40 hover:bg-mira-lavender-light/30 hover:shadow-card",
-        cycle: "bg-gradient-to-r from-mira-cycle to-mira-primary text-white shadow-glow hover:shadow-[0_14px_44px_rgba(196,126,155,0.3)] hover:translate-y-[-1px]"
+        outline: "border-2 border-mira-lavender/40 bg-white/80 backdrop-blur-sm text-mira-text hover:border-mira-primary/40 hover:bg-mira-lavender-light/30 hover:shadow-card hover:-translate-y-0.5",
+        cycle: "bg-gradient-to-r from-mira-cycle via-[#B888B0] to-mira-primary text-white shadow-[0_8px_24px_rgba(196,126,155,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] hover:shadow-[0_14px_40px_rgba(196,126,155,0.45)] hover:-translate-y-0.5"
       },
       size: {
         default: "h-12 px-6",

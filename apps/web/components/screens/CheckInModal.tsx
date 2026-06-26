@@ -248,8 +248,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
           const garden = getGarden(data);
           return (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.35, type: "spring" }}
-              className="mt-5 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#EAF6EE] to-[#F2EDFA] px-4 py-3">
-              <motion.span initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ delay: 0.5, type: "spring", stiffness: 200 }} className="text-2xl">
+              className="sheen mt-5 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#EAF6EE] to-[#F2EDFA] px-4 py-3">
+              <motion.span initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.5, type: "spring", stiffness: 220, damping: 10 }} className="text-2xl">
                 {garden.emoji}
               </motion.span>
               <div className="text-left">

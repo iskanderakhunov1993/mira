@@ -6,6 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CountUp } from "@/components/ui/CountUp";
 import {
   getCycleDay, getCyclePhase,
   getDaysUntilPeriod, getCheckIn, getWaterEntry,
@@ -233,7 +234,7 @@ function MiniHealthStrip({ data, onOpen }: { data: MiraLocalData; onOpen: () => 
   const hero = statusMeta[summary.overall];
   const real = summary.metrics.filter(m => m.status !== "nodata");
   return (
-    <Card className="p-4 cursor-pointer" onClick={onOpen} style={{ background: `linear-gradient(135deg, ${hero.bg}, white)` }}>
+    <Card className="tap p-4" onClick={onOpen} style={{ background: `linear-gradient(135deg, ${hero.bg}, white)` }}>
       <div className="flex items-center gap-3">
         <span className="text-2xl">
           {summary.overall === "ok" ? "✅" : summary.overall === "watch" ? "🟡" : summary.overall === "concern" ? "🔴" : "📊"}
@@ -270,7 +271,7 @@ function NutritionRing({ data, phase, onOpen }: { data: MiraLocalData; phase: Cy
   const r = 30, c = 2 * Math.PI * r;
 
   return (
-    <Card className="p-3.5 cursor-pointer" onClick={onOpen}>
+    <Card className="tap p-3.5" onClick={onOpen}>
       <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">🍽️ Питание</p>
       <div className="flex items-center gap-3">
         <div className="relative h-[72px] w-[72px] shrink-0">
@@ -282,7 +283,7 @@ function NutritionRing({ data, phase, onOpen }: { data: MiraLocalData; phase: Cy
               transition={{ duration: 0.9 }} />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-bold text-mira-text leading-none">{eaten}</span>
+            <span className="text-sm font-bold text-mira-text leading-none"><CountUp value={eaten} /></span>
             <span className="text-[8px] text-mira-muted">из {goal}</span>
           </div>
         </div>
@@ -317,7 +318,7 @@ function WaterBottle({ data, onOpen }: { data: MiraLocalData; onOpen: () => void
   const fillPct = Math.min(100, (ml / goalMl) * 100);
 
   return (
-    <Card className="p-3.5 cursor-pointer" onClick={onOpen}>
+    <Card className="tap p-3.5" onClick={onOpen}>
       <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">💧 Вода</p>
       <div className="flex items-center gap-3">
         {/* Бутылка */}
@@ -329,7 +330,7 @@ function WaterBottle({ data, onOpen }: { data: MiraLocalData; onOpen: () => void
           </div>
         </div>
         <div className="flex-1">
-          <p className="text-lg font-bold text-mira-text leading-none">{(ml / 1000).toFixed(2)} <span className="text-xs font-normal text-mira-muted">л</span></p>
+          <p className="text-lg font-bold text-mira-text leading-none"><CountUp value={ml / 1000} decimals={2} /> <span className="text-xs font-normal text-mira-muted">л</span></p>
           <p className="text-[10px] text-mira-muted mt-0.5">из {(goalMl / 1000).toFixed(1)} л</p>
           {ml >= goalMl
             ? <p className="text-[10px] text-mira-success font-semibold mt-1">Цель достигнута 💧</p>
@@ -385,7 +386,7 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
       : important.tone === "warm" ? "border-[#C4B07E]/15 bg-[#F5F0E0]/30"
         : "border-mira-primary/10 bg-[#EDE8F5]/30";
 
-  const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+  const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 260, damping: 22 } } };
 
   return (
     <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.07 } } }}>
@@ -440,7 +441,7 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
 
       {/* Phase hero with wave graph */}
       <motion.div variants={fadeUp} className="mb-4">
-        <Card className={`p-5 bg-gradient-to-br ${config.gradient} border-0`}>
+        <Card className={`sheen animate-gradient p-5 bg-gradient-to-br ${config.gradient} border-0 shadow-[0_8px_32px_rgba(155,142,196,0.18)]`}>
           <div className="flex items-start justify-between mb-1">
             <div>
               <p className="text-xl font-bold text-mira-text">{config.title}</p>

@@ -138,10 +138,62 @@ function pmsForecast(data: MiraLocalData): Correlation | null {
   };
 }
 
+// ── Питание → энергия ──
+// Сравниваем энергию в дни с белком/овощами на завтрак vs дни со сладким/фастфудом.
+function foodEnergyLink(data: MiraLocalData): Correlation | null {
+  const energyScore: Record<string, number> = { exhausted: 1, low: 2, normal: 3, high: 4 };
+  let goodSum = 0, goodN = 0, poorSum = 0, poorN = 0;
+
+  for (const c of Object.values(data.checkIns)) {
+    if (!c.energy || !c.meals || c.meals.length === 0) continue;
+    const comps = c.meals.flatMap(m => m.components);
+    const hasProtein = comps.includes("protein") || comps.includes("vegetables");
+    const hasJunk = comps.includes("sweets") || comps.includes("fastfood");
+    const score = energyScore[c.energy.value];
+    // «хороший» день: есть белок/овощи и нет джанка; «слабый»: есть джанк
+    if (hasProtein && !hasJunk) { goodSum += score; goodN++; }
+    else if (hasJunk) { poorSum += score; poorN++; }
+  }
+  if (goodN < 2 || poorN < 2) return null;
+  const goodAvg = goodSum / goodN, poorAvg = poorSum / poorN;
+  if (goodAvg - poorAvg < 0.4) return null;
+
+  return {
+    id: "food-energy", emoji: "🥗", title: "Еда влияет на твою энергию",
+    body: "В дни с белком и овощами твоя энергия выше, чем в дни со сладким и фастфудом. Тело это чувствует.",
+    strength: goodN + poorN >= 8 ? "strong" : "emerging",
+  };
+}
+
+// ── Тренировки → самочувствие (сон/настроение на следующий день) ──
+function workoutWellbeingLink(data: MiraLocalData): Correlation | null {
+  const completed = data.workouts.filter(w => w.status === "completed");
+  if (completed.length < 3) return null;
+
+  let goodSleepAfter = 0, total = 0;
+  for (const w of completed) {
+    const next = data.checkIns[nextKey(w.date)];
+    if (!next?.sleep) continue;
+    total++;
+    if (next.sleep.quality === "good" || next.sleep.quality === "normal") goodSleepAfter++;
+  }
+  if (total < 3) return null;
+  const ratio = goodSleepAfter / total;
+  if (ratio < 0.55) return null;
+
+  return {
+    id: "workout-sleep", emoji: "🏋️", title: "Тренировки улучшают твой сон",
+    body: `После тренировки ты лучше спишь в ${Math.round(ratio * 100)}% случаев. Движение работает на тебя.`,
+    strength: ratio > 0.75 ? "strong" : "emerging",
+  };
+}
+
 export function getCorrelations(data: MiraLocalData): Correlation[] {
   return [
     pmsForecast(data),
     sleepEnergyLink(data),
+    foodEnergyLink(data),
+    workoutWellbeingLink(data),
     stressCycleLink(data),
     waterBloatLink(data),
   ].filter((c): c is Correlation => c !== null);
