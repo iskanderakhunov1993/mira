@@ -9,6 +9,7 @@ import { HealthDashboard } from "./HealthDashboard";
 import { getSmartInsights } from "@/lib/insights";
 import { getPhaseCorrelations } from "@/lib/alerts";
 import { getCycleNorm } from "@/lib/cycleEngine";
+import { getCorrelations } from "@/lib/correlations";
 import type { ScreenProps } from "./types";
 
 function Progress({ value, color = "bg-mira-primary" }: { value: number; color?: string }) {
@@ -91,6 +92,35 @@ export function AnalyticsScreen({ data }: ScreenProps) {
       <div className="mb-6">
         <NormMap data={data} />
       </div>
+
+      {/* Связи: что на тебя влияет */}
+      {(() => {
+        const correlations = getCorrelations(data);
+        if (correlations.length === 0) return null;
+        return (
+          <div className="mb-6 space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted px-1">
+              ✨ Что на тебя влияет
+            </p>
+            {correlations.map(c => (
+              <Card key={c.id} className="p-4 border-mira-primary/10 bg-gradient-to-br from-mira-lavender-light/20 to-white">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0">{c.emoji}</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-mira-text">{c.title}</p>
+                      {c.strength === "emerging" && (
+                        <span className="rounded-full bg-mira-lavender-light px-2 py-0.5 text-[8px] font-semibold text-mira-muted">намечается</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-mira-muted mt-1 leading-relaxed">{c.body}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Smart insights */}
       {(() => {
