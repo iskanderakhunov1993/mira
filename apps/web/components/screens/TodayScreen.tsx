@@ -5,19 +5,17 @@ import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { CountUp } from "@/components/ui/CountUp";
 import {
   getCycleDay, getCyclePhase,
-  getDaysUntilPeriod, getCheckIn, getWaterEntry,
+  getDaysUntilPeriod, getCheckIn,
 } from "@/lib/store";
 import { getPeriodForecast } from "@/lib/cycleEngine";
 import { getSmartReminders, getRedFlags, getToughDayContent } from "@/lib/alerts";
-import { getVitaminRecommendations } from "@/lib/vitamins";
+import { getStreak } from "@/lib/gamification";
 import { getDayStatus, getQadaStats, type Madhab } from "@/lib/islamic";
 import { getAgeConfig } from "@/lib/ageMode";
-import { getHealthSummary, statusMeta } from "@/lib/healthScore";
-import { GardenCard } from "./GardenCard";
+import { QuickLogInline } from "./QuickLogInline";
+import { NormaScanCard } from "./NormaScanCard";
 import type { ScreenProps } from "./types";
 import type { CyclePhase, DailyCheckIn, MiraLocalData } from "@/lib/types";
 
@@ -227,120 +225,6 @@ function CycleWaveChart({ cycleDay, cycleLength, periodLength }: {
   );
 }
 
-// ── Мини-светофор здоровья ──
-
-function MiniHealthStrip({ data, onOpen }: { data: MiraLocalData; onOpen: () => void }) {
-  const summary = getHealthSummary(data);
-  const hero = statusMeta[summary.overall];
-  const real = summary.metrics.filter(m => m.status !== "nodata");
-  return (
-    <Card className="tap p-4" onClick={onOpen} style={{ background: `linear-gradient(135deg, ${hero.bg}, white)` }}>
-      <div className="flex items-center gap-3">
-        <span className="text-2xl">
-          {summary.overall === "ok" ? "✅" : summary.overall === "watch" ? "🟡" : summary.overall === "concern" ? "🔴" : "📊"}
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-mira-text">{summary.headline}</p>
-          <p className="text-[11px] text-mira-muted truncate">{summary.subtext}</p>
-        </div>
-        {/* цветные точки по метрикам */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {real.slice(0, 5).map(m => (
-            <span key={m.id} className="h-2.5 w-2.5 rounded-full" style={{ background: statusMeta[m.status].color }} title={m.label} />
-          ))}
-          <ChevronRight className="h-4 w-4 text-mira-muted ml-0.5" />
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// ── Кольцо калорий + КБЖУ ──
-
-function NutritionRing({ data, phase, onOpen }: { data: MiraLocalData; phase: CyclePhase; onOpen: () => void }) {
-  const meals = getCheckIn(data)?.meals ?? [];
-  // оценка съеденного: по размеру приёма пищи
-  const sizeKcal: Record<string, number> = { small: 300, medium: 500, large: 750 };
-  const eaten = meals.reduce((sum, m) => {
-    const base = sizeKcal[m.size] ?? 450;
-    return sum + (m.type === "snack" ? base * 0.5 : base);
-  }, 0);
-  // цель: базово 2000, в лютеиновую фазу чуть выше (прогестерон ↑ аппетит)
-  const goal = phase === "luteal" ? 2150 : phase === "menstruation" ? 2050 : 2000;
-  const pct = Math.min(100, Math.round((eaten / goal) * 100));
-  const r = 30, c = 2 * Math.PI * r;
-
-  return (
-    <Card className="tap p-3.5" onClick={onOpen}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">🍽️ Питание</p>
-      <div className="flex items-center gap-3">
-        <div className="relative h-[72px] w-[72px] shrink-0">
-          <svg viewBox="0 0 72 72" className="h-full w-full -rotate-90">
-            <circle cx="36" cy="36" r={r} fill="none" stroke="#EDE8F5" strokeWidth="6" />
-            <motion.circle cx="36" cy="36" r={r} fill="none" stroke="#7BAF8D" strokeWidth="6" strokeLinecap="round"
-              initial={{ strokeDasharray: `0 ${c}` }}
-              animate={{ strokeDasharray: `${(pct / 100) * c} ${c - (pct / 100) * c}` }}
-              transition={{ duration: 0.9 }} />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-bold text-mira-text leading-none"><CountUp value={eaten} /></span>
-            <span className="text-[8px] text-mira-muted">из {goal}</span>
-          </div>
-        </div>
-        <div className="flex-1">
-          <p className="text-xs font-semibold text-mira-text mb-1.5">Цель ~{goal} ккал</p>
-          {/* КБЖУ — рекомендуемый баланс */}
-          {[
-            { l: "Б", pct: 30, color: "#C47E9B" },
-            { l: "Ж", pct: 30, color: "#C4B07E" },
-            { l: "У", pct: 40, color: "#7BAF8D" },
-          ].map(m => (
-            <div key={m.l} className="flex items-center gap-1.5 mb-0.5">
-              <span className="text-[9px] font-bold w-2.5 text-mira-muted">{m.l}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-mira-lavender-light overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${m.pct}%`, background: m.color }} />
-              </div>
-              <span className="text-[8px] text-mira-muted w-6 text-right">{m.pct}%</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// ── Бутылка воды ──
-
-function WaterBottle({ data, onOpen }: { data: MiraLocalData; onOpen: () => void }) {
-  const entry = getWaterEntry(data);
-  const ml = entry.glasses * 250;
-  const goalMl = entry.goal * 250;
-  const fillPct = Math.min(100, (ml / goalMl) * 100);
-
-  return (
-    <Card className="tap p-3.5" onClick={onOpen}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted mb-2">💧 Вода</p>
-      <div className="flex items-center gap-3">
-        {/* Бутылка */}
-        <div className="relative h-[72px] w-9 shrink-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-[#7BAF8D]/40 rounded-t" />
-          <div className="absolute top-1.5 inset-x-0 bottom-0 rounded-[10px] rounded-t-md border-2 border-[#7BAF8D]/30 overflow-hidden bg-[#E0F5E8]/20">
-            <motion.div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[#7BAF8D] to-[#A0D4B0]"
-              initial={{ height: 0 }} animate={{ height: `${fillPct}%` }} transition={{ duration: 0.7 }} />
-          </div>
-        </div>
-        <div className="flex-1">
-          <p className="text-lg font-bold text-mira-text leading-none"><CountUp value={ml / 1000} decimals={2} /> <span className="text-xs font-normal text-mira-muted">л</span></p>
-          <p className="text-[10px] text-mira-muted mt-0.5">из {(goalMl / 1000).toFixed(1)} л</p>
-          {ml >= goalMl
-            ? <p className="text-[10px] text-mira-success font-semibold mt-1">Цель достигнута 💧</p>
-            : <p className="text-[10px] text-mira-primary font-semibold mt-1">+ добавить стакан</p>}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps) {
   const [hintDismissed, setHintDismissed] = useState(
     typeof window !== "undefined" && localStorage.getItem("mira:hint-today") === "done"
@@ -355,7 +239,7 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
   const daysUntil = getDaysUntilPeriod(profile);
   const checkIn = getCheckIn(data);
   const name = profile?.name ?? "Моя Норма";
-  const waterEntry = getWaterEntry(data);
+  const streak = getStreak(data);
 
   const isIslamic = profile?.additionalMode === "islam";
   const ageConfig = getAgeConfig(profile?.age);
@@ -367,7 +251,6 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
   const toughDay = getToughDayContent(data);
   const redFlags = getRedFlags(data);
   const reminders = getSmartReminders(data);
-  const vitaminCard = getVitaminRecommendations(data);
   const forecast = getPeriodForecast(profile);
 
   // «Сегодня важное» — один блок по приоритету
@@ -397,9 +280,14 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
           className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-mira-rose-light to-mira-lavender-light text-base font-bold text-mira-primary shadow-card transition active:scale-95">
           {name.charAt(0).toUpperCase()}
         </button>
-        <p className="text-sm font-semibold text-mira-text">
-          {new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-        </p>
+        <div className="flex flex-col items-center">
+          <p className="text-sm font-semibold text-mira-text">
+            {new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+          </p>
+          {streak.current > 0 && (
+            <span className="text-[11px] font-semibold text-mira-primary">🔥 серия {streak.current}</span>
+          )}
+        </div>
         <button onClick={() => navigate("analytics")}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-mira-lavender/30 bg-white text-mira-muted shadow-card transition hover:border-mira-primary/30 active:scale-95">
           <span className="text-lg">📅</span>
@@ -434,11 +322,6 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
         />
       </motion.div>
 
-      {/* Сад здоровья + дневной ритуал */}
-      <motion.div variants={fadeUp} className="mb-4">
-        <GardenCard data={data} onCheckIn={onCheckIn} />
-      </motion.div>
-
       {/* Phase hero with wave graph */}
       <motion.div variants={fadeUp} className="mb-4">
         <Card className={`sheen animate-gradient p-5 bg-gradient-to-br ${config.gradient} border-0 shadow-[0_8px_32px_rgba(155,142,196,0.18)]`}>
@@ -465,9 +348,18 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
         </Card>
       </motion.div>
 
-      {/* Health traffic light */}
+      {/* Инлайн быстрая отметка — ядро экрана */}
       <motion.div variants={fadeUp} className="mb-4">
-        <MiniHealthStrip data={data} onOpen={() => navigate("analytics")} />
+        <QuickLogInline data={data} persist={persist} onMore={() => onCheckIn?.()} />
+      </motion.div>
+
+      {/* Норма-скан — что уже понятно про норму */}
+      <motion.div variants={fadeUp} className="mb-4">
+        <NormaScanCard
+          data={data}
+          onOpenAnalytics={() => navigate("analytics")}
+          onOpenReport={() => navigate("report")}
+        />
       </motion.div>
 
       {/* Сегодня важное — один блок */}
@@ -488,25 +380,6 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
           </div>
         </Card>
       </motion.div>
-
-      {/* Питание + Вода */}
-      <motion.div variants={fadeUp} className="mb-4 grid grid-cols-2 gap-3">
-        <NutritionRing data={data} phase={phase} onOpen={() => navigate("care")} />
-        <WaterBottle data={data} onOpen={() => navigate("care")} />
-      </motion.div>
-
-      {/* Vitamin one-liner (если есть) */}
-      {vitaminCard && vitaminCard.recs.length > 0 && (
-        <motion.div variants={fadeUp} className="mb-4">
-          <Card className="p-3.5 flex items-center gap-3 border-mira-success/10 bg-[#E0F5E8]/20">
-            <span className="text-lg">{vitaminCard.recs[0].icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-mira-text">{vitaminCard.recs[0].name} {vitaminCard.recs[0].dose}</p>
-              <p className="text-[10px] text-mira-success">{vitaminCard.recs[0].how.split(".")[0]}.</p>
-            </div>
-          </Card>
-        </motion.div>
-      )}
 
       {/* Islamic: qada (если есть) */}
       {isIslamic && qadaStats && qadaStats.remaining > 0 && (
