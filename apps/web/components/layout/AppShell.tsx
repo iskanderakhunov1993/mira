@@ -18,6 +18,7 @@ import { ReportScreen } from "@/components/screens/ReportScreen";
 import { ProfileScreen } from "@/components/screens/ProfileScreen";
 import { OnboardingScreen } from "@/components/screens/OnboardingScreen";
 import { CheckInModal } from "@/components/screens/CheckInModal";
+import { BadStateModal } from "@/components/screens/BadStateModal";
 
 export function AppShell() {
   const [page, setPage] = useState<NavPage>("today");
@@ -26,6 +27,7 @@ export function AppShell() {
   const [showApp, setShowApp] = useState(false);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkInDate, setCheckInDate] = useState<string | undefined>(undefined);
+  const [badStateOpen, setBadStateOpen] = useState(false);
 
   useEffect(() => {
     const loaded = readData();
@@ -83,7 +85,7 @@ export function AppShell() {
     );
   }
 
-  const screenProps = { data, persist, navigate: setPage, onCheckIn: openCheckIn };
+  const screenProps = { data, persist, navigate: setPage, onCheckIn: openCheckIn, onBadState: () => setBadStateOpen(true) };
   const isIslamic = data.profile?.additionalMode === "islam";
 
   const screens: Record<NavPage, React.ReactNode> = {
@@ -123,6 +125,14 @@ export function AppShell() {
             data={data}
             persist={persist}
             targetDate={checkInDate}
+          />
+        )}
+        {badStateOpen && (
+          <BadStateModal
+            open={badStateOpen}
+            onClose={() => setBadStateOpen(false)}
+            data={data}
+            persist={persist}
           />
         )}
       </AnimatePresence>

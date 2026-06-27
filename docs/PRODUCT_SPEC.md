@@ -64,6 +64,40 @@ Islamic mode is an optional contextual destination when enabled.
 - Data export, deletion automation, retention controls, and audit views.
 - Paid-plan entitlement service and carefully tested usage limits.
 
+## Backlog
+
+### "Is This Normal?" Symptom Question Assistant
+
+**Pain:** users often do not know whether a symptom is expected cycle variation,
+something to observe, or a reason to speak with a qualified clinician.
+
+**User story:** as a user, I want to ask "Is this normal?" in my own words so I
+can get a simple, safe explanation of my symptom without receiving a diagnosis.
+
+**Example questions:**
+
+- "My period has lasted 8 days, is this normal?"
+- "My stomach hurts a lot on the first day, is this normal?"
+- "There was blood after sex, is this normal?"
+- "My period is 6 days late, what should I do?"
+- "I feel very weak during my period, is that dangerous?"
+
+**MVP requirements:**
+
+- Add an "Is this normal?" entry point from Today and Diary.
+- Let the user type a free-text question and optionally choose a quick example.
+- Return a short answer in plain language, without diagnosis.
+- Explain what can be common, what to observe, what to do now, and when to
+  consider contacting a qualified clinician.
+- Highlight red flags such as very heavy bleeding, dizziness/fainting, severe or
+  unusual pain, bleeding after sex, bleeding between periods, prolonged bleeding,
+  and persistent or worsening symptoms.
+- Save the question and response to the cycle-day diary.
+
+**Safety constraints:** deterministic red-flag rules must run before any AI
+response. AI can compose the explanation, but it must not diagnose, recommend
+medication, or minimize severe, new, persistent, or worsening symptoms.
+
 ## Monetization Model
 
 Free access includes manual tracking, basic workouts, and a limited number of

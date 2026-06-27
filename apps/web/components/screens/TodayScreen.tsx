@@ -10,6 +10,7 @@ import {
   ChevronRight,
   FileText,
   Footprints,
+  HeartPulse,
   Minus,
   Plus,
   Shirt,
@@ -592,7 +593,7 @@ function PersonalDiaryCard({
   );
 }
 
-export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps) {
+export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState }: ScreenProps) {
   const profile = data.profile;
   const cycleDay = getCycleDay(profile);
   const cycleLength = profile?.cycleConfig.cycleLength ?? 28;
@@ -703,6 +704,14 @@ export function TodayScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
               <FileText className="h-4 w-4" />
             </Button>
           </div>
+          <button
+            type="button"
+            onClick={() => onBadState?.()}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-mira-cycle/15 bg-white/45 px-4 py-2.5 text-sm font-bold text-mira-cycle transition hover:bg-white/65 active:scale-[0.98]"
+          >
+            <HeartPulse className="h-4 w-4" />
+            Мне плохо
+          </button>
         </Card>
       </motion.div>
 

@@ -60,6 +60,29 @@ export type NoteEntry = {
   text: string;
 };
 
+export type BadSymptom =
+  | "abdominal_pain"
+  | "heavy_bleeding"
+  | "dizziness"
+  | "nausea"
+  | "no_energy"
+  | "anxiety"
+  | "crying"
+  | "pain_after_sex"
+  | "delay"
+  | "mid_cycle_bleeding";
+
+export type BadEpisode = {
+  id: string;
+  savedAt: string;
+  symptoms: BadSymptom[];
+  severity: "self_care" | "watch" | "doctor";
+  summary: string;
+  actions: string[];
+  watch: string[];
+  doctor: string[];
+};
+
 // Meal tracking (simplified, no photo)
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 export type MealSize = "small" | "medium" | "large";
@@ -84,6 +107,7 @@ export type DailyCheckIn = {
   pms?: PmsEntry;
   meals?: MealEntry[];
   note?: NoteEntry;
+  badEpisodes?: BadEpisode[];
   discharge?: string;
   stress?: string;
 };

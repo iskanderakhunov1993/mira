@@ -163,6 +163,15 @@ function checkInItems(checkIn: DailyCheckIn | undefined) {
       value: checkIn.note.text,
     });
   }
+  if (checkIn.badEpisodes && checkIn.badEpisodes.length > 0) {
+    const lastEpisode = checkIn.badEpisodes[checkIn.badEpisodes.length - 1];
+    items.push({
+      key: "bad",
+      icon: Activity,
+      label: "Мне плохо",
+      value: `${checkIn.badEpisodes.length} эпизод · ${lastEpisode.summary}`,
+    });
+  }
 
   return items;
 }
