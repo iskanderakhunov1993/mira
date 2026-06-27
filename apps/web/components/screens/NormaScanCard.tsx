@@ -6,9 +6,9 @@ import { getHealthSummary, statusMeta } from "@/lib/healthScore";
 import type { MiraLocalData } from "@/lib/types";
 
 /*
- * «Норма-скан» — что приложение уже поняло про твою норму.
- * Светофор по метрикам (цикл, боль, сон, энергия, настроение) + блок «когда к врачу».
- * Данные берём из getHealthSummary (тот же движок, что и мини-светофор).
+ * «Норма-скан» на главной — компактный светофор: по кружку на метрику
+ * (норм / стоит следить / к врачу / нет данных), без текста. Подробный
+ * разбор — на странице «Аналитика» по тапу.
  */
 
 type Props = {
@@ -23,40 +23,32 @@ export function NormaScanCard({ data, onOpenAnalytics, onOpenReport }: Props) {
 
   return (
     <Card className="p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
+      <button onClick={onOpenAnalytics} className="mb-3 flex w-full items-center justify-between">
+        <div className="text-left">
           <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Норма-скан</p>
           <p className="text-sm font-bold text-mira-text">Что уже понятно</p>
         </div>
-        <button
-          onClick={onOpenAnalytics}
-          className="flex items-center gap-0.5 text-xs font-semibold text-mira-primary transition active:scale-95"
-        >
+        <span className="flex items-center gap-0.5 text-xs font-semibold text-mira-primary">
           Аналитика <ChevronRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
+        </span>
+      </button>
 
-      <div className="grid grid-cols-2 gap-2">
+      {/* Список метрик: эмодзи + надпись + кружок-светофор */}
+      <button onClick={onOpenAnalytics} className="flex w-full flex-col gap-1">
         {summary.metrics.map((m) => {
           const meta = statusMeta[m.status];
           return (
-            <button
-              key={m.id}
-              onClick={onOpenAnalytics}
-              className="flex flex-col items-start rounded-2xl border p-3 text-left transition active:scale-[0.98]"
-              style={{ borderColor: `${meta.color}33`, background: `${meta.bg}66` }}
-            >
-              <div className="mb-1 flex w-full items-center justify-between">
-                <span className="text-base">{m.emoji}</span>
-                <span className="h-2 w-2 rounded-full" style={{ background: meta.color }} />
-              </div>
-              <p className="text-xs font-semibold text-mira-text">{m.label}</p>
-              <p className="text-sm font-bold" style={{ color: meta.color }}>{m.verdict}</p>
-              <p className="mt-0.5 text-[10px] leading-tight text-mira-muted">{m.detail}</p>
-            </button>
+            <div key={m.id} className="flex items-center gap-2.5 rounded-xl px-1.5 py-2">
+              <span className="text-lg leading-none">{m.emoji}</span>
+              <span className="flex-1 text-left text-sm font-semibold text-mira-text">{m.label}</span>
+              <span
+                className="h-3.5 w-3.5 rounded-full border-2"
+                style={{ background: meta.color, borderColor: `${meta.color}55` }}
+              />
+            </div>
           );
         })}
-      </div>
+      </button>
 
       {/* Когда к врачу */}
       <div className="mt-3 flex items-center justify-between rounded-2xl border border-mira-lavender/20 bg-mira-bg/60 px-3 py-2.5">
