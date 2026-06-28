@@ -7,19 +7,24 @@ import {
   Calendar,
   ClipboardList,
   Download,
+  Droplets,
   FileText,
+  Footprints,
   HeartHandshake,
   MessageSquare,
   Moon,
   Pill,
   Printer,
+  Scale,
   Shield,
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getDoctorScript } from "@/lib/alerts";
+import { getDoctorScript, getPhaseCorrelations } from "@/lib/alerts";
+import { getCycleAnalytics } from "@/lib/cycleAnalytics";
+import { getCorrelations } from "@/lib/correlations";
 import { evaluateLab, getHormoneCheckup45, getLabRange } from "@/lib/labs";
 import { LabsSection } from "./LabsSection";
 import type { DailyCheckIn, MiraLocalData } from "@/lib/types";
@@ -117,6 +122,35 @@ function hasUnusualSymptoms(checkIn: DailyCheckIn) {
   );
 }
 
+function summarizeCareData(data: MiraLocalData, cutoffStr: string) {
+  const waterEntries = Object.values(data.waterLog ?? {}).filter(entry => entry.date >= cutoffStr);
+  const walkingEntries = Object.values(data.walkingLog ?? {}).filter(entry => entry.date >= cutoffStr);
+  const weightEntries = Object.values(data.weightLog ?? {}).filter(entry => entry.date >= cutoffStr).sort((a, b) => a.date.localeCompare(b.date));
+  const workouts = data.workouts.filter(workout => workout.date >= cutoffStr);
+  const mealDays = Object.values(data.checkIns).filter(checkIn => checkIn.date >= cutoffStr && checkIn.meals?.length).length;
+  const lowWaterDays = waterEntries.filter(entry => entry.glasses < 4).length;
+  const walkingGoodDays = walkingEntries.filter(entry => entry.steps >= Math.min(entry.goal, 5000)).length;
+  const completedWorkouts = workouts.filter(workout => workout.status === "completed").length;
+  const latestWeight = weightEntries[weightEntries.length - 1];
+  const firstWeight = weightEntries[0];
+  const weightDelta = latestWeight && firstWeight && latestWeight.date !== firstWeight.date
+    ? Math.round((latestWeight.weight - firstWeight.weight) * 10) / 10
+    : null;
+
+  return {
+    waterEntries,
+    walkingEntries,
+    weightEntries,
+    workouts,
+    mealDays,
+    lowWaterDays,
+    walkingGoodDays,
+    completedWorkouts,
+    latestWeight,
+    weightDelta,
+  };
+}
+
 export function ReportScreen({ data, persist }: ScreenProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(3);
   const [includeSex, setIncludeSex] = useState(false);
@@ -151,6 +185,10 @@ export function ReportScreen({ data, persist }: ScreenProps) {
     const badSleepEntries = entries.filter(checkIn => checkIn.sleep?.quality === "bad" || checkIn.sleep?.quality === "insomnia" || checkIn.sleep?.quality === "little");
     const lowEnergyEntries = entries.filter(checkIn => checkIn.energy?.value === "low" || checkIn.energy?.value === "exhausted");
     const moodEntries = entries.filter(checkIn => checkIn.mood);
+    const care = summarizeCareData(data, cutoffStr);
+    const cycleAnalytics = getCycleAnalytics(data);
+    const correlations = getCorrelations(data);
+    const phaseCorrelations = getPhaseCorrelations(data);
 
     const symptomCounts = Object.entries(countBy(entries.flatMap(checkIn => [
       ...(checkIn.pms?.symptoms ?? []),
@@ -170,12 +208,34 @@ export function ReportScreen({ data, persist }: ScreenProps) {
       badSleepEntries.length >= Math.max(2, Math.round(entries.length * 0.25)) ? "Сон часто ухудшается" : null,
     ].filter(Boolean) as string[];
 
+    const doctorHighlights = [
+      strongPainEntries.length >= 2 ? `Сильная боль отмечена ${strongPainEntries.length} раза за выбранный период.` : null,
+      heavyFlowEntries.length >= 2 ? `Обильные/очень обильные месячные отмечены ${heavyFlowEntries.length} раза.` : null,
+      delayChecks.length > 0 ? `Есть ${delayChecks.length} разбор(ов) задержки с возможными причинами.` : null,
+      lowEnergyEntries.length >= 2 ? `Низкая энергия или сильная слабость отмечены ${lowEnergyEntries.length} дня.` : null,
+      badSleepEntries.length >= 2 ? `Сон ухудшался ${badSleepEntries.length} дня, это может усиливать боль и усталость.` : null,
+      care.weightDelta !== null && Math.abs(care.weightDelta) >= 1 ? `Вес изменился на ${care.weightDelta > 0 ? "+" : ""}${care.weightDelta.toFixed(1)} кг за период отметок.` : null,
+      intimacyRiskEntries.some(checkIn => checkIn.intimacy?.feeling === "pain" || checkIn.intimacy?.bleedingAfter) ? "Есть отметки боли или крови после секса." : null,
+    ].filter(Boolean) as string[];
+
+    const analyticsFindings = [
+      cycleAnalytics ? cycleAnalytics.insight : null,
+      ...correlations.slice(0, 3).map(item => item.body),
+      ...phaseCorrelations.slice(0, 2).map(item => item.explanation),
+      care.lowWaterDays >= 2 ? `В ${care.lowWaterDays} дня воды было меньше 1 л. Это стоит сравнить со вздутием, слабостью и головной болью.` : null,
+      care.walkingEntries.length >= 3 ? `Ходьба отмечена ${care.walkingEntries.length} дня. Врач может видеть контекст активности в дни боли и усталости.` : null,
+      care.completedWorkouts >= 2 ? `Выполнено ${care.completedWorkouts} тренировок. Это помогает оценить нагрузку рядом с ухудшением самочувствия.` : null,
+      care.weightDelta !== null ? `Вес: ${care.latestWeight?.weight.toFixed(1)} кг, изменение ${care.weightDelta > 0 ? "+" : ""}${care.weightDelta.toFixed(1)} кг за период отметок.` : null,
+    ].filter(Boolean).slice(0, 7) as string[];
+
     const questions = [
       strongPainEntries.length >= 2 ? "Почему сильная боль повторяется и какие обследования стоит обсудить?" : null,
       heavyFlowEntries.length >= 2 ? "Нормальна ли такая обильность и нужно ли проверить ферритин/гемоглобин?" : null,
       delayChecks.length > 0 ? "Какие причины задержки вероятны в моём случае и когда делать тест?" : null,
       intimacyRiskEntries.some(checkIn => checkIn.intimacy?.feeling === "pain" || checkIn.intimacy?.bleedingAfter) ? "С чем может быть связана боль или кровь после секса?" : null,
       medicationEntries.length > 0 ? "Могут ли лекарства из списка влиять на цикл или симптомы?" : null,
+      care.lowWaterDays >= 2 ? "Может ли слабость/головная боль/вздутие усиливаться из-за недостатка воды или других факторов?" : null,
+      care.weightDelta !== null && Math.abs(care.weightDelta) >= 1 ? "Может ли изменение веса быть связано с фазой цикла, задержкой жидкости или гормональными причинами?" : null,
       "Какие красные флаги в моих записях требуют очного осмотра?",
     ].filter(Boolean) as string[];
 
@@ -202,6 +262,12 @@ export function ReportScreen({ data, persist }: ScreenProps) {
       badSleepEntries,
       lowEnergyEntries,
       moodEntries,
+      care,
+      cycleAnalytics,
+      correlations,
+      phaseCorrelations,
+      doctorHighlights,
+      analyticsFindings,
       symptomCounts,
       focusItems,
       questions,
@@ -226,6 +292,19 @@ export function ReportScreen({ data, persist }: ScreenProps) {
       `Настроение отмечено: ${report.moodEntries.length} дней`,
       `Сон ухудшался: ${report.badSleepEntries.length} дней`,
       `Лекарства: ${report.medicationEntries.map(entry => `${entry.date}: ${entry.symptomLog?.medications?.join(", ")}`).join("; ") || "нет отметок"}`,
+      "",
+      "ГЛАВНОЕ ДЛЯ ВРАЧА",
+      ...(report.doctorHighlights.length ? report.doctorHighlights.map(item => `— ${item}`) : ["— Повторяющихся тревожных сигналов пока мало"]),
+      "",
+      "ЗАКОНОМЕРНОСТИ ИЗ АНАЛИТИКИ",
+      ...(report.analyticsFindings.length ? report.analyticsFindings.map(item => `— ${item}`) : ["— Данных пока недостаточно для личных закономерностей"]),
+      "",
+      "ФАКТОРЫ ЗАБОТЫ",
+      `— Вода: ${report.care.waterEntries.length} дней с отметками, мало воды: ${report.care.lowWaterDays} дней`,
+      `— Питание: ${report.care.mealDays} дней с отметками`,
+      `— Ходьба: ${report.care.walkingEntries.length} дней, достаточно шагов: ${report.care.walkingGoodDays} дней`,
+      `— Тренировки: ${report.care.workouts.length} записей, выполнено: ${report.care.completedWorkouts}`,
+      `— Вес: ${report.care.weightEntries.length} замеров${report.care.latestWeight ? `, последний ${report.care.latestWeight.weight.toFixed(1)} кг` : ""}`,
       "",
       "ЧТО ОБСУДИТЬ",
       ...(report.focusItems.length ? report.focusItems.map(item => `— ${item}`) : ["— Явных повторяющихся сигналов в выбранном периоде мало"]),
@@ -352,6 +431,18 @@ export function ReportScreen({ data, persist }: ScreenProps) {
         </div>
       </Card>
 
+      <Card className="mb-5 border-mira-primary/15 p-5 print:hidden">
+        <div className="mb-4 flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-mira-cycle" />
+          <p className="text-sm font-semibold text-mira-text">Главное для врача</p>
+        </div>
+        <div className="space-y-2">
+          {(report.doctorHighlights.length ? report.doctorHighlights : ["Повторяющихся тревожных сигналов пока мало. Отчёт всё равно полезен как история наблюдений."]).slice(0, 5).map((item, index) => (
+            <DoctorPoint key={item} index={index + 1} text={item} />
+          ))}
+        </div>
+      </Card>
+
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
           <ClipboardList className="h-4 w-4 text-mira-primary" />
@@ -362,6 +453,8 @@ export function ReportScreen({ data, persist }: ScreenProps) {
           <InfoRow label="Симптомы" value={`${report.painEntries.length} дней с болью, ${report.unusualEntries.length} необычных сигналов`} />
           <InfoRow label="Состояние" value={`${report.moodEntries.length} настроений, ${report.lowEnergyEntries.length} дней низкой энергии`} />
           <InfoRow label="Лекарства и задержки" value={`${report.medicationEntries.length} лекарств, ${report.delayChecks.length} разборов задержки`} />
+          <InfoRow label="Забота" value={`${report.care.waterEntries.length} воды, ${report.care.walkingEntries.length} ходьбы, ${report.care.weightEntries.length} веса`} />
+          <InfoRow label="Закономерности" value={`${report.analyticsFindings.length} выводов из аналитики`} />
         </div>
 
         <div className="mt-4 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-3">
@@ -407,6 +500,35 @@ export function ReportScreen({ data, persist }: ScreenProps) {
             <p className="mt-1 text-sm leading-relaxed text-mira-text">{report.focusItems.join(" · ")}</p>
           </div>
         )}
+      </Card>
+
+      <Card className="mb-5 p-5 print:hidden">
+        <div className="mb-4 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-mira-primary" />
+          <p className="text-sm font-semibold text-mira-text">Закономерности из аналитики</p>
+        </div>
+        <div className="space-y-2">
+          {(report.analyticsFindings.length ? report.analyticsFindings : ["Mira пока собирает данные. После нескольких отметок здесь появятся личные закономерности."]).slice(0, 6).map(item => (
+            <InfoRow key={item} label="Вывод" value={item} />
+          ))}
+        </div>
+      </Card>
+
+      <Card className="mb-5 p-5 print:hidden">
+        <div className="mb-4 flex items-center gap-2">
+          <Activity className="h-4 w-4 text-mira-primary" />
+          <p className="text-sm font-semibold text-mira-text">Факторы заботы</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-5">
+          <CareFactor icon={<Droplets className="h-4 w-4" />} label="Вода" value={`${report.care.waterEntries.length}`} note={`мало: ${report.care.lowWaterDays}`} />
+          <CareFactor icon={<Sparkles className="h-4 w-4" />} label="Питание" value={`${report.care.mealDays}`} note="дней" />
+          <CareFactor icon={<Footprints className="h-4 w-4" />} label="Ходьба" value={`${report.care.walkingEntries.length}`} note={`активно: ${report.care.walkingGoodDays}`} />
+          <CareFactor icon={<Activity className="h-4 w-4" />} label="Тренировки" value={`${report.care.workouts.length}`} note={`выполнено: ${report.care.completedWorkouts}`} />
+          <CareFactor icon={<Scale className="h-4 w-4" />} label="Вес" value={`${report.care.weightEntries.length}`} note={report.care.latestWeight ? `${report.care.latestWeight.weight.toFixed(1)} кг` : "нет"} />
+        </div>
+        <p className="mt-3 text-[11px] leading-relaxed text-mira-muted">
+          Эти данные не ставят диагноз, но дают врачу контекст: нагрузка, вода, вес и питание рядом с симптомами.
+        </p>
       </Card>
 
       <div className="mb-5 print:hidden">
@@ -472,6 +594,45 @@ export function ReportScreen({ data, persist }: ScreenProps) {
             </div>
           )}
         </Card>
+
+        <Card className="p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-mira-cycle" />
+            <p className="text-sm font-semibold text-mira-text">Главное для врача</p>
+          </div>
+          <div className="space-y-2">
+            {(report.doctorHighlights.length ? report.doctorHighlights : ["Повторяющихся тревожных сигналов пока мало. Отчёт полезен как история наблюдений."]).slice(0, 6).map((item, index) => (
+              <DoctorPoint key={item} index={index + 1} text={item} />
+            ))}
+          </div>
+        </Card>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card className="p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-mira-primary" />
+              <p className="text-sm font-semibold text-mira-text">Закономерности из аналитики</p>
+            </div>
+            <div className="space-y-2">
+              {(report.analyticsFindings.length ? report.analyticsFindings : ["Данных пока недостаточно для личных закономерностей."]).slice(0, 6).map(item => (
+                <InfoRow key={item} label="Вывод" value={item} />
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-mira-primary" />
+              <p className="text-sm font-semibold text-mira-text">Факторы заботы</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <MiniStat label="Вода" value={`${report.care.waterEntries.length}`} note={`мало: ${report.care.lowWaterDays}`} />
+              <MiniStat label="Питание" value={`${report.care.mealDays}`} note="дней" />
+              <MiniStat label="Ходьба" value={`${report.care.walkingEntries.length}`} note={`активно: ${report.care.walkingGoodDays}`} />
+              <MiniStat label="Вес" value={`${report.care.weightEntries.length}`} note={report.care.latestWeight ? `${report.care.latestWeight.weight.toFixed(1)} кг` : "нет"} />
+            </div>
+          </Card>
+        </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
           <Card className="p-5">
@@ -717,6 +878,30 @@ function MiniStat({ label, value, note }: { label: string; value: string; note: 
     <div className="rounded-2xl bg-mira-bg p-3">
       <p className="text-xs text-mira-muted">{label}</p>
       <p className="mt-1 text-xl font-bold text-mira-text">{value}</p>
+      <p className="mt-0.5 text-[10px] text-mira-muted">{note}</p>
+    </div>
+  );
+}
+
+function DoctorPoint({ index, text }: { index: number; text: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl bg-mira-bg p-3">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mira-lavender-light text-xs font-bold text-mira-primary">
+        {index}
+      </span>
+      <p className="text-sm leading-relaxed text-mira-text">{text}</p>
+    </div>
+  );
+}
+
+function CareFactor({ icon, label, value, note }: { icon: React.ReactNode; label: string; value: string; note: string }) {
+  return (
+    <div className="rounded-2xl bg-mira-bg p-3">
+      <div className="mb-2 flex items-center gap-2 text-mira-primary">
+        {icon}
+        <p className="text-xs font-bold text-mira-text">{label}</p>
+      </div>
+      <p className="text-xl font-bold text-mira-text">{value}</p>
       <p className="mt-0.5 text-[10px] text-mira-muted">{note}</p>
     </div>
   );

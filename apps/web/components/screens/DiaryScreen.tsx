@@ -2,20 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity,
-  BarChart3,
   BookOpen,
   CalendarDays,
-  Droplets,
-  Dumbbell,
-  FileText,
-  Footprints,
-  Moon,
   PencilLine,
-  Plus,
-  Sparkles,
-  Utensils,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,55 +13,6 @@ import type { DailyCheckIn, MiraLocalData } from "@/lib/types";
 import type { ScreenProps } from "./types";
 
 const weekDays = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-
-const moodLabels: Record<string, string> = {
-  normal: "спокойно",
-  joy: "радость",
-  sadness: "грусть",
-  anger: "раздражение",
-  anxiety: "тревога",
-  swings: "перепады",
-};
-
-const energyLabels: Record<string, string> = {
-  exhausted: "истощение",
-  low: "низкая",
-  normal: "обычная",
-  high: "высокая",
-};
-
-const sleepLabels: Record<string, string> = {
-  good: "хороший",
-  normal: "обычный",
-  bad: "плохой",
-  little: "мало сна",
-  insomnia: "бессонница",
-};
-
-const periodLabels: Record<string, string> = {
-  light: "скудные",
-  moderate: "умеренные",
-  heavy: "обильные",
-  very_heavy: "очень обильные",
-};
-
-const painLabels: Record<string, string> = {
-  light: "лёгкая",
-  medium: "средняя",
-  strong: "сильная",
-};
-
-const appetiteLabels: Record<string, string> = {
-  low: "низкий аппетит",
-  normal: "обычный аппетит",
-  high: "высокий аппетит",
-};
-
-const libidoLabels: Record<string, string> = {
-  low: "низкое либидо",
-  normal: "обычное либидо",
-  high: "высокое либидо",
-};
 
 function recentDays(count = 21) {
   const today = new Date();
@@ -107,137 +47,12 @@ function getPhaseForDate(data: MiraLocalData, dayKey: string) {
   };
 }
 
-function checkInItems(checkIn: DailyCheckIn | undefined) {
-  if (!checkIn) return [];
-
-  const items: { key: string; icon: typeof Sparkles; label: string; value: string }[] = [];
-  if (checkIn.period) {
-    items.push({
-      key: "period",
-      icon: CalendarDays,
-      label: "Месячные",
-      value: periodLabels[checkIn.period.intensity] ?? "отмечены",
-    });
-  }
-  if (checkIn.pain && checkIn.pain.kinds.some((kind) => kind !== "none")) {
-    items.push({
-      key: "pain",
-      icon: Activity,
-      label: "Боль",
-      value: painLabels[checkIn.pain.level ?? "light"] ?? "отмечена",
-    });
-  }
-  if (checkIn.mood) {
-    items.push({
-      key: "mood",
-      icon: Sparkles,
-      label: "Настроение",
-      value: moodLabels[checkIn.mood.value] ?? checkIn.mood.value,
-    });
-  }
-  if (checkIn.energy) {
-    items.push({
-      key: "energy",
-      icon: Zap,
-      label: "Энергия",
-      value: energyLabels[checkIn.energy.value] ?? checkIn.energy.value,
-    });
-  }
-  if (checkIn.sleep) {
-    items.push({
-      key: "sleep",
-      icon: Moon,
-      label: "Сон",
-      value: sleepLabels[checkIn.sleep.quality] ?? checkIn.sleep.quality,
-    });
-  }
-  if (checkIn.pms && checkIn.pms.symptoms.length > 0) {
-    items.push({
-      key: "pms",
-      icon: PencilLine,
-      label: "ПМС",
-      value: checkIn.pms.symptoms.slice(0, 2).join(", "),
-    });
-  }
-  if (checkIn.intimacy?.happened) {
-    const parts = [
-      checkIn.intimacy.protection === "protected" ? "защищённый" : null,
-      checkIn.intimacy.protection === "unprotected" ? "незащищённый" : null,
-      checkIn.intimacy.protection === "interrupted" ? "прерванный" : null,
-      checkIn.intimacy.feeling === "pain" ? "боль" : null,
-      checkIn.intimacy.feeling === "discomfort" ? "дискомфорт" : null,
-      checkIn.intimacy.bleedingAfter ? "кровь после" : null,
-    ].filter(Boolean);
-    items.push({
-      key: "intimacy",
-      icon: Sparkles,
-      label: "Секс",
-      value: parts.join(", ") || "отмечен",
-    });
-  }
-  if (checkIn.symptomLog) {
-    const values = [
-      checkIn.symptomLog.appetite ? appetiteLabels[checkIn.symptomLog.appetite] : null,
-      checkIn.symptomLog.sweetCraving ? "тяга к сладкому" : null,
-      checkIn.symptomLog.libido ? libidoLabels[checkIn.symptomLog.libido] : null,
-      checkIn.symptomLog.anxiety ? "тревога" : null,
-      checkIn.symptomLog.medications?.length ? `лекарства: ${checkIn.symptomLog.medications.slice(0, 2).join(", ")}` : null,
-    ].filter(Boolean);
-    items.push({
-      key: "symptomLog",
-      icon: BarChart3,
-      label: "Лог симптомов",
-      value: values.slice(0, 2).join(", ") || "отмечено",
-    });
-  }
-  if (checkIn.meals && checkIn.meals.length > 0) {
-    items.push({
-      key: "meals",
-      icon: Utensils,
-      label: "Питание",
-      value: `${checkIn.meals.length} отметки`,
-    });
-  }
-  if (checkIn.note?.text) {
-    items.push({
-      key: "note",
-      icon: PencilLine,
-      label: "Заметка",
-      value: checkIn.note.text,
-    });
-  }
-  if (checkIn.badEpisodes && checkIn.badEpisodes.length > 0) {
-    const lastEpisode = checkIn.badEpisodes[checkIn.badEpisodes.length - 1];
-    items.push({
-      key: "bad",
-      icon: Activity,
-      label: "Мне плохо",
-      value: `${checkIn.badEpisodes.length} эпизод · ${lastEpisode.summary}`,
-    });
-  }
-  if (checkIn.delayChecks && checkIn.delayChecks.length > 0) {
-    const lastCheck = checkIn.delayChecks[checkIn.delayChecks.length - 1];
-    items.push({
-      key: "delay",
-      icon: CalendarDays,
-      label: "Задержка",
-      value: `${lastCheck.delayDays} дн. · ${lastCheck.reasons.length > 0 ? lastCheck.reasons.length : "без"} факторов`,
-    });
-  }
-
-  return items;
-}
-
-export function DiaryScreen({ data, persist, navigate, onCheckIn }: ScreenProps) {
+export function DiaryScreen({ data, persist }: ScreenProps) {
   const [selectedDay, setSelectedDay] = useState(dateKey());
   const [diaryText, setDiaryText] = useState("");
   const [savedNote, setSavedNote] = useState(false);
   const days = useMemo(() => recentDays(21), []);
   const selectedCheckIn = data.checkIns[selectedDay];
-  const selectedItems = checkInItems(selectedCheckIn);
-  const water = data.waterLog?.[selectedDay];
-  const walking = data.walkingLog?.[selectedDay];
-  const workouts = data.workouts.filter((workout) => workout.date === selectedDay);
   const phase = getPhaseForDate(data, selectedDay);
   const checkIns = Object.values(data.checkIns);
   const diaryEntries = checkIns
@@ -262,16 +77,6 @@ export function DiaryScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
     setSavedNote(true);
     window.setTimeout(() => setSavedNote(false), 1800);
   }
-
-  const last30 = checkIns.filter((entry) => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 30);
-    return entry.date >= dateKey(cutoff);
-  });
-  const painDays = last30.filter((entry) => entry.pain && entry.pain.kinds.some((kind) => kind !== "none")).length;
-  const heavyDays = last30.filter((entry) => entry.period?.intensity === "heavy" || entry.period?.intensity === "very_heavy").length;
-  const badSleepDays = last30.filter((entry) => entry.sleep?.quality === "bad" || entry.sleep?.quality === "insomnia").length;
-  const walkingDays = Object.values(data.walkingLog ?? {}).filter((entry) => entry.date >= dateKey(new Date(Date.now() - 30 * 86_400_000)) && entry.steps > 0).length;
 
   return (
     <div>
@@ -362,71 +167,6 @@ export function DiaryScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
       </Card>
 
       <Card className="mb-5 p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-bold text-mira-text">
-              {new Date(selectedDay).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-            </p>
-            <p className="text-xs text-mira-muted">
-              {phase ? `${phase.cycleDay}-й день · ${phase.label.toLowerCase()} фаза` : "День без привязки к циклу"}
-            </p>
-          </div>
-          <Button size="sm" onClick={() => onCheckIn?.(selectedDay)}>
-            <Plus className="h-4 w-4" /> Отметить
-          </Button>
-        </div>
-
-        {selectedItems.length === 0 && !water && !walking && workouts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-mira-lavender/40 bg-mira-bg p-4 text-center">
-            <p className="text-sm font-semibold text-mira-text">В этот день пока пусто</p>
-            <p className="mt-1 text-xs text-mira-muted">Добавь хотя бы одну отметку, чтобы день попал в аналитику и отчёт.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {selectedItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div key={item.key} className="flex items-center gap-3 rounded-2xl bg-mira-bg px-3 py-2.5">
-                  <Icon className="h-4 w-4 shrink-0 text-mira-primary" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-mira-text">{item.label}</p>
-                    <p className="truncate text-xs text-mira-muted">{item.value}</p>
-                  </div>
-                </div>
-              );
-            })}
-            {water && (
-              <div className="flex items-center gap-3 rounded-2xl bg-mira-bg px-3 py-2.5">
-                <Droplets className="h-4 w-4 shrink-0 text-mira-primary" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-mira-text">Вода</p>
-                  <p className="text-xs text-mira-muted">{water.glasses} из {water.goal} стаканов</p>
-                </div>
-              </div>
-            )}
-            {walking && walking.steps > 0 && (
-              <div className="flex items-center gap-3 rounded-2xl bg-mira-bg px-3 py-2.5">
-                <Footprints className="h-4 w-4 shrink-0 text-mira-success" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-mira-text">Ходьба</p>
-                  <p className="text-xs text-mira-muted">{walking.steps} шагов из {walking.goal}</p>
-                </div>
-              </div>
-            )}
-            {workouts.map((workout) => (
-              <div key={workout.id} className="flex items-center gap-3 rounded-2xl bg-mira-bg px-3 py-2.5">
-                <Dumbbell className="h-4 w-4 shrink-0 text-mira-primary" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-mira-text">{workout.title}</p>
-                  <p className="text-xs text-mira-muted">{workout.status === "completed" ? "выполнено" : workout.status === "lighter" ? "облегчено" : "пропущено"}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <Card className="mb-5 p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-mira-text">Записи по циклу</p>
@@ -465,36 +205,6 @@ export function DiaryScreen({ data, persist, navigate, onCheckIn }: ScreenProps)
         )}
       </Card>
 
-      <Card className="mb-5 p-5">
-        <p className="mb-3 text-sm font-bold text-mira-text">Что уже видно за 30 дней</p>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "Отметок", value: last30.length },
-            { label: "Боль", value: painDays },
-            { label: "Ходьба", value: walkingDays },
-            { label: "Плохой сон", value: badSleepDays },
-          ].map((item) => (
-            <div key={item.label} className="rounded-2xl bg-mira-bg p-3 text-center">
-              <p className="text-xl font-bold text-mira-text">{item.value}</p>
-              <p className="text-[10px] text-mira-muted">{item.label}</p>
-            </div>
-          ))}
-        </div>
-        {heavyDays > 0 && (
-          <p className="mt-3 rounded-2xl bg-[#F8E8EE]/50 px-3 py-2 text-xs text-mira-cycle">
-            Обильные месячные отмечены {heavyDays} раз. Это полезно вынести в отчёт врачу.
-          </p>
-        )}
-      </Card>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={() => navigate("analytics")}>
-          <BarChart3 className="h-4 w-4" /> Аналитика
-        </Button>
-        <Button variant="outline" onClick={() => navigate("report")}>
-          <FileText className="h-4 w-4" /> Отчёт врачу
-        </Button>
-      </div>
     </div>
   );
 }

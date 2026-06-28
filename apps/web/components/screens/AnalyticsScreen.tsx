@@ -12,9 +12,11 @@ import {
   Droplets,
   Dumbbell,
   FileText,
+  Footprints,
   Heart,
   HelpCircle,
   Moon,
+  Scale,
   ShieldCheck,
   Sparkles,
   TrendingUp,
@@ -310,6 +312,31 @@ function PatternCard({
   );
 }
 
+function CareInsight({
+  icon,
+  title,
+  value,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-mira-primary shadow-sm">
+          {icon}
+        </span>
+        <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-mira-primary">{value}</span>
+      </div>
+      <p className="text-sm font-bold text-mira-text">{title}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-mira-muted">{body}</p>
+    </div>
+  );
+}
+
 function FactorRow({ icon, label, dots, note }: { icon: React.ReactNode; label: string; dots: number; note: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -345,6 +372,14 @@ export function AnalyticsScreen({ data, navigate }: ScreenProps) {
   const sleepEntries = checkIns.filter(c => c.sleep);
   const heavyFlowEntries = checkIns.filter(c => c.period?.intensity === "heavy" || c.period?.intensity === "very_heavy");
   const workoutEntries = data.workouts.length;
+  const waterEntries = Object.values(data.waterLog ?? {});
+  const walkingEntries = Object.values(data.walkingLog ?? {});
+  const weightEntries = Object.values(data.weightLog ?? {});
+  const enoughWalkingDays = walkingEntries.filter(entry => entry.steps >= Math.min(entry.goal, 5000)).length;
+  const lowWaterDays = waterEntries.filter(entry => entry.glasses < 4).length;
+  const latestWeight = weightEntries.sort((a, b) => b.date.localeCompare(a.date))[0];
+  const previousWeight = weightEntries.filter(entry => latestWeight && entry.date < latestWeight.date).sort((a, b) => b.date.localeCompare(a.date))[0];
+  const weightDelta = latestWeight && previousWeight ? Math.round((latestWeight.weight - previousWeight.weight) * 10) / 10 : null;
 
   const confidence = norm.confidence === "high" ? 78 : norm.confidence === "medium" ? 64 : clamp(28 + totalDays * 4 + norm.observedCycles * 10, 28, 74);
   const periodIn = Math.max(0, norm.daysUntilPeriod);
@@ -395,6 +430,12 @@ export function AnalyticsScreen({ data, navigate }: ScreenProps) {
       status: sleepEntries.length > 3 ? "данных хватает" : "данных мало",
       icon: <Moon className="h-4 w-4" />,
     },
+    {
+      title: "Ходьба → восстановление",
+      body: walkingEntries.length > 0 ? `Есть ${walkingEntries.length} дней ходьбы. Mira сравнит шаги с энергией, болью и настроением.` : "Добавь шаги в Заботе, чтобы понять, помогает ли мягкая активность в сложные дни.",
+      status: walkingEntries.length > 3 ? "связь ищется" : "нужны отметки",
+      icon: <Footprints className="h-4 w-4" />,
+    },
   ].filter(Boolean).slice(0, 4) as Array<{ title: string; body: string; status: string; icon: React.ReactNode }>;
 
   const dataSources = [
@@ -402,6 +443,9 @@ export function AnalyticsScreen({ data, navigate }: ScreenProps) {
     { label: "Записи сна", value: sleepEntries.length },
     { label: "Записи настроения", value: moodEntries.length },
     { label: "Записи питания", value: countEntries(checkIns, c => Boolean(c.meals?.length)) },
+    { label: "Записи воды", value: waterEntries.length },
+    { label: "Ходьба", value: walkingEntries.length },
+    { label: "Замеры веса", value: weightEntries.length },
     { label: "Тренировки", value: workoutEntries },
   ];
 
@@ -512,6 +556,62 @@ export function AnalyticsScreen({ data, navigate }: ScreenProps) {
         </div>
       </Card>
 
+      <Card className="p-5">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-mira-text">Как забота влияет на самочувствие</p>
+            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+              Здесь Mira связывает данные из страницы “Забота” с энергией, болью, ПМС и фазой цикла.
+            </p>
+          </div>
+          <button className="text-xs font-bold text-mira-primary" type="button" onClick={() => navigate("care")}>
+            Добавить данные <ArrowRight className="inline h-3 w-3" />
+          </button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <CareInsight
+            icon={<Droplets className="h-4 w-4" />}
+            title="Вода"
+            value={`${waterEntries.length} дн.`}
+            body={waterEntries.length >= 3
+              ? lowWaterDays > 0 ? `В ${lowWaterDays} дн. воды было мало. Mira проверит связь со вздутием и усталостью.` : "Воды достаточно в отмеченные дни. Сравниваем с ПМС и энергией."
+              : "Нужно 3+ дня воды, чтобы увидеть связь со вздутием и энергией."}
+          />
+          <CareInsight
+            icon={<Heart className="h-4 w-4" />}
+            title="Питание"
+            value={`${countEntries(checkIns, c => Boolean(c.meals?.length))} дн.`}
+            body={countEntries(checkIns, c => Boolean(c.meals?.length)) >= 3
+              ? "Mira сравнивает еду с энергией, тягой к сладкому и ПМС."
+              : "Отмечай еду несколько дней, чтобы понять, что поддерживает энергию."}
+          />
+          <CareInsight
+            icon={<Footprints className="h-4 w-4" />}
+            title="Ходьба"
+            value={`${walkingEntries.length} дн.`}
+            body={walkingEntries.length >= 3
+              ? `${enoughWalkingDays} дн. были с мягкой активностью. Проверяем связь с настроением и болью.`
+              : "Шаги помогут понять, когда прогулка поддерживает настроение и восстановление."}
+          />
+          <CareInsight
+            icon={<Dumbbell className="h-4 w-4" />}
+            title="Тренировки"
+            value={`${workoutEntries}`}
+            body={workoutEntries >= 3
+              ? "Сравниваем нагрузку с фазой цикла, сном и энергией на следующий день."
+              : "После нескольких тренировок появится вывод по нагрузке и восстановлению."}
+          />
+          <CareInsight
+            icon={<Scale className="h-4 w-4" />}
+            title="Вес"
+            value={latestWeight ? `${latestWeight.weight.toFixed(1)} кг` : "нет"}
+            body={weightDelta === null
+              ? "Нужно 2+ замера, чтобы показать тренд без тревоги из-за одного дня."
+              : `${weightDelta > 0 ? "+" : ""}${weightDelta.toFixed(1)} кг к прошлому замеру. Mira учитывает фазу цикла и задержку жидкости.`}
+          />
+        </div>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="p-5">
           <p className="mb-4 text-sm font-bold text-mira-text">Сравнение циклов</p>
@@ -535,8 +635,9 @@ export function AnalyticsScreen({ data, navigate }: ScreenProps) {
           <div className="space-y-4">
             <FactorRow icon={<Moon className="h-4 w-4" />} label="Сон" dots={sleepEntries.length > 3 ? 6 : 3} note="сильное влияние" />
             <FactorRow icon={<Zap className="h-4 w-4" />} label="Стресс" dots={countEntries(checkIns, c => Boolean(c.stress)) > 2 ? 5 : 2} note="среднее влияние" />
-            <FactorRow icon={<Droplets className="h-4 w-4" />} label="Вода" dots={periodEntries.length > 3 ? 4 : 2} note="нужно больше данных" />
+            <FactorRow icon={<Droplets className="h-4 w-4" />} label="Вода" dots={waterEntries.length > 3 ? 4 : 2} note={waterEntries.length > 3 ? "ищем связь с ПМС" : "нужно больше данных"} />
             <FactorRow icon={<Heart className="h-4 w-4" />} label="Питание" dots={countEntries(checkIns, c => Boolean(c.meals?.length)) > 3 ? 5 : 2} note="среднее влияние" />
+            <FactorRow icon={<Footprints className="h-4 w-4" />} label="Ходьба" dots={walkingEntries.length > 3 ? 4 : 2} note={walkingEntries.length > 3 ? "мягкое восстановление" : "нужно больше данных"} />
             <FactorRow icon={<Dumbbell className="h-4 w-4" />} label="Тренировки" dots={workoutEntries > 3 ? 4 : 2} note="положительное влияние" />
           </div>
         </Card>

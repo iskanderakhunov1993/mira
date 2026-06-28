@@ -457,6 +457,70 @@ function WeightCard({ data, onOpen, daysUntil, phase }: { data: MiraLocalData; o
   );
 }
 
+function CareSummaryCard({ data, phase, daysUntil, onOpen }: { data: MiraLocalData; phase: CyclePhase; daysUntil: number; onOpen: () => void }) {
+  const checkIn = getCheckIn(data);
+  const meals = checkIn?.meals ?? [];
+  const water = getWaterEntry(data);
+  const walking = getWalkingEntry(data);
+  const latestWeight = getLatestWeightEntry(data);
+  const today = new Date().toISOString().slice(0, 10);
+  const todayWorkout = data.workouts.find(workout => workout.date === today);
+  const waterMl = water.glasses * 250;
+  const waterGoalMl = water.goal * 250;
+  const stepsPct = Math.min(100, Math.round((walking.steps / walking.goal) * 100));
+  const careScore = Math.round((
+    Math.min(100, (waterMl / Math.max(waterGoalMl, 1)) * 100) +
+    Math.min(100, (walking.steps / Math.max(walking.goal, 1)) * 100) +
+    Math.min(100, meals.length * 34) +
+    (todayWorkout ? 100 : phase === "menstruation" || daysUntil <= 2 ? 70 : 35)
+  ) / 4);
+  const careText = careScore >= 75
+    ? "База дня закрыта хорошо: вода, движение и питание уже дают Mira материал для выводов."
+    : careScore >= 45
+      ? "Есть часть данных. Добавь недостающие пункты, чтобы аналитика точнее связала заботу с самочувствием."
+      : "Сегодня мало данных по заботе. Внеси воду, еду, шаги или вес — Mira учтёт это в аналитике.";
+
+  return (
+    <Card className="cursor-pointer p-4 transition active:scale-[0.99]" onClick={onOpen}>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Забота сегодня</p>
+          <p className="mt-1 text-base font-bold leading-snug text-mira-text">{careText}</p>
+        </div>
+        <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-mira-lavender-light text-mira-primary">
+          <span className="text-lg font-black">{careScore}%</span>
+          <span className="text-[8px] font-bold uppercase">база</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <CareMetric label="Вода" value={`${(waterMl / 1000).toFixed(1)} / ${(waterGoalMl / 1000).toFixed(1)} л`} status={waterMl >= waterGoalMl ? "готово" : "добавить"} />
+        <CareMetric label="Шаги" value={`${walking.steps.toLocaleString("ru-RU")} / ${walking.goal.toLocaleString("ru-RU")}`} status={`${stepsPct}%`} />
+        <CareMetric label="Питание" value={`${meals.length} приём${meals.length === 1 ? "" : meals.length >= 2 && meals.length <= 4 ? "а" : "ов"}`} status={meals.length > 0 ? "учтено" : "пусто"} />
+        <CareMetric label="Тренировка" value={todayWorkout ? todayWorkout.title : phase === "menstruation" || daysUntil <= 2 ? "мягкий режим" : "по самочувствию"} status={todayWorkout ? "записано" : "план"} />
+        <CareMetric label="Вес" value={latestWeight ? `${latestWeight.weight.toFixed(1)} кг` : "нет замера"} status={latestWeight ? "тренд" : "добавить"} />
+        <CareMetric label="Аналитика" value="всё связано" status="Mira" />
+      </div>
+
+      <Button className="mt-4 w-full" variant="outline" onClick={(event) => { event.stopPropagation(); onOpen(); }}>
+        Внести данные в Заботе
+      </Button>
+    </Card>
+  );
+}
+
+function CareMetric({ label, value, status }: { label: string; value: string; status: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl bg-mira-bg px-3 py-2.5">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">{label}</p>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[9px] font-bold text-mira-primary">{status}</span>
+      </div>
+      <p className="truncate text-xs font-bold text-mira-text">{value}</p>
+    </div>
+  );
+}
+
 function getPeriodPrep(daysUntil: number, phase: CyclePhase) {
   if (phase === "menstruation") {
     return {
@@ -1055,18 +1119,13 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
         </motion.div>
       )}
 
-      {/* Забота — в самом низу: ходьба + вес + питание + вода */}
-      <motion.div variants={fadeUp} className="mb-4 grid grid-cols-2 gap-3">
-        <div>
-          <WalkingCard data={data} onOpen={() => navigate("care")} />
-        </div>
-        <div>
-          <WeightCard data={data} onOpen={() => navigate("care")} daysUntil={daysUntil} phase={phase} />
-        </div>
-        <NutritionRing data={data} phase={phase} onOpen={() => navigate("care")} />
-        <WaterBottle data={data} onOpen={() => navigate("care")} />
+      {/* Забота — главная показывает выжимку, ввод остаётся на странице Забота */}
+      <motion.div variants={fadeUp} className="mb-4 grid gap-3">
+        <CareSummaryCard data={data} phase={phase} daysUntil={daysUntil} onOpen={() => navigate("care")} />
+        <div className="grid grid-cols-2 gap-3">
         <FirstAidCard data={data} persist={persist} daysUntil={daysUntil} phase={phase} />
         <ClothingCard daysUntil={daysUntil} phase={phase} />
+        </div>
       </motion.div>
 
     </motion.div>
