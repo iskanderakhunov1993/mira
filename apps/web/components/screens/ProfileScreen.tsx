@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   UserRound, Calendar, Shield, Download, Trash2,
-  ChevronRight, Lock, Bell, Heart, Users, Database, Eye, Moon, Award, Cloud, ScanFace, EyeOff, BellRing,
+  ChevronRight, Lock, Bell, Heart, Users, Database, Eye, Moon, Award, Cloud, ScanFace, EyeOff, BellRing, BookOpen, HeartPulse, Plus,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SyncSettings } from "@/components/sync/SyncSettings";
@@ -125,6 +125,7 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
     {
       title: "Прогресс",
       items: [
+        { icon: BookOpen, label: "Обучение", desc: "Как пользоваться главной", id: "education" },
         { icon: Award, label: "Достижения", desc: `${unlockedCount.unlocked} из ${unlockedCount.total} открыто`, id: "achievements" },
       ],
     },
@@ -327,6 +328,62 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
         <div className="max-w-lg">
           <AchievementsCard data={data} />
         </div>
+      </div>
+    );
+  }
+
+  if (section === "education") {
+    const steps = [
+      {
+        n: 1,
+        title: "Посмотри день цикла",
+        body: "На главной сверху есть календарь и большая карточка дня. Там Mira показывает фазу, прогноз месячных и почему сегодня может меняться энергия.",
+        icon: Calendar,
+      },
+      {
+        n: 2,
+        title: "Отметь состояние",
+        body: "Нажми «Отметить состояние» и сохрани боль, настроение, сон, симптомы или питание. Так появляется твоя личная норма.",
+        icon: Plus,
+      },
+      {
+        n: 3,
+        title: "Если плохо — нажми «Мне плохо»",
+        body: "Mira быстро спросит симптомы и даст спокойный план: что сделать сейчас, за чем наблюдать и когда лучше обратиться к врачу.",
+        icon: HeartPulse,
+      },
+    ];
+
+    return (
+      <div>
+        <h1 className="mb-6 text-2xl font-bold text-mira-text">Обучение</h1>
+        <button onClick={() => setSection(null)} className="mb-4 text-sm text-mira-muted hover:text-mira-primary transition">← Назад</button>
+        <Card className="max-w-lg p-6">
+          <div className="mb-5 rounded-2xl border border-mira-primary/10 bg-mira-lavender-light/30 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-mira-primary" />
+              <p className="text-sm font-bold text-mira-text">Как пользоваться главной</p>
+            </div>
+            <p className="text-xs leading-relaxed text-mira-muted">
+              Смотри сверху вниз: понять день, отметить себя, получить поддержку. Главная должна отвечать на вопрос: что со мной сегодня и что делать дальше.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {steps.map((step) => (
+              <div key={step.n} className="flex gap-3 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-mira-primary">
+                  <step.icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-mira-primary">Шаг {step.n}</p>
+                  <p className="mt-0.5 text-sm font-bold text-mira-text">{step.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-mira-muted">{step.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     );
   }

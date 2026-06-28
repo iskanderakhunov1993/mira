@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Salad, GlassWater, Dumbbell, Minus, Plus,
   Leaf, Zap, Moon, Flame, ChevronRight, Check,
-  X, Home, TreePine, RotateCcw, Timer,
+  X, Home, TreePine, RotateCcw, Timer, Footprints, Scale,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   getCycleDay, getCyclePhase, getPhaseLabel,
   getCheckIn, getWaterEntry, addWaterGlass, removeWaterGlass,
-  addWorkout, dateKey,
+  addWorkout, dateKey, addWalkingSteps, getWalkingEntry, getLatestWeightEntry, getPreviousWeightEntry, saveWeightEntry,
 } from "@/lib/store";
 import { generateWorkout, getWorkoutStats } from "@/lib/workouts";
 import type { ScreenProps } from "./types";
@@ -71,9 +71,16 @@ export function CareScreen({ data, persist }: ScreenProps) {
   const phase = getCyclePhase(cycleDay, periodLength, cycleLength);
   const checkIn = getCheckIn(data);
   const waterEntry = getWaterEntry(data);
+  const walkingEntry = getWalkingEntry(data);
+  const latestWeight = getLatestWeightEntry(data);
+  const previousWeight = getPreviousWeightEntry(data, latestWeight?.date);
+  const todayWeight = data.weightLog?.[dateKey()]?.weight;
+  const currentWeight = todayWeight ?? latestWeight?.weight ?? data.profile?.weight;
   const hasPain = checkIn?.pain?.level === "strong" || checkIn?.pain?.level === "medium";
 
   const [activeTab, setActiveTab] = useState(0);
+  const [manualSteps, setManualSteps] = useState("");
+  const [weightInput, setWeightInput] = useState(todayWeight ? String(todayWeight) : "");
 
   // Meal state
   const [mealType, setMealType] = useState<string | null>(null);
@@ -89,8 +96,8 @@ export function CareScreen({ data, persist }: ScreenProps) {
   const workoutStats = getWorkoutStats(data);
   const nutrition = nutritionByPhase[phase];
 
-  const tabs = ["Питание", "Вода", "Тренировка"];
-  const tabIcons = [Salad, GlassWater, Dumbbell];
+  const tabs = ["Питание", "Вода", "Тренировка", "Ходьба", "Вес"];
+  const tabIcons = [Salad, GlassWater, Dumbbell, Footprints, Scale];
   const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
   // ── Meal handlers ──
@@ -155,6 +162,35 @@ export function CareScreen({ data, persist }: ScreenProps) {
     setWorkoutLocation(null);
     setWorkoutEquipment(null);
     setGeneratedWorkout(null);
+  }
+
+  function addSteps(steps: number) {
+    if (steps === 0) return;
+    persist(addWalkingSteps(data, steps));
+  }
+
+  function addManualSteps() {
+    const steps = Number.parseInt(manualSteps, 10);
+    if (!Number.isFinite(steps) || steps <= 0) return;
+    addSteps(steps);
+    setManualSteps("");
+  }
+
+  function saveWeight(value: number) {
+    if (!Number.isFinite(value)) return;
+    persist(saveWeightEntry(data, { date: dateKey(), weight: value }));
+    setWeightInput(String(Math.round(value * 10) / 10));
+  }
+
+  function saveManualWeight() {
+    const normalized = Number.parseFloat(weightInput.replace(",", "."));
+    saveWeight(normalized);
+  }
+
+  function shiftWeight(deltaKg: number) {
+    const base = currentWeight ?? Number.parseFloat(weightInput.replace(",", "."));
+    if (!Number.isFinite(base)) return;
+    saveWeight(base + deltaKg);
   }
 
   // ── Today's meals ──
@@ -551,6 +587,124 @@ export function CareScreen({ data, persist }: ScreenProps) {
               </div>
             </Card>
           )}
+        </div>
+      )}
+
+      {/* ══════ TAB: Ходьба ══════ */}
+      {activeTab === 3 && (
+        <div className="space-y-4">
+          <Card className="p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Сегодня</p>
+                <p className="mt-1 text-2xl font-bold text-mira-text">{walkingEntry.steps.toLocaleString("ru-RU")} шагов</p>
+                <p className="mt-1 text-xs text-mira-muted">~{(walkingEntry.steps * 0.0007).toFixed(1)} км · цель {walkingEntry.goal.toLocaleString("ru-RU")}</p>
+              </div>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E0F5E8] text-mira-success">
+                <Footprints className="h-6 w-6" />
+              </span>
+            </div>
+
+            <div className="mb-4">
+              <div className="mb-1 flex items-center justify-between text-xs font-semibold text-mira-muted">
+                <span>Прогресс дня</span>
+                <span>{Math.min(100, Math.round((walkingEntry.steps / walkingEntry.goal) * 100))}%</span>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-mira-lavender-light">
+                <div
+                  className="h-full rounded-full bg-mira-success transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.round((walkingEntry.steps / walkingEntry.goal) * 100))}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              {[500, 1000, 3000].map((steps) => (
+                <button
+                  key={steps}
+                  type="button"
+                  onClick={() => addSteps(steps)}
+                  className="rounded-2xl border border-mira-success/15 bg-[#E0F5E8]/45 px-2 py-3 text-xs font-bold text-mira-success transition active:scale-[0.97]"
+                >
+                  +{steps}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+              <input
+                value={manualSteps}
+                onChange={(event) => setManualSteps(event.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                placeholder="ввести шаги"
+                className="min-w-0 rounded-2xl border border-mira-lavender/30 bg-white px-4 py-3 text-sm font-semibold text-mira-text outline-none transition placeholder:text-mira-muted focus:border-mira-success/50 focus:ring-4 focus:ring-mira-success/10"
+              />
+              <Button onClick={addManualSteps} aria-label="Добавить шаги вручную">
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" onClick={() => addSteps(-500)} aria-label="Убрать 500 шагов">
+                <Minus className="h-4 w-4" />
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="border-mira-success/10 bg-[#E0F5E8]/20 p-4">
+            <p className="text-xs font-semibold text-mira-success">Ходьба — мягкая активность</p>
+            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+              В дни усталости или боли ходьба может быть более бережным вариантом, чем интенсивная тренировка.
+            </p>
+          </Card>
+        </div>
+      )}
+
+      {/* ══════ TAB: Вес ══════ */}
+      {activeTab === 4 && (
+        <div className="space-y-4">
+          <Card className="p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Сегодня</p>
+                <p className="mt-1 text-2xl font-bold text-mira-text">
+                  {currentWeight ? `${currentWeight.toFixed(1)} кг` : "Нет замера"}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-mira-muted">
+                  {currentWeight && previousWeight
+                    ? `${currentWeight - previousWeight.weight > 0 ? "+" : ""}${(currentWeight - previousWeight.weight).toFixed(1)} кг к прошлому замеру`
+                    : "Добавь первый замер, чтобы видеть тренд"}
+                </p>
+              </div>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mira-lavender-light text-mira-primary">
+                <Scale className="h-6 w-6" />
+              </span>
+            </div>
+
+            <div className="grid grid-cols-[auto_1fr_auto] gap-2">
+              <Button variant="outline" onClick={() => shiftWeight(-0.5)} aria-label="Уменьшить вес на 0.5 кг">
+                <Minus className="h-4 w-4" />
+              </Button>
+              <input
+                value={weightInput}
+                onChange={(event) => setWeightInput(event.target.value.replace(/[^\d,.]/g, ""))}
+                inputMode="decimal"
+                placeholder="вес в кг"
+                className="min-w-0 rounded-2xl border border-mira-lavender/30 bg-white px-4 py-3 text-center text-sm font-semibold text-mira-text outline-none transition placeholder:text-mira-muted focus:border-mira-primary/50 focus:ring-4 focus:ring-mira-primary/10"
+              />
+              <Button variant="outline" onClick={() => shiftWeight(0.5)} aria-label="Увеличить вес на 0.5 кг">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <Button className="mt-3 w-full" onClick={saveManualWeight}>
+              Сохранить вес
+            </Button>
+          </Card>
+
+          <Card className="border-mira-primary/10 bg-mira-lavender-light/25 p-4">
+            <p className="text-xs font-semibold text-mira-primary">Смотри тренд, а не один день</p>
+            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+              Перед месячными вес может временно расти из-за задержки жидкости. Лучше взвешиваться утром в похожих условиях.
+            </p>
+          </Card>
         </div>
       )}
     </motion.div>

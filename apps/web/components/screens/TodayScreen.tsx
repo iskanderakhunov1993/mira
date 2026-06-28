@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
-  BookOpen,
   Brain,
   BriefcaseBusiness,
   BriefcaseMedical,
@@ -15,9 +14,7 @@ import {
   Footprints,
   HeartPulse,
   MessageCircleHeart,
-  Minus,
   Plus,
-  BellRing,
   Scale,
   Shirt,
   X,
@@ -27,18 +24,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CountUp } from "@/components/ui/CountUp";
 import {
-  addWalkingSteps,
-  dateKey,
   getLatestWeightEntry,
   getCycleDay, getCyclePhase,
-  getDaysUntilPeriod, getCheckIn, getPreviousWeightEntry, getWalkingEntry, getWaterEntry, saveWeightEntry,
+  getDaysUntilPeriod, getCheckIn, getPreviousWeightEntry, getWalkingEntry, getWaterEntry,
 } from "@/lib/store";
 import { getPeriodForecast } from "@/lib/cycleEngine";
 import { getSexCycleInsight, getSmartReminders, getRedFlags, getToughDayContent } from "@/lib/alerts";
 import { getVitaminRecommendations } from "@/lib/vitamins";
 import { getWorkMode, type WorkMode } from "@/lib/workMode";
 import { getMoodPmsCard, type MoodPmsCard } from "@/lib/moodPms";
-import { getPersonalReminders, type PersonalReminder } from "@/lib/personalReminders";
 import { getStreak } from "@/lib/gamification";
 import { getDayStatus, getQadaStats, type Madhab } from "@/lib/islamic";
 import { getAgeConfig } from "@/lib/ageMode";
@@ -159,32 +153,26 @@ function CycleCalendar({ cycleLength, periodLength, checkIns, periodStart, onChe
   }
 
   const activeKey = selectedKey ?? todayKey;
-  const activeCheckIn = checkIns[activeKey];
-  const activeDate = new Date(activeKey);
-  const isFutureActive = activeDate > today;
-  const activeLabel = activeKey === todayKey
-    ? "Сегодня"
-    : new Date(activeKey).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
   return (
     <div>
       {/* Date header */}
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Неделя</p>
           <p className="text-sm font-semibold capitalize text-mira-text">
             {selectedKey && selectedKey !== todayKey
               ? new Date(selectedKey).toLocaleDateString("ru-RU", { day: "numeric", month: "long", weekday: "short" })
-              : `Сегодня, ${todayStr}`
+              : todayStr
             }
           </p>
         </div>
         <button
           type="button"
           onClick={() => setSelectedKey(null)}
-          className="rounded-lg border border-mira-lavender/30 bg-white px-3 py-1.5 text-xs font-semibold text-mira-muted transition hover:border-mira-primary/30 hover:text-mira-primary"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-mira-lavender/30 bg-white text-mira-muted transition hover:border-mira-primary/30 hover:text-mira-primary"
+          aria-label="Вернуться к сегодняшнему дню"
         >
-          Сегодня
+          <CalendarDays className="h-4 w-4" />
         </button>
       </div>
 
@@ -229,24 +217,6 @@ function CycleCalendar({ cycleLength, periodLength, checkIns, periodStart, onChe
         })}
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-mira-lavender/20 bg-white px-3 py-2">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-mira-text">{activeLabel}</p>
-          <p className="text-[10px] text-mira-muted">
-            {isFutureActive ? "Будущий день" : activeCheckIn ? "Есть отметка" : "День пока пустой"}
-          </p>
-        </div>
-        {!isFutureActive && (
-          <button
-            type="button"
-            onClick={() => onCheckIn?.(activeKey)}
-            className="inline-flex items-center gap-1 rounded-lg bg-mira-lavender-light px-3 py-1.5 text-xs font-bold text-mira-primary transition active:scale-[0.98]"
-          >
-            {activeCheckIn ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-            {activeCheckIn ? "Обновить" : "Заполнить"}
-          </button>
-        )}
-      </div>
     </div>
   );
 }
@@ -383,28 +353,15 @@ function WaterBottle({ data, onOpen }: { data: MiraLocalData; onOpen: () => void
   );
 }
 
-function WalkingCard({ data, persist }: { data: MiraLocalData; persist: ScreenProps["persist"] }) {
-  const [manualSteps, setManualSteps] = useState("");
+function WalkingCard({ data, onOpen }: { data: MiraLocalData; onOpen: () => void }) {
   const entry = getWalkingEntry(data);
   const progress = Math.min(100, Math.round((entry.steps / entry.goal) * 100));
   const km = entry.steps * 0.0007;
 
-  function addSteps(steps: number) {
-    if (steps === 0) return;
-    persist(addWalkingSteps(data, steps));
-  }
-
-  function addManualSteps() {
-    const steps = Number.parseInt(manualSteps, 10);
-    if (!Number.isFinite(steps) || steps <= 0) return;
-    addSteps(steps);
-    setManualSteps("");
-  }
-
   return (
-    <Card className="p-3.5">
+    <Card className="cursor-pointer p-3.5 transition active:scale-[0.99]" onClick={onOpen}>
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Ходьба</p>
           <p className="mt-1 text-lg font-bold leading-none text-mira-text">
             <CountUp value={entry.steps} /> <span className="text-xs font-normal text-mira-muted">шагов</span>
@@ -426,44 +383,16 @@ function WalkingCard({ data, persist }: { data: MiraLocalData; persist: ScreenPr
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-3 gap-1.5">
-        {[500, 1000, 3000].map((steps) => (
-          <button
-            key={steps}
-            type="button"
-            onClick={() => addSteps(steps)}
-            className="rounded-lg border border-mira-success/15 bg-[#E0F5E8]/45 px-2 py-2 text-[11px] font-bold text-mira-success transition active:scale-[0.97]"
-          >
-            +{steps}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-[1fr_auto_auto] gap-1.5">
-        <input
-          value={manualSteps}
-          onChange={(event) => setManualSteps(event.target.value.replace(/\D/g, ""))}
-          inputMode="numeric"
-          placeholder="шаги"
-          className="min-w-0 rounded-lg border border-mira-lavender/30 bg-white px-3 py-2 text-sm font-semibold text-mira-text outline-none transition placeholder:text-mira-muted focus:border-mira-success/50 focus:ring-4 focus:ring-mira-success/10"
-        />
-        <Button size="sm" onClick={addManualSteps} aria-label="Добавить шаги вручную">
-          <Plus className="h-4 w-4" />
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => addSteps(-500)} aria-label="Убрать 500 шагов">
-          <Minus className="h-4 w-4" />
-        </Button>
-      </div>
+      <p className="text-[10px] font-semibold text-mira-success">Ввести в Заботе</p>
     </Card>
   );
 }
 
-function WeightCard({ data, persist, daysUntil, phase }: { data: MiraLocalData; persist: ScreenProps["persist"]; daysUntil: number; phase: CyclePhase }) {
+function WeightCard({ data, onOpen, daysUntil, phase }: { data: MiraLocalData; onOpen: () => void; daysUntil: number; phase: CyclePhase }) {
   const latest = getLatestWeightEntry(data);
-  const today = dateKey();
+  const today = new Date().toISOString().slice(0, 10);
   const todayWeight = data.weightLog?.[today]?.weight;
   const previous = getPreviousWeightEntry(data, latest?.date);
-  const [weightInput, setWeightInput] = useState(todayWeight ? String(todayWeight) : "");
   const entries = Object.values(data.weightLog ?? {})
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-7);
@@ -475,25 +404,8 @@ function WeightCard({ data, persist, daysUntil, phase }: { data: MiraLocalData; 
   const maxWeight = entries.length ? Math.max(...entries.map((entry) => entry.weight)) : currentWeight ?? 1;
   const spread = Math.max(0.4, maxWeight - minWeight);
 
-  function saveWeight(value: number) {
-    if (!Number.isFinite(value)) return;
-    persist(saveWeightEntry(data, { date: today, weight: value }));
-    setWeightInput(String(Math.round(value * 10) / 10));
-  }
-
-  function saveManualWeight() {
-    const normalized = Number.parseFloat(weightInput.replace(",", "."));
-    saveWeight(normalized);
-  }
-
-  function shiftWeight(deltaKg: number) {
-    const base = currentWeight ?? Number.parseFloat(weightInput.replace(",", "."));
-    if (!Number.isFinite(base)) return;
-    saveWeight(base + deltaKg);
-  }
-
   return (
-    <Card className="p-3.5">
+    <Card className="cursor-pointer p-3.5 transition active:scale-[0.99]" onClick={onOpen}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Вес</p>
@@ -536,29 +448,10 @@ function WeightCard({ data, persist, daysUntil, phase }: { data: MiraLocalData; 
         </div>
       )}
 
-      <div className="mb-2 grid grid-cols-[auto_1fr_auto_auto] gap-1.5">
-        <Button size="sm" variant="outline" onClick={() => shiftWeight(-0.5)} aria-label="Уменьшить вес на 0.5 кг">
-          <Minus className="h-4 w-4" />
-        </Button>
-        <input
-          value={weightInput}
-          onChange={(event) => setWeightInput(event.target.value.replace(/[^\d,.]/g, ""))}
-          inputMode="decimal"
-          placeholder="кг"
-          className="min-w-0 rounded-lg border border-mira-lavender/30 bg-white px-3 py-2 text-center text-sm font-semibold text-mira-text outline-none transition placeholder:text-mira-muted focus:border-mira-primary/50 focus:ring-4 focus:ring-mira-primary/10"
-        />
-        <Button size="sm" variant="outline" onClick={() => shiftWeight(0.5)} aria-label="Увеличить вес на 0.5 кг">
-          <Plus className="h-4 w-4" />
-        </Button>
-        <Button size="sm" onClick={saveManualWeight} aria-label="Сохранить вес">
-          OK
-        </Button>
-      </div>
-
       <p className="text-[10px] leading-snug text-mira-muted">
         {hasPremenstrualFluid
           ? "Перед месячными вес может временно расти из-за задержки жидкости. Смотри тренд, а не один день."
-          : "Лучше взвешиваться утром в похожих условиях, чтобы Mira видела честный тренд."}
+          : "Ввод веса — на странице Забота."}
       </p>
     </Card>
   );
@@ -932,170 +825,6 @@ function MoodPmsCard({ card, onJournal }: { card: MoodPmsCard; onJournal?: () =>
   );
 }
 
-function PersonalRemindersCard({ reminders, onCheckIn, onOpenCare, onOpenReport }: {
-  reminders: PersonalReminder[];
-  onCheckIn?: () => void;
-  onOpenCare: () => void;
-  onOpenReport: () => void;
-}) {
-  if (reminders.length === 0) return null;
-  const primary = reminders[0];
-  const tone = primary.priority === "high"
-    ? "border-mira-cycle/15 bg-[#F8E8EE]/40"
-    : primary.priority === "medium"
-      ? "border-[#C4B07E]/15 bg-[#F5F0E0]/35"
-      : "border-mira-primary/10 bg-mira-lavender-light/20";
-
-  function handleAction(reminder: PersonalReminder) {
-    if (reminder.id === "symptoms" || reminder.id === "pain") onCheckIn?.();
-    else if (reminder.id === "doctor") onOpenReport();
-    else onOpenCare();
-  }
-
-  return (
-    <Card className={`p-4 ${tone}`}>
-      <div className="mb-3 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/70 text-mira-primary">
-          <BellRing className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Напоминания</p>
-          <p className="mt-0.5 text-sm font-bold leading-snug text-mira-text">{primary.title}</p>
-          <p className="mt-1 text-xs leading-relaxed text-mira-muted">{primary.body}</p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={() => handleAction(primary)}
-        className="mb-3 rounded-xl bg-white/75 px-3 py-2 text-xs font-bold text-mira-primary transition active:scale-[0.98]"
-      >
-        {primary.action}
-      </button>
-      {reminders.length > 1 && (
-        <div className="space-y-2">
-          {reminders.slice(1, 4).map((reminder) => (
-            <button
-              key={reminder.id}
-              type="button"
-              onClick={() => handleAction(reminder)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl bg-white/65 px-3 py-2 text-left"
-            >
-              <span className="text-xs font-semibold text-mira-text">{reminder.title}</span>
-              <span className="text-[10px] font-bold text-mira-primary">{reminder.action}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function PersonalDiaryCard({
-  hasCheckIn,
-  hasNote,
-  onOpenDiary,
-  onCheckIn,
-}: {
-  hasCheckIn: boolean;
-  hasNote: boolean;
-  onOpenDiary: () => void;
-  onCheckIn?: () => void;
-}) {
-  return (
-    <Card className="p-4 border-mira-primary/10 bg-white">
-      <div className="mb-3 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-mira-lavender-light text-mira-primary">
-          <BookOpen className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-primary">Для себя</p>
-          <p className="text-sm font-bold text-mira-text">Личный дневник и состояние дня</p>
-          <p className="mt-1 text-xs leading-snug text-mira-muted">
-            {hasNote
-              ? "Сегодня уже есть личная запись."
-              : hasCheckIn
-                ? "Состояние отмечено. Можно добавить пару слов для себя."
-                : "Можно просто отметить самочувствие или оставить личную запись без лишних вопросов."}
-          </p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" onClick={onOpenDiary}>
-          <BookOpen className="h-4 w-4" /> Дневник
-        </Button>
-        <Button onClick={onCheckIn}>
-          <Plus className="h-4 w-4" /> Состояние
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-function TodayEducationCard({ onCheckIn, onBadState, onOpenDiary }: {
-  onCheckIn?: () => void;
-  onBadState?: () => void;
-  onOpenDiary: () => void;
-}) {
-  const steps = [
-    {
-      n: 1,
-      title: "Посмотри день цикла",
-      body: "Верхняя карточка объясняет фазу, прогноз месячных и почему сегодня может меняться энергия.",
-    },
-    {
-      n: 2,
-      title: "Отметь состояние",
-      body: "Боль, настроение, сон и симптомы сохраняются в календаре. Так Mira строит твою личную норму.",
-    },
-    {
-      n: 3,
-      title: "Если плохо — нажми кнопку",
-      body: "Mira спросит симптомы и покажет спокойный план: что сделать сейчас и когда лучше к врачу.",
-    },
-  ];
-
-  return (
-    <Card className="border-mira-primary/10 bg-mira-lavender-light/25 p-4">
-      <div className="mb-3 flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-mira-primary">
-          <BookOpen className="h-5 w-5" />
-        </span>
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-primary">Обучение</p>
-          <p className="mt-0.5 text-sm font-bold text-mira-text">Как пользоваться главной</p>
-          <p className="mt-1 text-xs leading-relaxed text-mira-muted">Смотри сверху вниз: понять день, отметить себя, получить поддержку.</p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {steps.map((step) => (
-          <div key={step.n} className="flex gap-3 rounded-lg bg-white/70 p-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mira-primary text-xs font-bold text-white">
-              {step.n}
-            </span>
-            <div>
-              <p className="text-xs font-bold text-mira-text">{step.title}</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-mira-muted">{step.body}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        <Button size="sm" onClick={() => onCheckIn?.()}>
-          <Plus className="h-4 w-4" /> Состояние
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onBadState?.()} aria-label="Мне плохо">
-          <HeartPulse className="h-4 w-4" />
-        </Button>
-        <Button size="sm" variant="outline" onClick={onOpenDiary} aria-label="Открыть дневник">
-          <BookOpen className="h-4 w-4" />
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
 export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, onDelayCheck }: ScreenProps) {
   const profile = data.profile;
   const cycleDay = getCycleDay(profile);
@@ -1149,14 +878,13 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
   const vitaminBody = vitaminRec ? firstSentence(vitaminRec.how) : "Пока специальных подсказок нет.";
   const workMode = getWorkMode(phase, checkIn);
   const moodPmsCard = getMoodPmsCard(phase, daysUntil, checkIn);
-  const personalReminders = getPersonalReminders(data);
 
   const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 260, damping: 22 } } };
 
   return (
     <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.07 } } }}>
 
-      {/* Header — avatar / date / calendar */}
+      {/* Header — avatar / brand / diary */}
       <motion.div variants={fadeUp} className="flex items-center justify-between mb-4">
         <button onClick={() => navigate("profile")}
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-mira-lavender/25 bg-white text-mira-primary shadow-card transition active:scale-[0.98]"
@@ -1164,10 +892,7 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
           {name ? <span className="text-sm font-bold">{name.charAt(0).toUpperCase()}</span> : <UserRound className="h-5 w-5" />}
         </button>
         <div className="flex flex-col items-center text-center">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Mira</p>
-          <p className="text-sm font-semibold text-mira-text">
-            {new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-          </p>
+          <p className="text-sm font-bold uppercase tracking-widest text-mira-text">Mira</p>
           {streak.current > 0 && (
             <span className="text-[11px] font-semibold text-mira-primary">серия {streak.current}</span>
           )}
@@ -1177,6 +902,15 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
           aria-label="Открыть дневник">
           <CalendarDays className="h-5 w-5" />
         </button>
+      </motion.div>
+
+      {/* Calendar pills */}
+      <motion.div variants={fadeUp} className="mb-4">
+        <CycleCalendar
+          cycleLength={cycleLength} periodLength={periodLength}
+          checkIns={data.checkIns} periodStart={profile?.cycleConfig.periodStart ?? ""}
+          onCheckIn={onCheckIn}
+        />
       </motion.div>
 
       {/* Phase hero with wave graph */}
@@ -1223,32 +957,6 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
         </Card>
       </motion.div>
 
-      {/* Calendar pills */}
-      <motion.div variants={fadeUp} className="mb-5">
-        <CycleCalendar
-          cycleLength={cycleLength} periodLength={periodLength}
-          checkIns={data.checkIns} periodStart={profile?.cycleConfig.periodStart ?? ""}
-          onCheckIn={onCheckIn}
-        />
-      </motion.div>
-
-      <motion.div variants={fadeUp} className="mb-4">
-        <TodayEducationCard
-          onCheckIn={() => onCheckIn?.()}
-          onBadState={() => onBadState?.()}
-          onOpenDiary={() => navigate("diary")}
-        />
-      </motion.div>
-
-      <motion.div variants={fadeUp} className="mb-4">
-        <PersonalDiaryCard
-          hasCheckIn={!!checkIn}
-          hasNote={!!checkIn?.note?.text}
-          onOpenDiary={() => navigate("diary")}
-          onCheckIn={() => onCheckIn?.()}
-        />
-      </motion.div>
-
       {delayDays > 0 && (
         <motion.div variants={fadeUp} className="mb-4">
           <Card className="border-mira-cycle/20 bg-[#F8E8EE]/45 p-4">
@@ -1269,7 +977,7 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
         </motion.div>
       )}
 
-      {/* Личная норма — что уже понятно про ритм */}
+      {/* Мой ритм — что Mira уже понимает по отметкам */}
       <motion.div variants={fadeUp} className="mb-4">
         <NormaScanCard
           data={data}
@@ -1316,15 +1024,6 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
 
       <motion.div variants={fadeUp} className="mb-4">
         <MoodPmsCard card={moodPmsCard} onJournal={() => navigate("diary")} />
-      </motion.div>
-
-      <motion.div variants={fadeUp} className="mb-4">
-        <PersonalRemindersCard
-          reminders={personalReminders}
-          onCheckIn={() => onCheckIn?.()}
-          onOpenCare={() => navigate("care")}
-          onOpenReport={() => navigate("report")}
-        />
       </motion.div>
 
       {sexInsight && (
@@ -1375,10 +1074,10 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, on
       {/* Забота — в самом низу: ходьба + вес + питание + вода */}
       <motion.div variants={fadeUp} className="mb-4 grid grid-cols-2 gap-3">
         <div>
-          <WalkingCard data={data} persist={persist} />
+          <WalkingCard data={data} onOpen={() => navigate("care")} />
         </div>
         <div>
-          <WeightCard data={data} persist={persist} daysUntil={daysUntil} phase={phase} />
+          <WeightCard data={data} onOpen={() => navigate("care")} daysUntil={daysUntil} phase={phase} />
         </div>
         <NutritionRing data={data} phase={phase} onOpen={() => navigate("care")} />
         <WaterBottle data={data} onOpen={() => navigate("care")} />
