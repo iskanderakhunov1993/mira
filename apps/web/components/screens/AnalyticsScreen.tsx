@@ -26,7 +26,7 @@ import { getCycleAnalytics, type CycleAnalyticsPoint } from "@/lib/cycleAnalytic
 import { getCorrelations } from "@/lib/correlations";
 import { getHealthSummary, statusMeta } from "@/lib/healthScore";
 import { getSmartInsights } from "@/lib/insights";
-import { dateKey, getCycleDay, getCyclePhase } from "@/lib/store";
+import { dateKey, getCycleDay, getCyclePhase, getPhaseLabel } from "@/lib/store";
 import { getWorkMode, type WorkMode } from "@/lib/workMode";
 import type { ScreenProps } from "./types";
 
@@ -72,6 +72,28 @@ function MiniStat({ label, value, note }: { label: string; value: string; note: 
       <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">{label}</p>
       <p className="mt-1 text-xl font-black leading-none text-mira-text">{value}</p>
       <p className="mt-1 text-[10px] leading-snug text-mira-muted">{note}</p>
+    </div>
+  );
+}
+
+function ForecastCard({ label, title, body, tone = "neutral" }: { label: string; title: string; body: string; tone?: Tone }) {
+  return (
+    <Card className={`p-4 ${toneClass[tone]}`}>
+      <p className="text-[10px] font-bold uppercase tracking-widest">{label}</p>
+      <p className="mt-2 text-xl font-black leading-tight text-mira-text">{title}</p>
+      <p className="mt-2 text-xs leading-relaxed text-mira-muted">{body}</p>
+    </Card>
+  );
+}
+
+function DataBenefit({ icon, title, body }: { icon: string; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl bg-white/70 p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-lg">{icon}</span>
+        <p className="text-xs font-bold text-mira-text">{title}</p>
+      </div>
+      <p className="text-[11px] leading-relaxed text-mira-muted">{body}</p>
     </div>
   );
 }
@@ -456,12 +478,56 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
     : totalDays < 7
       ? `Отметь состояние ещё ${Math.max(0, 7 - totalDays)} раз, и Mira начнёт показывать не общие советы, а твои повторы.`
       : "Сравниваем цикл, сон, боль, ходьбу, энергию и настроение, чтобы показать не цифры, а смысл.";
+  const confidenceScore = norm.confidence === "high" ? 86 : norm.confidence === "medium" ? 68 : Math.max(28, Math.min(62, totalDays * 7 + norm.observedCycles * 12));
+  const periodWindowStart = Math.max(0, norm.daysUntilPeriod - 2);
+  const periodWindowEnd = Math.max(periodWindowStart, norm.daysUntilPeriod + 2);
+  const pmsStart = Math.max(0, norm.daysUntilPeriod - 5);
+  const pmsEnd = Math.max(0, norm.daysUntilPeriod - 2);
+  const currentPhaseLabel = getPhaseLabel(phase);
 
   return (
     <div>
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-mira-text">Понятно, что происходит</h1>
-        <p className="mt-1 text-sm text-mira-muted">Mira показывает закономерности, влияние на день и следующий шаг</p>
+        <h1 className="text-2xl font-bold text-mira-text">Аналитика</h1>
+        <p className="mt-1 text-sm text-mira-muted">Понимай цикл, прогнозируй и планируй</p>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Card className="border-mira-primary/15 bg-mira-lavender-light/20 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Mira понимает ритм</p>
+          <div className="mt-3 flex items-center gap-3">
+            <div
+              className="grid h-20 w-20 shrink-0 place-items-center rounded-full"
+              style={{ background: `conic-gradient(#8B5CF6 ${confidenceScore}%, #EEE9F5 0)` }}
+              aria-label={`Уверенность прогнозов ${confidenceScore}%`}
+            >
+              <div className="grid h-16 w-16 place-items-center rounded-full bg-white">
+                <span className="text-xl font-black text-mira-primary">{confidenceScore}%</span>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-mira-muted">
+              На основе {norm.observedCycles} циклов и {totalDays} дней с отметками.
+            </p>
+          </div>
+        </Card>
+        <ForecastCard
+          label="Следующие месячные"
+          title={norm.daysUntilPeriod <= 0 ? "задержка" : `через ${periodWindowStart}-${periodWindowEnd} дн.`}
+          body={norm.daysUntilPeriod <= 0 ? `Задержка ${norm.delayDays} дн. Можно разобрать причины.` : `Окно прогноза: примерно ${norm.daysUntilPeriod} дн.`}
+          tone={norm.daysUntilPeriod <= 3 ? "alert" : "neutral"}
+        />
+        <ForecastCard
+          label="ПМС может начаться"
+          title={norm.daysUntilPeriod <= 5 ? "скоро" : `через ${pmsStart}-${pmsEnd} дн.`}
+          body={pmsEntries.length > 0 ? `Уже есть ${pmsEntries.length} ПМС-отметок для прогноза.` : "Отмечай настроение и симптомы, чтобы Mira предупредила заранее."}
+          tone="watch"
+        />
+        <ForecastCard
+          label="Фаза цикла"
+          title={currentPhaseLabel}
+          body={`День цикла ${cycleDay} из ${cycleLength}. Советы ниже учитывают эту фазу.`}
+          tone="neutral"
+        />
       </div>
 
       <Card className={`mb-4 p-4 ${toneClass[heroTone]}`}>
@@ -511,6 +577,16 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
       </div>
 
       <SectionTitle label="2" title="Что дают мои отметки" />
+      <Card className="mb-3 border-mira-lavender/20 bg-white p-4">
+        <p className="mb-3 text-sm font-bold text-mira-text">Как эти данные помогают тебе</p>
+        <div className="grid gap-3 md:grid-cols-5">
+          <DataBenefit icon="📅" title="Готовиться" body="Планировать дни до месячных без неожиданностей." />
+          <DataBenefit icon="💗" title="Понимать ПМС" body="Настроение и симптомы становятся не случайными." />
+          <DataBenefit icon="⚡" title="Планировать нагрузку" body="Выбирать лучшие дни для спорта и работы." />
+          <DataBenefit icon="💧" title="Находить триггеры" body="Сон, вода, еда и стресс связываются с самочувствием." />
+          <DataBenefit icon="🛡️" title="Идти к врачу" body="Факты уже собраны и готовы к отчёту." />
+        </div>
+      </Card>
       <div className="mb-5 grid grid-cols-2 gap-3">
         {trackerValueCards.map(card => (
           <TrackerValueCard key={card.title} {...card} />
