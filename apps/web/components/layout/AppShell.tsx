@@ -117,7 +117,7 @@ export function AppShell() {
     <div className="min-h-screen bg-mira-bg text-mira-text lg:flex">
       <Sidebar active={page} onChange={setPage} onCheckIn={openCheckIn} isIslamic={isIslamic} />
       <main className="flex-1 pb-24 lg:pb-0">
-        <div className="mx-auto w-full max-w-[660px] px-4 py-6 sm:px-6 lg:py-8">
+        <div className={`mx-auto w-full px-4 py-6 sm:px-6 lg:py-8 ${page === "analytics" ? "max-w-[1180px]" : "max-w-[660px]"}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={page}
