@@ -12,10 +12,12 @@ const symptoms: Array<{ id: BadSymptom; label: string; tone?: "alert" }> = [
   { id: "abdominal_pain", label: "Болит живот" },
   { id: "heavy_bleeding", label: "Сильно льёт", tone: "alert" },
   { id: "dizziness", label: "Кружится голова", tone: "alert" },
+  { id: "fainting", label: "Обморок", tone: "alert" },
   { id: "nausea", label: "Тошнит" },
   { id: "no_energy", label: "Нет сил" },
   { id: "anxiety", label: "Тревога" },
   { id: "crying", label: "Плачу" },
+  { id: "sharp_pain", label: "Резкая боль", tone: "alert" },
   { id: "pain_after_sex", label: "Боль после секса", tone: "alert" },
   { id: "delay", label: "Задержка" },
   { id: "mid_cycle_bleeding", label: "Кровь между месячными", tone: "alert" },
@@ -27,12 +29,15 @@ function buildEpisode(selected: BadSymptom[]): Omit<BadEpisode, "id" | "savedAt"
   const has = (symptom: BadSymptom) => selected.includes(symptom);
   const doctorSignals = [
     has("heavy_bleeding") && has("dizziness"),
+    has("fainting"),
+    has("sharp_pain"),
     has("pain_after_sex"),
     has("mid_cycle_bleeding"),
   ].some(Boolean);
   const watchSignals = [
     has("heavy_bleeding"),
     has("dizziness"),
+    has("no_energy"),
     has("delay"),
     has("abdominal_pain"),
   ].some(Boolean);
@@ -62,6 +67,8 @@ function buildEpisode(selected: BadSymptom[]): Omit<BadEpisode, "id" | "savedAt"
   const doctor = [
     has("heavy_bleeding") ? "Если прокладка полностью промокает примерно за час или есть большие сгустки, лучше обратиться за медицинской помощью." : "",
     has("dizziness") ? "Если кружится голова, темнеет в глазах или трудно стоять, лучше не оставаться одной." : "",
+    has("fainting") ? "Обморок во время месячных или кровотечения лучше не списывать на цикл — стоит обратиться за медицинской помощью." : "",
+    has("sharp_pain") ? "Резкая необычная боль — повод обратиться к врачу, особенно если она усиливается или появилась внезапно." : "",
     has("pain_after_sex") ? "Боль после секса, особенно с кровью или повтором, лучше обсудить с врачом." : "",
     has("mid_cycle_bleeding") ? "Кровь между месячными, если повторяется или сопровождается болью, лучше обсудить с врачом." : "",
     "Если боль очень сильная, необычная для тебя или не проходит, лучше обратиться к врачу.",

@@ -633,10 +633,10 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
             <p className="text-sm font-bold text-mira-text">Когда стоит обратиться к врачу</p>
             <ul className="mt-3 space-y-2">
               {[
-                "Сильная боль повторяется 3+ цикла подряд",
-                "Цикл стал значительно длиннее или короче",
-                "Обильное кровотечение более 7 дней",
-                "Необычные выделения или симптомы, которые беспокоят",
+                "Очень сильная или резкая боль",
+                "Очень обильное кровотечение или месячные дольше 7 дней",
+                "Кровь между месячными или кровь после секса",
+                "Боль во время секса, обморок, сильная слабость или частые задержки",
               ].map(item => (
                 <li key={item} className="flex items-start gap-2 text-xs leading-relaxed text-mira-muted">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-mira-lavender" />

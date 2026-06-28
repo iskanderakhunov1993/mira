@@ -65,10 +65,12 @@ export type BadSymptom =
   | "abdominal_pain"
   | "heavy_bleeding"
   | "dizziness"
+  | "fainting"
   | "nausea"
   | "no_energy"
   | "anxiety"
   | "crying"
+  | "sharp_pain"
   | "pain_after_sex"
   | "delay"
   | "mid_cycle_bleeding";
@@ -82,6 +84,27 @@ export type BadEpisode = {
   actions: string[];
   watch: string[];
   doctor: string[];
+};
+
+export type DelayReason =
+  | "sex"
+  | "unprotected"
+  | "stress"
+  | "illness"
+  | "weight_change"
+  | "travel"
+  | "medications"
+  | "irregular_cycle";
+
+export type DelayCheck = {
+  id: string;
+  savedAt: string;
+  delayDays: number;
+  reasons: DelayReason[];
+  summary: string;
+  possibleCauses: string[];
+  testAdvice: string;
+  doctorAdvice: string;
 };
 
 // Meal tracking (simplified, no photo)
@@ -119,6 +142,7 @@ export type DailyCheckIn = {
   meals?: MealEntry[];
   note?: NoteEntry;
   badEpisodes?: BadEpisode[];
+  delayChecks?: DelayCheck[];
   discharge?: string;
   stress?: string;
   symptomLog?: SymptomLog;

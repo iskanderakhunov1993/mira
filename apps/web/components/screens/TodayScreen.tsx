@@ -733,13 +733,14 @@ function PersonalDiaryCard({
   );
 }
 
-export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState }: ScreenProps) {
+export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState, onDelayCheck }: ScreenProps) {
   const profile = data.profile;
   const cycleDay = getCycleDay(profile);
   const cycleLength = profile?.cycleConfig.cycleLength ?? 28;
   const periodLength = profile?.cycleConfig.periodLength ?? 5;
   const phase = getCyclePhase(cycleDay, periodLength, cycleLength);
   const daysUntil = getDaysUntilPeriod(profile);
+  const delayDays = Math.max(0, cycleDay - cycleLength);
   const checkIn = getCheckIn(data);
   const name = profile?.name ?? "Mira";
   const streak = getStreak(data);
@@ -873,6 +874,26 @@ export function TodayScreen({ data, persist, navigate, onCheckIn, onBadState }: 
           onCheckIn={() => onCheckIn?.()}
         />
       </motion.div>
+
+      {delayDays > 0 && (
+        <motion.div variants={fadeUp} className="mb-4">
+          <Card className="border-mira-cycle/20 bg-[#F8E8EE]/45 p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/70 text-base">?</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-mira-cycle">Задержка {delayDays} дн.</p>
+                <p className="text-sm font-bold text-mira-text">Разобраться с задержкой</p>
+                <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+                  Ответь на пару вопросов: секс, защита, стресс, болезнь, перелёты, лекарства и обычная нерегулярность.
+                </p>
+              </div>
+            </div>
+            <Button className="w-full bg-white text-mira-cycle shadow-none hover:bg-white/90" onClick={() => onDelayCheck?.()}>
+              Разобраться с задержкой
+            </Button>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Личная норма — что уже понятно про ритм */}
       <motion.div variants={fadeUp} className="mb-4">

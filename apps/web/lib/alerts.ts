@@ -1,4 +1,4 @@
-import type { MiraLocalData, CyclePhase, DailyCheckIn } from "./types";
+import type { MiraLocalData, CyclePhase, DailyCheckIn, BadSymptom } from "./types";
 import { getCycleDay, getCyclePhase, getPhaseLabel, getDaysUntilPeriod, dateKey } from "./store";
 
 // ── #1 Smart Reminders ──
@@ -176,38 +176,51 @@ export function getRedFlags(data: MiraLocalData): RedFlag[] {
   if (!profile) return [];
 
   const checkIns = Object.values(data.checkIns);
-  if (checkIns.length < 14) return [];
 
   const flags: RedFlag[] = [];
   const cycleLength = profile.cycleConfig.cycleLength;
   const periodLength = profile.cycleConfig.periodLength;
+  const currentDelayDays = Math.max(0, getCycleDay(profile) - cycleLength);
+  const badEpisodes = checkIns.flatMap(c => c.badEpisodes ?? []);
+  const countBadSymptom = (symptom: BadSymptom) => badEpisodes.filter(episode => episode.symptoms.includes(symptom)).length;
+  const intimacyPain = checkIns.filter(c => c.intimacy?.feeling === "pain" || c.intimacy?.feeling === "discomfort");
+  const intimacyBleeding = checkIns.filter(c => c.intimacy?.bleedingAfter);
+  const delayChecks = checkIns.flatMap(c => c.delayChecks ?? []);
+  const exhaustedDays = checkIns.filter(c => c.energy?.value === "exhausted");
+
+  function pushUnique(flag: RedFlag) {
+    if (!flags.some(existing => existing.title === flag.title)) flags.push(flag);
+  }
 
   // Strong pain 3+ cycles
   const strongPainDays = checkIns.filter(c => c.pain?.level === "strong");
-  if (strongPainDays.length >= 3) {
+  if (strongPainDays.length >= 2 || countBadSymptom("sharp_pain") > 0) {
     const impactDays = strongPainDays.length;
-    flags.push({
+    pushUnique({
       severity: "alert",
-      title: `Сильная боль повторяется (${impactDays} дней)`,
-      body: "Боль, которая мешает обычной жизни, стоит обсудить с врачом. Отчёт поможет показать, как часто это повторяется.",
+      title: impactDays >= 2 ? `Сильная боль повторяется (${impactDays} дней)` : "Резкая боль отмечена",
+      body: impactDays >= 2
+        ? "Симптом повторяется. Лучше обсудить такую боль с гинекологом и показать даты в отчёте."
+        : "Резкую необычную боль лучше не списывать на обычные месячные, особенно если она усиливается или появилась внезапно.",
       action: "Создать отчёт для врача",
     });
   }
 
   // Very heavy periods
   const heavyPeriods = checkIns.filter(c => c.period?.intensity === "very_heavy");
-  if (heavyPeriods.length >= 2) {
-    flags.push({
+  const heavyBleedingEpisodes = countBadSymptom("heavy_bleeding");
+  if (heavyPeriods.length >= 1 || heavyBleedingEpisodes > 0) {
+    pushUnique({
       severity: "alert",
-      title: "Очень обильные месячные повторяются",
-      body: "При обильных месячных иногда снижаются запасы железа. Если есть усталость, бледность или выпадение волос, стоит обсудить ферритин с врачом.",
+      title: heavyPeriods.length + heavyBleedingEpisodes >= 2 ? "Очень обильное кровотечение повторяется" : "Очень обильное кровотечение",
+      body: "Если прокладка полностью промокает примерно за час, есть большие сгустки, слабость или головокружение, лучше обратиться за медицинской помощью.",
       action: "Обратить внимание на железо",
     });
   }
 
   // Period >7 days
   if (periodLength > 7) {
-    flags.push({
+    pushUnique({
       severity: "warning",
       title: "Месячные длятся дольше 7 дней",
       body: "Нормальная длительность — 3-7 дней. Если кровотечение регулярно дольше, стоит обсудить с врачом.",
@@ -217,7 +230,7 @@ export function getRedFlags(data: MiraLocalData): RedFlag[] {
 
   // Cycle too short or too long
   if (cycleLength < 21) {
-    flags.push({
+    pushUnique({
       severity: "warning",
       title: "Цикл короче 21 дня",
       body: "Это может указывать на гормональные изменения. Стоит обсудить с гинекологом.",
@@ -225,7 +238,7 @@ export function getRedFlags(data: MiraLocalData): RedFlag[] {
     });
   }
   if (cycleLength > 35) {
-    flags.push({
+    pushUnique({
       severity: "warning",
       title: "Цикл длиннее 35 дней",
       body: "Нерегулярные длинные циклы могут иметь разные причины. Лучше обсудить это с гинекологом.",
@@ -237,11 +250,70 @@ export function getRedFlags(data: MiraLocalData): RedFlag[] {
   const sleepDays = checkIns.filter(c => c.sleep);
   const badSleep = sleepDays.filter(c => c.sleep!.quality === "bad" || c.sleep!.quality === "insomnia");
   if (sleepDays.length >= 14 && badSleep.length > sleepDays.length * 0.4) {
-    flags.push({
+    pushUnique({
       severity: "warning",
       title: "Хронически плохой сон",
       body: "Плохой сон отмечен в 40%+ дней. Это может быть связано с фазой цикла, стрессом или нагрузкой; хронические проблемы лучше обсудить со специалистом.",
       action: "Обсудить с врачом",
+    });
+  }
+
+  const midCycleBleeding = countBadSymptom("mid_cycle_bleeding");
+  if (midCycleBleeding > 0) {
+    pushUnique({
+      severity: midCycleBleeding >= 2 ? "alert" : "warning",
+      title: midCycleBleeding >= 2 ? "Кровь между месячными повторяется" : "Кровь между месячными",
+      body: "Если кровь появляется между месячными, особенно с болью или повтором, лучше обсудить это с врачом.",
+      action: "Обсудить с врачом",
+    });
+  }
+
+  if (intimacyPain.length > 0) {
+    pushUnique({
+      severity: intimacyPain.length >= 2 ? "alert" : "warning",
+      title: intimacyPain.length >= 2 ? "Боль во время секса повторяется" : "Боль во время секса",
+      body: "Боль или дискомфорт во время секса не стоит терпеть. Если это повторяется, лучше обсудить с врачом.",
+      action: "Обсудить с врачом",
+    });
+  }
+
+  if (intimacyBleeding.length > 0) {
+    pushUnique({
+      severity: intimacyBleeding.length >= 2 ? "alert" : "warning",
+      title: intimacyBleeding.length >= 2 ? "Кровь после секса повторяется" : "Кровь после секса",
+      body: "Кровь после секса лучше не списывать на цикл, особенно если симптом повторяется или сопровождается болью.",
+      action: "Обсудить с врачом",
+    });
+  }
+
+  const faintingOrDizzy = countBadSymptom("fainting") + countBadSymptom("dizziness");
+  if (faintingOrDizzy > 0) {
+    pushUnique({
+      severity: countBadSymptom("fainting") > 0 ? "alert" : "warning",
+      title: countBadSymptom("fainting") > 0 ? "Обморок отмечен" : "Головокружение при кровотечении",
+      body: "Обморок, потемнение в глазах или сильное головокружение во время кровотечения лучше не игнорировать.",
+      action: "Обратиться за помощью",
+    });
+  }
+
+  const weaknessSignals = countBadSymptom("no_energy") + exhaustedDays.length;
+  if (weaknessSignals >= 2) {
+    pushUnique({
+      severity: "warning",
+      title: "Сильная слабость повторяется",
+      body: "Сильная слабость на фоне месячных может быть связана с кровопотерей, сном, питанием или стрессом. Если повторяется, стоит обсудить это с врачом.",
+      action: "Проверить повтор",
+    });
+  }
+
+  if (delayChecks.length >= 2 || currentDelayDays >= 7) {
+    pushUnique({
+      severity: currentDelayDays >= 14 ? "alert" : "warning",
+      title: delayChecks.length >= 2 ? "Задержки повторяются" : `Задержка ${currentDelayDays} дн.`,
+      body: currentDelayDays >= 7
+        ? "Если был секс, сделай тест. Если задержки повторяются или тест отрицательный, а месячные не приходят, лучше обсудить цикл с врачом."
+        : "Повторяющиеся задержки стоит отслеживать вместе с факторами: стресс, болезнь, перелёты, лекарства и защита.",
+      action: "Разобраться с задержкой",
     });
   }
 

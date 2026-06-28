@@ -7,4 +7,5 @@ export type ScreenProps = {
   navigate: (page: NavPage) => void;
   onCheckIn?: (date?: string) => void;
   onBadState?: () => void;
+  onDelayCheck?: () => void;
 };

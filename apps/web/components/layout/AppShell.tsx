@@ -19,6 +19,8 @@ import { ProfileScreen } from "@/components/screens/ProfileScreen";
 import { OnboardingScreen } from "@/components/screens/OnboardingScreen";
 import { CheckInModal } from "@/components/screens/CheckInModal";
 import { BadStateModal } from "@/components/screens/BadStateModal";
+import { DelayCheckModal } from "@/components/screens/DelayCheckModal";
+import { getCycleDay } from "@/lib/store";
 
 export function AppShell() {
   const [page, setPage] = useState<NavPage>("today");
@@ -28,6 +30,7 @@ export function AppShell() {
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [checkInDate, setCheckInDate] = useState<string | undefined>(undefined);
   const [badStateOpen, setBadStateOpen] = useState(false);
+  const [delayCheckOpen, setDelayCheckOpen] = useState(false);
 
   useEffect(() => {
     const loaded = readData();
@@ -85,8 +88,16 @@ export function AppShell() {
     );
   }
 
-  const screenProps = { data, persist, navigate: setPage, onCheckIn: openCheckIn, onBadState: () => setBadStateOpen(true) };
+  const screenProps = {
+    data,
+    persist,
+    navigate: setPage,
+    onCheckIn: openCheckIn,
+    onBadState: () => setBadStateOpen(true),
+    onDelayCheck: () => setDelayCheckOpen(true),
+  };
   const isIslamic = data.profile?.additionalMode === "islam";
+  const delayDays = data.profile ? Math.max(0, getCycleDay(data.profile) - data.profile.cycleConfig.cycleLength) : 0;
 
   const screens: Record<NavPage, React.ReactNode> = {
     today: <TodayScreen {...screenProps} />,
@@ -133,6 +144,15 @@ export function AppShell() {
             onClose={() => setBadStateOpen(false)}
             data={data}
             persist={persist}
+          />
+        )}
+        {delayCheckOpen && (
+          <DelayCheckModal
+            open={delayCheckOpen}
+            onClose={() => setDelayCheckOpen(false)}
+            data={data}
+            persist={persist}
+            delayDays={delayDays}
           />
         )}
       </AnimatePresence>

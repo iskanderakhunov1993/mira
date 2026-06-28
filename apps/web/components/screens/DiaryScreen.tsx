@@ -215,6 +215,15 @@ function checkInItems(checkIn: DailyCheckIn | undefined) {
       value: `${checkIn.badEpisodes.length} эпизод · ${lastEpisode.summary}`,
     });
   }
+  if (checkIn.delayChecks && checkIn.delayChecks.length > 0) {
+    const lastCheck = checkIn.delayChecks[checkIn.delayChecks.length - 1];
+    items.push({
+      key: "delay",
+      icon: CalendarDays,
+      label: "Задержка",
+      value: `${lastCheck.delayDays} дн. · ${lastCheck.reasons.length > 0 ? lastCheck.reasons.length : "без"} факторов`,
+    });
+  }
 
   return items;
 }
