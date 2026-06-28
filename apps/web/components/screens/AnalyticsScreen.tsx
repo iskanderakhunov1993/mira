@@ -353,15 +353,15 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
   const heroTitle = redFlags.length > 0
     ? "Есть сигнал, который стоит обсудить"
     : totalDays < 7
-      ? "Пока собираем базу для личной нормы"
+      ? "Пока рано делать личные выводы"
       : evidenceItems.length > 0
-        ? "Mira уже видит первые паттерны"
-        : "Данных становится достаточно для наблюдений";
+        ? "Mira уже видит, что повторяется"
+        : "Данных достаточно для первых наблюдений";
   const heroBody = redFlags.length > 0
     ? "На этой странице собраны факты, которые можно превратить в отчёт для врача."
     : totalDays < 7
-      ? `Нужно ещё ${Math.max(0, 7 - totalDays)} отметок, чтобы отличать обычное для тебя от случайного дня.`
-        : "Сравниваем цикл, сон, боль, ходьбу, энергию и настроение, чтобы подсвечивать не просто цифры, а смысл.";
+      ? `Отметь состояние ещё ${Math.max(0, 7 - totalDays)} раз, и Mira начнёт показывать не общие советы, а твои повторы.`
+      : "Сравниваем цикл, сон, боль, ходьбу, энергию и настроение, чтобы показать не цифры, а смысл.";
 
   const detailTabs: Array<{ id: DetailTab; label: string; icon: IconType }> = [
     { id: "cycle", label: "Цикл", icon: TrendingUp },
@@ -374,7 +374,7 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
     <div>
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-mira-text">Аналитика</h1>
-        <p className="mt-1 text-sm text-mira-muted">Что Mira уже понимает и какие данные нужны дальше</p>
+        <p className="mt-1 text-sm text-mira-muted">Что повторяется в твоём цикле и что с этим делать</p>
       </div>
 
       <Card className={`mb-4 p-4 ${toneClass[heroTone]}`}>
@@ -384,8 +384,8 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest">Главное сейчас</p>
-              <Badge className="shrink-0 bg-white/80 text-[10px] shadow-none">{readiness}% данных</Badge>
+              <p className="text-[10px] font-bold uppercase tracking-widest">Главный вывод</p>
+              <Badge className="shrink-0 bg-white/80 text-[10px] shadow-none">{readiness}% точность</Badge>
             </div>
             <p className="text-base font-bold leading-snug text-mira-text">{heroTitle}</p>
             <p className="mt-1 text-xs leading-relaxed text-mira-muted">{heroBody}</p>
@@ -394,10 +394,34 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
 
         <div className="mt-3 grid grid-cols-3 gap-2">
           <MiniStat label="Отметки" value={`${totalDays}`} note="дней" />
-          <MiniStat label="Норма" value={`${normOverall}%`} note="карта ритма" />
-          <MiniStat label="Сигналы" value={`${watchMetrics.length}`} note="для внимания" />
+          <MiniStat label="Прогноз" value={`${normOverall}%`} note="персональности" />
+          <MiniStat label="Врач" value={`${watchMetrics.length}`} note="сигналов" />
         </div>
       </Card>
+
+      <SectionTitle label="Выводы" title={evidenceItems.length > 0 ? "Что уже видно по данным" : "Что появится после отметок"} />
+      <div className="mb-5 space-y-3">
+        {evidenceItems.length > 0 ? (
+          evidenceItems.map(item => (
+            <Card key={item.key} className={`p-4 ${toneClass[item.tone]}`}>
+              <div className="flex items-start gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/70 text-sm font-black">{item.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold leading-snug text-mira-text">{item.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-mira-muted">{item.body}</p>
+                </div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <Card className="border-mira-lavender/20 bg-mira-bg p-4">
+            <p className="text-sm font-bold text-mira-text">Пока нет устойчивого повтора</p>
+            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+              После нескольких отметок здесь появится понятный вывод: когда чаще падает энергия, в какие дни бывает боль и что повторяется перед месячными.
+            </p>
+          </Card>
+        )}
+      </div>
 
       {cycleAnalytics && (
         <CycleAnalyticsCard analytics={cycleAnalytics} onOpenReport={() => navigate("report")} />
@@ -425,7 +449,7 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
         <Card className="p-3">
           <div className="mb-2 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-mira-success" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Главный пробел</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Что улучшит точность</p>
           </div>
           <p className="text-sm font-bold leading-snug text-mira-text">{weakestNeed.label}</p>
           <p className="mt-1 text-[11px] leading-snug text-mira-muted">
@@ -437,9 +461,14 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </Card>
       </div>
 
-      <SectionTitle label="Данные" title="Что важно собирать для точной аналитики" />
-      <Card className="mb-5 p-4">
-        <div className="space-y-3">
+      <details className="mb-5 rounded-2xl border border-mira-lavender/20 bg-white p-4">
+        <summary className="cursor-pointer text-sm font-bold text-mira-text">
+          Качество данных для точной аналитики
+        </summary>
+        <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+          Это служебная часть: она показывает, какие отметки сильнее всего улучшают прогнозы и выводы.
+        </p>
+        <div className="mt-4 space-y-3">
           {dataNeeds.map((need) => {
             const Icon = need.icon;
             const value = pct(need.count, need.goal);
@@ -465,31 +494,7 @@ export function AnalyticsScreen({ data, navigate, onCheckIn }: ScreenProps) {
             );
           })}
         </div>
-      </Card>
-
-      <SectionTitle label="Выводы" title={evidenceItems.length > 0 ? "Что уже видно по данным" : "Какие выводы появятся здесь"} />
-      <div className="mb-5 space-y-3">
-        {evidenceItems.length > 0 ? (
-          evidenceItems.map(item => (
-            <Card key={item.key} className={`p-4 ${toneClass[item.tone]}`}>
-              <div className="flex items-start gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/70 text-sm font-black">{item.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold leading-snug text-mira-text">{item.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-mira-muted">{item.body}</p>
-                </div>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <Card className="border-mira-lavender/20 bg-mira-bg p-4">
-            <p className="text-sm font-bold text-mira-text">Пока рано делать выводы</p>
-            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
-              После нескольких отметок Mira начнёт показывать связи: когда падает энергия, в какие дни чаще боль, как сон связан с фазой цикла.
-            </p>
-          </Card>
-        )}
-      </div>
+      </details>
 
       {usefulMetrics.length > 0 && (
         <div className="mb-5">
