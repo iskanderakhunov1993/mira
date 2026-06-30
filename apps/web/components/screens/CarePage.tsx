@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useMemo, useState } from "react";
-import { Check, Droplets, Minus, Plus, Play, Save, Users } from "lucide-react";
+import { Check, Droplets, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -303,6 +303,10 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
     if (data.calories.current > 0) count += 1;
     return count;
   }, [data.calories.current, libido, skin, vitaminStatus, walking, water, weight, workout]);
+  const shoppingList = useMemo(
+    () => data.vitamins.filter((vitamin) => vitaminStatus[vitamin.id] === "buy").map((vitamin) => vitamin.name),
+    [data.vitamins, vitaminStatus]
+  );
 
   function showToast(message: string) {
     setToast(message);
@@ -341,7 +345,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
           <div>
             <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A]">💧 Забота</h1>
             <p className="mt-2 text-sm font-semibold text-[#8E8E93]">
-              Достаточно заполнить 2 из 6 пунктов. Отметь только то, что легко вспомнить.
+              Отметь только то, что легко вспомнить. Даже пары быстрых отметок достаточно для первых связей в аналитике.
             </p>
           </div>
           <div className="mira-card rounded-2xl px-4 py-3 text-right text-sm font-black text-[#202033]">
@@ -357,88 +361,11 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
         )}
 
         <div className="mt-6 space-y-6">
-          {/* Цели */}
-          <SectionCard delay={30}>
-            <Eyebrow tone="dark">Что может влиять на самочувствие</Eyebrow>
-            <h2 className="mt-1 mb-5 text-xl font-black leading-snug text-[#1A1A1A]">
-              Сегодня достаточно 2 отметок
-            </h2>
-            <p className="mb-5 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#8E8E93]">
-              Вода, питание, движение, тренировка, вес и аптечка помогают Mira искать связи с болью, настроением и энергией. Не нужно заполнять всё.
-            </p>
-            <div className="space-y-6">
-              <div className="mira-gradient-health rounded-[28px] p-5 text-white shadow-[0_18px_44px_rgba(122,101,242,0.22)]">
-                <Eyebrow>Калории</Eyebrow>
-                <div className="mt-1 flex items-end justify-between gap-3">
-                  <p className="text-3xl font-black">
-                    {data.calories.current.toLocaleString("ru-RU")}
-                    <span className="ml-1 text-base font-bold text-white/70">
-                      / {data.calories.target.toLocaleString("ru-RU")} ккал
-                    </span>
-                  </p>
-                </div>
-                <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/25">
-                  <div
-                    className="h-full rounded-full bg-white transition-all duration-300"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, (data.calories.current / data.calories.target) * 100))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="mb-3 text-sm font-black text-[#1A1A1A]">🍽️ Баланс нутриентов (Б/Ж/У)</p>
-                <MacroDonut protein={data.nutrients.protein} fats={data.nutrients.fats} carbs={data.nutrients.carbs} />
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Витамины */}
-          <SectionCard title="💊 Витамины и добавки (необязательно)" delay={80}>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {data.vitamins.map((vitamin, index) => {
-                const status = vitaminStatus[vitamin.id];
-                const marker = index === 0 ? "🔴" : index === 1 ? "🟡" : "🟣";
-                return (
-                  <div key={vitamin.id} className="rounded-2xl bg-[#FAF8F5] p-4">
-                    <p className="text-sm font-black text-[#1A1A1A]">{marker} {vitamin.name} ({vitamin.dose})</p>
-                    <p className="mt-3 text-sm leading-relaxed text-[#1A1A1A]">▸ {vitamin.description}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-[#8E8E93]">▸ {vitamin.time}</p>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        className={`rounded-2xl ${status === "has" ? "bg-[#34C759] text-white hover:bg-[#2DA84A]" : "bg-white text-[#8E8E93] hover:bg-white"}`}
-                        onClick={() => setVitaminStatus((current) => ({ ...current, [vitamin.id]: "has" }))}
-                      >
-                        ✅ Есть дома
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className={`rounded-2xl ${status === "buy" ? "bg-[#EFEFF4] text-[#1A1A1A]" : "bg-white text-[#8E8E93]"}`}
-                        onClick={() => setVitaminStatus((current) => ({ ...current, [vitamin.id]: "buy" }))}
-                      >
-                        ❌ Нет, купить
-                      </Button>
-                    </div>
-                    {status === "buy" && <p className="mt-3 text-xs font-bold text-[#8E8E93]">Добавь в список покупок на сегодня.</p>}
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-4 text-sm font-semibold text-[#8E8E93]">
-              Перед приёмом добавок лучше проконсультироваться с врачом. 📖 “Цинк и ПМС” → <button className="font-black text-[#E872A0]" type="button">Читать</button>
-            </p>
-          </SectionCard>
-
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Вода */}
             <Card
               className="mira-gradient-health overflow-hidden rounded-[32px] border-0 p-6 text-white shadow-[0_22px_56px_rgba(88,216,220,0.24)] transition hover:-translate-y-0.5"
-              style={{ animation: `miraCareIn 420ms ease 130ms both` }}
+              style={{ animation: `miraCareIn 420ms ease 30ms both` }}
             >
               <div className="flex items-center justify-between">
                 <Eyebrow>Hydration</Eyebrow>
@@ -486,54 +413,107 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
             </Card>
 
             {/* Активность */}
-            <div className="flex flex-col gap-6">
-              <Card
-                className="mira-gradient-night overflow-hidden rounded-[32px] border-0 p-6 text-white shadow-[0_20px_52px_rgba(34,39,63,0.26)] transition hover:-translate-y-0.5"
-                style={{ animation: `miraCareIn 420ms ease 180ms both` }}
-              >
-                <Eyebrow>Движение</Eyebrow>
-                <h3 className="mt-2 text-2xl font-black">Лёгкая активность 🏃‍♀️</h3>
-                <p className="mt-2 text-sm font-semibold leading-relaxed text-white/75">
-                  Лёгкая активность сегодня помогает снизить спазмы и поднять настроение.
-                </p>
-                <div className="mt-5 flex items-center justify-between">
-                  <div className="flex items-center -space-x-2">
-                    {["#FFB199", "#FFD9E6", "#E872A0"].map((color, index) => (
-                      <span
-                        key={color}
-                        className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#2A2A2E] text-[11px] font-black text-[#1A1A1A]"
-                        style={{ backgroundColor: color }}
-                      >
-                        {index === 2 ? <Users className="h-3.5 w-3.5 text-white" /> : ""}
-                      </span>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    className="rounded-2xl bg-white text-[#1A1A1A] hover:bg-white/90"
-                  >
-                    <Play className="h-4 w-4" />
-                    Выбрать
-                  </Button>
+            <SectionCard delay={70}>
+              <Eyebrow tone="dark">Быстрая отметка</Eyebrow>
+              <h2 className="mt-1 mb-3 text-xl font-black text-[#1A1A1A]">Активность 🚶</h2>
+              <p className="mb-5 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+                Отметь примерно. Mira использует это, чтобы понять связь движения с болью, энергией и сном.
+              </p>
+              <div className="space-y-5">
+                <div>
+                  <p className="mb-3 text-sm font-black text-[#1A1A1A]">Ходьба</p>
+                  <RadioPills value={walking} options={["почти нет", "немного", "нормально", "много"]} onChange={setWalking} />
                 </div>
-              </Card>
-
-              <SectionCard delay={210}>
-                <Eyebrow tone="dark">Activity</Eyebrow>
-                <h2 className="mt-1 mb-4 text-lg font-black text-[#1A1A1A]">Активность 🚶</h2>
-                <div className="space-y-5">
-                  <div>
-                    <p className="mb-3 text-sm font-black text-[#1A1A1A]">Ходьба</p>
-                    <RadioPills value={walking} options={["почти нет", "немного", "нормально", "много"]} onChange={setWalking} />
-                  </div>
-                  <div>
-                    <p className="mb-3 text-sm font-black text-[#1A1A1A]">Тренировка</p>
-                    <RadioPills value={workout} options={["нет", "лёгкая", "средняя", "тяжёлая"]} onChange={setWorkout} />
-                  </div>
+                <div>
+                  <p className="mb-3 text-sm font-black text-[#1A1A1A]">Тренировка</p>
+                  <RadioPills value={workout} options={["нет", "лёгкая", "средняя", "тяжёлая"]} onChange={setWorkout} />
                 </div>
-              </SectionCard>
-            </div>
+              </div>
+            </SectionCard>
           </div>
+
+          {/* Витамины */}
+          <SectionCard title="💊 Аптечка и добавки (необязательно)" delay={120}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {data.vitamins.map((vitamin, index) => {
+                const status = vitaminStatus[vitamin.id];
+                const marker = index === 0 ? "🔴" : index === 1 ? "🟡" : "🟣";
+                return (
+                  <div key={vitamin.id} className="rounded-2xl bg-[#FAF8F5] p-4">
+                    <p className="text-sm font-black text-[#1A1A1A]">{marker} {vitamin.name}</p>
+                    <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-[#E872A0]">
+                      Доза: {vitamin.dose}
+                    </p>
+                    <p className="mt-2 rounded-2xl bg-[#FFF7DE] px-3 py-2 text-xs font-bold leading-relaxed text-[#8A6500]">
+                      Дозировку лучше подтвердить с врачом, особенно при беременности, хронических состояниях или лекарствах.
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-[#1A1A1A]">▸ {vitamin.description}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[#8E8E93]">▸ {vitamin.time}</p>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className={`rounded-2xl ${status === "has" ? "bg-[#34C759] text-white hover:bg-[#2DA84A]" : "bg-white text-[#8E8E93] hover:bg-white"}`}
+                        onClick={() => setVitaminStatus((current) => ({ ...current, [vitamin.id]: "has" }))}
+                      >
+                        ✅ Есть дома
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className={`rounded-2xl ${status === "buy" ? "bg-[#EFEFF4] text-[#1A1A1A]" : "bg-white text-[#8E8E93]"}`}
+                        onClick={() => setVitaminStatus((current) => ({ ...current, [vitamin.id]: "buy" }))}
+                      >
+                        ❌ Нет, купить
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {shoppingList.length > 0 && (
+              <div className="mt-4 rounded-[22px] bg-[#FFF0F5] px-4 py-3">
+                <p className="text-sm font-black text-[#1A1A1A]">Список покупок</p>
+                <p className="mt-1 text-sm font-semibold text-[#8E8E93]">{shoppingList.join(", ")}</p>
+              </div>
+            )}
+            <p className="mt-4 text-sm font-semibold text-[#8E8E93]">
+              📖 “Цинк и ПМС” → <button className="font-black text-[#E872A0]" type="button">Читать</button>
+            </p>
+          </SectionCard>
+
+          {/* Питание */}
+          <SectionCard delay={170}>
+            <Eyebrow tone="dark">Если есть силы заполнить подробнее</Eyebrow>
+            <h2 className="mt-1 mb-5 text-xl font-black leading-snug text-[#1A1A1A]">Питание и БЖУ (необязательно)</h2>
+            <div className="space-y-6">
+              <div className="mira-gradient-health rounded-[28px] p-5 text-white shadow-[0_18px_44px_rgba(122,101,242,0.22)]">
+                <Eyebrow>Калории</Eyebrow>
+                <div className="mt-1 flex items-end justify-between gap-3">
+                  <p className="text-3xl font-black">
+                    {data.calories.current.toLocaleString("ru-RU")}
+                    <span className="ml-1 text-base font-bold text-white/70">
+                      / {data.calories.target.toLocaleString("ru-RU")} ккал
+                    </span>
+                  </p>
+                </div>
+                <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/25">
+                  <div
+                    className="h-full rounded-full bg-white transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, (data.calories.current / data.calories.target) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-3 text-sm font-black text-[#1A1A1A]">🍽️ Баланс нутриентов</p>
+                <MacroDonut protein={data.nutrients.protein} fats={data.nutrients.fats} carbs={data.nutrients.carbs} />
+              </div>
+            </div>
+          </SectionCard>
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Кожа и волосы */}
@@ -571,16 +551,11 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
                 className="h-12 flex-1 rounded-2xl border border-[#E8DDE3] bg-white px-4 text-lg font-black text-[#1A1A1A] outline-none focus:border-[#E872A0]"
               />
               <span className="text-sm font-bold text-[#8E8E93]">кг</span>
-              <Button
-                type="button"
-                className="h-12 rounded-2xl bg-[#E872A0] text-white hover:bg-[#D95F8E]"
-                onClick={() => showToast("Вес сохранён!")}
-              >
-                <Save className="h-4 w-4" />
-                Сохранить
-              </Button>
             </div>
             {!weight && <p className="mt-3 text-sm font-semibold text-[#8E8E93]">Введите вес, чтобы увидеть динамику.</p>}
+            <p className="mt-3 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">
+              Вес сохранится вместе с остальными отметками по кнопке “Сохранить всё”.
+            </p>
           </SectionCard>
 
           {/* Сохранить всё */}
