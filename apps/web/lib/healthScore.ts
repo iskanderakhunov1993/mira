@@ -32,7 +32,7 @@ export const statusMeta: Record<MetricStatus, { color: string; ring: string; bg:
   ok:      { color: "#5BAE7E", ring: "#7BC99A", bg: "#E8F5EC", label: "Стабильно" },
   watch:   { color: "#C99A3E", ring: "#E0C060", bg: "#F8F0DC", label: "Следи" },
   concern: { color: "#C9607E", ring: "#E08AA0", bg: "#F8E0E8", label: "Обсудить" },
-  nodata:  { color: "#9B95A8", ring: "#C8C2D4", bg: "#F0EDF5", label: "Нет данных" },
+  nodata:  { color: "#9B95A8", ring: "#C8C2D4", bg: "#F0EDF5", label: "Нужны отметки" },
 };
 
 const order: Record<MetricStatus, number> = { concern: 0, watch: 1, ok: 2, nodata: 3 };
@@ -86,7 +86,7 @@ export function getHealthSummary(data: MiraLocalData): HealthSummary {
   const painDays = checkIns.filter(c => c.pain && c.pain.kinds.some(k => k !== "none"));
   const strongPain = painDays.filter(c => c.pain?.level === "strong");
   if (painDays.length === 0 && checkIns.length < 5) {
-    metrics.push({ id: "pain", emoji: "🌸", label: "Боль", status: "nodata", verdict: "Нет данных", detail: "Отмечай, чтобы видеть паттерн", value: "—", spark: [] });
+    metrics.push({ id: "pain", emoji: "🌸", label: "Боль", status: "nodata", verdict: "Нужны отметки", detail: "Отметь боль ещё 3 дня, чтобы увидеть, повторяется ли она", value: "—", spark: [] });
   } else {
     const status: MetricStatus = strongPain.length >= 3 ? "concern" : strongPain.length >= 1 || painDays.length > checkIns.length * 0.3 ? "watch" : "ok";
     metrics.push({
@@ -104,7 +104,7 @@ export function getHealthSummary(data: MiraLocalData): HealthSummary {
   // ── Сон ──
   const sleepDays = checkIns.filter(c => c.sleep);
   if (sleepDays.length < 3) {
-    metrics.push({ id: "sleep", emoji: "😴", label: "Сон", status: "nodata", verdict: "Нет данных", detail: "Отмечай сон несколько дней", value: "—", spark: [] });
+    metrics.push({ id: "sleep", emoji: "😴", label: "Сон", status: "nodata", verdict: "Нужны отметки", detail: "Отметь сон ещё 3 дня, чтобы Mira сравнила его с энергией", value: "—", spark: [] });
   } else {
     const bad = sleepDays.filter(c => c.sleep!.quality === "bad" || c.sleep!.quality === "insomnia").length;
     const ratio = bad / sleepDays.length;
@@ -124,7 +124,7 @@ export function getHealthSummary(data: MiraLocalData): HealthSummary {
   // ── Энергия ──
   const energyDays = checkIns.filter(c => c.energy);
   if (energyDays.length < 3) {
-    metrics.push({ id: "energy", emoji: "⚡", label: "Энергия", status: "nodata", verdict: "Нет данных", detail: "Отмечай энергию", value: "—", spark: [] });
+    metrics.push({ id: "energy", emoji: "⚡", label: "Энергия", status: "nodata", verdict: "Нужны отметки", detail: "Отметь энергию ещё 3 дня, чтобы найти спад или повтор", value: "—", spark: [] });
   } else {
     const low = energyDays.filter(c => c.energy!.value === "low" || c.energy!.value === "exhausted").length;
     const ratio = low / energyDays.length;
@@ -142,7 +142,7 @@ export function getHealthSummary(data: MiraLocalData): HealthSummary {
   // ── Настроение ──
   const moodDays = checkIns.filter(c => c.mood);
   if (moodDays.length < 3) {
-    metrics.push({ id: "mood", emoji: "🙂", label: "Настроение", status: "nodata", verdict: "Нет данных", detail: "Отмечай настроение", value: "—", spark: [] });
+    metrics.push({ id: "mood", emoji: "🙂", label: "Настроение", status: "nodata", verdict: "Нужны отметки", detail: "Отметь настроение ещё 3 дня, чтобы увидеть связь с циклом", value: "—", spark: [] });
   } else {
     const negative = moodDays.filter(c => ["sadness", "anxiety", "anger"].includes(c.mood!.value)).length;
     const ratio = negative / moodDays.length;

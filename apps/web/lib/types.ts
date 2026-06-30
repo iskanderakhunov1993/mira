@@ -70,6 +70,8 @@ export type BadSymptom =
   | "no_energy"
   | "anxiety"
   | "crying"
+  | "headache"
+  | "other"
   | "sharp_pain"
   | "pain_after_sex"
   | "delay"
@@ -79,6 +81,7 @@ export type BadEpisode = {
   id: string;
   savedAt: string;
   symptoms: BadSymptom[];
+  intensity?: 1 | 2 | 3 | 4 | 5;
   severity: "self_care" | "watch" | "doctor";
   summary: string;
   actions: string[];
@@ -278,7 +281,8 @@ export type PeriodKitItemId =
   | "wet_wipes"
   | "spare_underwear"
   | "water"
-  | "snack";
+  | "snack"
+  | "pregnancy_test";
 
 export type PeriodKitItem = {
   id: PeriodKitItemId;

@@ -71,7 +71,7 @@ export function LabsSection({ data, persist }: Props) {
       {recs.length === 0 ? (
         <div className="mb-5 rounded-2xl border border-mira-lavender/20 bg-mira-bg/60 p-3.5">
           <p className="text-xs text-mira-muted">
-            Пока явных поводов нет. Продолжай отмечать состояние — если появится паттерн,
+            Пока явных поводов нет. Продолжай отмечать состояние — если что-то начнёт повторяться,
             я подскажу, какие анализы имеет смысл обсудить.
           </p>
         </div>

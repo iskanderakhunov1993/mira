@@ -70,9 +70,10 @@ function groupByCycleDay(checkIns: DailyCheckIn[], periodStart: string, cycleLen
 export function getMicroInsight(data: MiraLocalData, checkIn: DailyCheckIn): Insight {
   const allCheckIns = Object.values(data.checkIns);
   const profile = data.profile;
-  const cycleLength = profile?.cycleConfig.cycleLength ?? 28;
+  const norm = getCycleNorm(profile);
+  const cycleLength = norm.cycleLength;
   const periodLength = profile?.cycleConfig.periodLength ?? 5;
-  const cycleDay = getCycleDay(profile);
+  const cycleDay = norm.isDelayed ? cycleLength : norm.cycleDay;
   const phase = getCyclePhase(cycleDay, periodLength, cycleLength);
 
   // Strong pain repeating
@@ -91,7 +92,7 @@ export function getMicroInsight(data: MiraLocalData, checkIn: DailyCheckIn): Ins
         type: "observation",
         icon: "pain",
         title: "Боль замечена повторно",
-        body: "Мы отслеживаем паттерн. Ещё несколько отметок — и станет видно, в какие дни цикла она появляется.",
+        body: "Mira смотрит, повторяется ли это. Ещё несколько отметок — и станет видно, в какие дни цикла она появляется.",
       };
     }
   }
@@ -126,7 +127,7 @@ export function getMicroInsight(data: MiraLocalData, checkIn: DailyCheckIn): Ins
         return {
           type: "connection",
           icon: "pms",
-          title: "ПМС-паттерн формируется",
+          title: "Похоже, симптомы перед месячными повторяются",
           body: `«${top[0]}» — твой самый частый симптом (${top[1]} раз). Обычно появляется за несколько дней до месячных.`,
         };
       }
@@ -147,7 +148,7 @@ export function getMicroInsight(data: MiraLocalData, checkIn: DailyCheckIn): Ins
         type: "connection",
         icon: "mood",
         title: "Настроение и фаза цикла",
-        body: `${moodName.charAt(0).toUpperCase() + moodName.slice(1)} в ${phaseLabel} фазе отмечена ${sameMoodInPhase.length} раз. Это похоже на повторяющийся паттерн, за которым стоит понаблюдать.`,
+        body: `${moodName.charAt(0).toUpperCase() + moodName.slice(1)} в ${phaseLabel} фазе отмечена ${sameMoodInPhase.length} раз. Похоже, это повторяется, за этим стоит понаблюдать.`,
       };
     }
   }
@@ -171,7 +172,7 @@ export function getMicroInsight(data: MiraLocalData, checkIn: DailyCheckIn): Ins
     return {
       type: "observation",
       icon: "positive",
-      title: "Личная норма формируется",
+      title: "Данных для выводов стало больше",
       body: `У тебя уже ${allCheckIns.length} дней данных. Аналитика становится точнее с каждой отметкой.`,
     };
   }
@@ -183,8 +184,8 @@ export function getMicroInsight(data: MiraLocalData, checkIn: DailyCheckIn): Ins
     icon: "norm",
     title: "Данные сохранены",
     body: remaining > 0
-      ? `Ещё ${remaining} отметок до первых выводов о твоей норме. Каждый день важен.`
-      : "Чем больше данных, тем точнее будет твоя личная норма.",
+      ? `Ещё ${remaining} отметок — и Mira точнее поймёт, что для тебя обычно.`
+      : "Чем больше данных, тем точнее Mira понимает твои повторы.",
   };
 }
 
@@ -429,7 +430,7 @@ export function getSmartInsights(data: MiraLocalData): Insight[] {
       type: "connection",
       icon: "pms",
       title: `ПМС начинается за ~${avgDaysBefore} дней`,
-      body: `Твои ПМС-симптомы чаще появляются за ${avgDaysBefore} дней до месячных. Это твой паттерн.`,
+      body: `Возможные симптомы перед месячными чаще появляются за ${avgDaysBefore} дней до начала цикла. Похоже, это повторяется.`,
     });
   }
 
@@ -453,7 +454,7 @@ export function getSmartInsights(data: MiraLocalData): Insight[] {
     insights.push({
       type: "observation",
       icon: "positive",
-      title: "Паттерн выглядит стабильным",
+      title: "Похоже, это повторяется",
       body: "За последние циклы заметных отклонений по отметкам не видно. Продолжай отслеживать.",
     });
   }

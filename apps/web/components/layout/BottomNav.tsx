@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Sun, CalendarDays, ChartNoAxesCombined, FileText, Plus, FlaskConical,
+  Sun, CalendarDays, ChartNoAxesCombined, FileText, HeartPulse, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavPage } from "./types";
@@ -10,10 +10,12 @@ export function BottomNav({
   active,
   onChange,
   onCheckIn,
+  onBadState,
 }: {
   active: NavPage;
   onChange: (p: NavPage) => void;
   onCheckIn: () => void;
+  onBadState: () => void;
   isIslamic?: boolean;
 }) {
   const left: { id: NavPage; label: string; icon: typeof Sun }[] = [
@@ -23,18 +25,26 @@ export function BottomNav({
 
   const right: { id: NavPage; label: string; icon: typeof Sun }[] = [
     { id: "analytics", label: "Аналитика", icon: ChartNoAxesCombined },
-    { id: "labs", label: "Анализы", icon: FlaskConical },
     { id: "report", label: "Отчёт", icon: FileText },
   ];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-mira-lavender/20 bg-white/95 backdrop-blur-xl lg:hidden" style={{ boxShadow: "0 -10px 28px rgba(45,38,64,0.08)" }}>
+      <button
+        type="button"
+        onClick={onBadState}
+        className="absolute -top-12 right-3 inline-flex items-center gap-2 rounded-full border border-mira-cycle/20 bg-white/95 px-3 py-2 text-xs font-bold text-mira-cycle shadow-soft backdrop-blur transition active:scale-[0.98]"
+      >
+        <HeartPulse className="h-4 w-4" />
+        Мне плохо
+      </button>
+
       <div className="relative flex items-end justify-around px-2 pb-[env(safe-area-inset-bottom,8px)] pt-2">
         {left.map((item) => (
           <button
             key={item.id}
             onClick={() => onChange(item.id)}
             className={cn(
-              "flex min-w-[52px] flex-col items-center gap-1 rounded-lg px-1.5 py-1.5 transition-all duration-200",
+              "flex min-w-[58px] flex-col items-center gap-1 rounded-lg px-2 py-1.5 transition-all duration-200",
               active === item.id ? "bg-mira-lavender-light text-mira-primary" : "text-mira-muted"
             )}
           >
@@ -59,7 +69,7 @@ export function BottomNav({
             key={item.id}
             onClick={() => onChange(item.id)}
             className={cn(
-              "flex min-w-[52px] flex-col items-center gap-1 rounded-lg px-1.5 py-1.5 transition-all duration-200",
+              "flex min-w-[58px] flex-col items-center gap-1 rounded-lg px-2 py-1.5 transition-all duration-200",
               active === item.id ? "bg-mira-lavender-light text-mira-primary" : "text-mira-muted"
             )}
           >

@@ -1,5 +1,6 @@
 import type { MiraLocalData, CyclePhase, GeneratedWorkout, GeneratedExercise, WorkoutLocation, WorkoutEquipment, WorkoutLog } from "./types";
-import { getCycleDay, getCyclePhase, getCheckIn, dateKey } from "./store";
+import { getCyclePhase, getCheckIn, dateKey } from "./store";
+import { getCycleNorm } from "./cycleEngine";
 
 type ExercisePool = {
   name: string;
@@ -89,8 +90,9 @@ export function generateWorkout(
   equipment: WorkoutEquipment,
 ): GeneratedWorkout {
   const profile = data.profile;
-  const cycleDay = getCycleDay(profile);
-  const cycleLength = profile?.cycleConfig.cycleLength ?? 28;
+  const norm = getCycleNorm(profile);
+  const cycleDay = norm.isDelayed ? norm.cycleLength : norm.cycleDay;
+  const cycleLength = norm.cycleLength;
   const periodLength = profile?.cycleConfig.periodLength ?? 5;
   const phase = getCyclePhase(cycleDay, periodLength, cycleLength);
   const checkIn = getCheckIn(data);
@@ -176,8 +178,9 @@ export function getWorkoutStats(data: MiraLocalData): {
     nextRecommendedIn = 0;
   } else {
     const profile = data.profile;
-    const cycleDay = getCycleDay(profile);
-    const phase = getCyclePhase(cycleDay, profile?.cycleConfig.periodLength ?? 5, profile?.cycleConfig.cycleLength ?? 28);
+    const norm = getCycleNorm(profile);
+    const cycleDay = norm.isDelayed ? norm.cycleLength : norm.cycleDay;
+    const phase = getCyclePhase(cycleDay, profile?.cycleConfig.periodLength ?? 5, norm.cycleLength);
     if (phase === "menstruation") {
       nextRecommendedIn = Math.max(0, 3 - lastWorkoutDaysAgo);
     } else if (phase === "follicular" || phase === "ovulation") {

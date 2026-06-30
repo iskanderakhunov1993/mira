@@ -92,7 +92,7 @@ export function getCycleAnalytics(data: MiraLocalData): CycleAnalyticsSummary | 
 
   if (strongPainTotal >= 2) {
     headline = "Сильная боль повторяется";
-    insight = `За последние ${cycles.length} цикла сильная боль отмечена ${strongPainTotal} раз. Это уже не просто отдельный день, а паттерн для наблюдения.`;
+    insight = `За последние ${cycles.length} цикла сильная боль отмечена ${strongPainTotal} раз. Похоже, это повторяется и за этим стоит понаблюдать.`;
     doctorNote = "Если сильная боль мешает обычной жизни или повторяется в первые дни месячных, стоит обсудить это с врачом.";
   } else if (pmsTotal >= 3 || moodTotal >= 3) {
     headline = "ПМС и настроение имеют повтор";
@@ -103,7 +103,7 @@ export function getCycleAnalytics(data: MiraLocalData): CycleAnalyticsSummary | 
   } else if (heavyFlowTotal >= 2 || delayTotal > 0) {
     headline = "Есть цикл-сигналы для внимания";
     insight = heavyFlowTotal >= 2
-      ? `Обильность повторяется ${heavyFlowTotal} раз. Это полезно вынести в отчёт врачу, если есть слабость или усталость.`
+      ? `Обильность повторяется ${heavyFlowTotal} раз. Это полезно показать врачу, если есть слабость или усталость.`
       : `Задержки суммарно ${delayTotal} дн. Mira поможет собрать возможные причины без паники.`;
   }
 

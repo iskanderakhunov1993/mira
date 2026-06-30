@@ -139,7 +139,7 @@ export function getAchievements(data: MiraLocalData): Achievement[] {
     { id: "week", emoji: "🌿", title: "Неделя с собой", desc: "7 дней данных", unlocked: total >= 7 },
     { id: "streak3", emoji: "🔥", title: "Три дня подряд", desc: "Серия 3 дня", unlocked: streak.longest >= 3 },
     { id: "cycle1", emoji: "🌸", title: "Первый цикл", desc: "Отмечен 1 цикл", unlocked: norm.observedCycles >= 1 },
-    { id: "pms", emoji: "🧠", title: "Знаю свой ПМС", desc: "Отмечен ПМС-паттерн", unlocked: hasPms },
+    { id: "pms", emoji: "🧠", title: "Знаю симптомы перед месячными", desc: "Mira заметила повторение", unlocked: hasPms },
     { id: "norm", emoji: "🏆", title: "Знаю свою норму", desc: "3 цикла данных", unlocked: norm.observedCycles >= 3 },
     { id: "month", emoji: "💮", title: "Месяц заботы", desc: "30 дней данных", unlocked: total >= 30 },
   ];

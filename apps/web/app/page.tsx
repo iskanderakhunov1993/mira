@@ -1,5 +1,5 @@
-import { AppShell } from "@/components/layout/AppShell";
+import { AnalyticsPage } from "@/components/screens/AnalyticsPage";
 
 export default function Page() {
-  return <AppShell />;
+  return <AnalyticsPage />;
 }

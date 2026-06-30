@@ -6,7 +6,7 @@ export const cloudSyncCategories: Array<{ id: CloudSyncCategory; label: string; 
   { id: "intimacy", label: "Секс и контрацепция", desc: "не отправлять интимные отметки" },
   { id: "notes", label: "Личный дневник", desc: "не отправлять свободные заметки" },
   { id: "badEpisodes", label: "Мне плохо", desc: "не отправлять кризисные эпизоды" },
-  { id: "delayChecks", label: "Задержки", desc: "не отправлять разбор задержки" },
+  { id: "delayChecks", label: "Задержки", desc: "не отправлять, что может влиять на задержку" },
   { id: "labs", label: "Анализы", desc: "не отправлять результаты анализов" },
   { id: "islamic", label: "Религиозные отметки", desc: "не отправлять исламский режим" },
 ];

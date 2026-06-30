@@ -74,7 +74,7 @@ export function getPersonalReminders(data: MiraLocalData): PersonalReminder[] {
     reminders.push({
       id: "symptoms",
       title: "Отметь состояние",
-      body: "10 секунд: боль, настроение, энергия и сон. Так Mira точнее увидит твой паттерн.",
+      body: "10 секунд: боль, настроение, энергия и сон. Так Mira точнее увидит, что повторяется.",
       priority: "low",
       action: "Отметить",
     });

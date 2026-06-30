@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Mira — Знай свою норму",
-    short_name: "Mira",
-    description: "Приватный умный дневник женского здоровья: цикл, симптомы, личная норма, аналитика и отчёт врачу.",
+    name: "MIRA — женское здоровье",
+    short_name: "MIRA",
+    description: "Твой персональный помощник в мире женского здоровья",
     start_url: "/",
     display: "standalone",
-    background_color: "#F8F5FE",
-    theme_color: "#9B8EC4",
+    background_color: "#FAF8F5",
+    theme_color: "#E872A0",
     lang: "ru",
     orientation: "portrait",
     categories: ["health", "lifestyle"],
@@ -22,6 +22,12 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         src: "/icons/icon-192.png",
         sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-192.png",
+        sizes: "72x72",
         type: "image/png",
         purpose: "any",
       },

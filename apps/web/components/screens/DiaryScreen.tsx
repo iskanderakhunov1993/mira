@@ -5,9 +5,11 @@ import {
   BookOpen,
   CalendarDays,
   PencilLine,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PagePurposeCard } from "@/components/ui/PagePurposeCard";
 import { dateKey, getCyclePhase, getPhaseLabel, saveCheckIn } from "@/lib/store";
 import type { DailyCheckIn, MiraLocalData } from "@/lib/types";
 import type { ScreenProps } from "./types";
@@ -47,7 +49,31 @@ function getPhaseForDate(data: MiraLocalData, dayKey: string) {
   };
 }
 
-export function DiaryScreen({ data, persist }: ScreenProps) {
+const moodLabel: Record<string, string> = {
+  joy: "хорошее",
+  normal: "ровное",
+  sadness: "грусть",
+  anger: "раздражение",
+  anxiety: "тревога",
+  swings: "перепады",
+};
+
+const energyLabel: Record<string, string> = {
+  high: "много",
+  normal: "нормально",
+  low: "низкая",
+  exhausted: "нет сил",
+};
+
+const sleepLabel: Record<string, string> = {
+  good: "хороший",
+  normal: "нормальный",
+  bad: "плохой",
+  little: "мало сна",
+  insomnia: "бессонница",
+};
+
+export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
   const [selectedDay, setSelectedDay] = useState(dateKey());
   const [diaryText, setDiaryText] = useState("");
   const [savedNote, setSavedNote] = useState(false);
@@ -82,8 +108,34 @@ export function DiaryScreen({ data, persist }: ScreenProps) {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-mira-text">Мой личный дневник</h1>
-        <p className="mt-1 text-sm text-mira-muted">Записи сохраняются в день цикла и помогают вспомнить контекст</p>
+        <p className="mt-1 text-sm leading-relaxed text-mira-muted">
+          Место для личных заметок и просмотра того, что уже сохранено по каждому дню цикла.
+        </p>
       </div>
+
+      <div className="mb-5">
+        <PagePurposeCard
+          items={[
+            { label: "Зачем", title: "Понять день", body: "Записывай контекст: стресс, события, мысли, что помогло." },
+            { label: "Что сделать", title: "Выбери дату", body: "Открой день в календаре и добавь личную запись или отметку состояния." },
+            { label: "Что получишь", title: "Историю цикла", body: "Mira связывает записи с аналитикой и отчётом врачу." },
+          ]}
+        />
+      </div>
+
+      <Card className="mb-5 border-mira-lavender/20 bg-white p-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mira-bg text-mira-primary">
+            <Shield className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-sm font-bold text-mira-text">Личные заметки остаются личными</p>
+            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+              Личная заметка видна только тебе. Она не попадёт в отчёт врачу, пока ты сама не включишь её.
+            </p>
+          </div>
+        </div>
+      </Card>
 
       <div className="mb-3 flex items-end justify-between">
         <div>
@@ -136,6 +188,39 @@ export function DiaryScreen({ data, persist }: ScreenProps) {
         </span>
       </div>
 
+      <Card className="mb-5 border-mira-lavender/20 bg-white p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Сводка дня</p>
+            <p className="text-sm font-bold text-mira-text">
+              {new Date(selectedDay).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+            </p>
+            <p className="text-xs text-mira-muted">
+              {phase ? `${phase.cycleDay}-й день цикла` : "День без привязки к циклу"}
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <SummaryPill label="Месячные" value={selectedCheckIn?.period ? "есть" : "нет"} />
+          <SummaryPill label="Боль" value={selectedCheckIn?.pain?.level ? selectedCheckIn.pain.level : "нет"} />
+          <SummaryPill label="Настроение" value={selectedCheckIn?.mood?.value ? moodLabel[selectedCheckIn.mood.value] ?? selectedCheckIn.mood.value : "нет отметки"} />
+          <SummaryPill label="Энергия" value={selectedCheckIn?.energy?.value ? energyLabel[selectedCheckIn.energy.value] ?? selectedCheckIn.energy.value : "нет отметки"} />
+          <SummaryPill label="Сон" value={selectedCheckIn?.sleep?.quality ? sleepLabel[selectedCheckIn.sleep.quality] ?? selectedCheckIn.sleep.quality : "нет отметки"} />
+          <SummaryPill label="Заметка" value={selectedCheckIn?.note?.text ? selectedCheckIn.note.text : "нет"} />
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-mira-muted">Быстрые действия</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <DiaryQuickButton label="Отметить месячные" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Отметить боль" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Отметить настроение" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Отметить сон" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Добавить заметку" onClick={() => document.getElementById("diary-note")?.focus()} />
+          </div>
+        </div>
+      </Card>
+
       <Card className="mb-5 border-mira-primary/10 bg-mira-lavender-light/20 p-4">
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
@@ -150,6 +235,7 @@ export function DiaryScreen({ data, persist }: ScreenProps) {
           <PencilLine className="h-5 w-5 shrink-0 text-mira-primary" />
         </div>
         <textarea
+          id="diary-note"
           value={diaryText}
           onChange={(event) => setDiaryText(event.target.value)}
           placeholder="Что сегодня происходило? Настроение, мысли, стресс, боль, важные события..."
@@ -206,5 +292,26 @@ export function DiaryScreen({ data, persist }: ScreenProps) {
       </Card>
 
     </div>
+  );
+}
+
+function SummaryPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-mira-bg px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">{label}</p>
+      <p className="mt-1 text-xs font-semibold text-mira-text">{value}</p>
+    </div>
+  );
+}
+
+function DiaryQuickButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="min-h-11 rounded-2xl border border-mira-lavender/20 bg-white px-3 py-2 text-xs font-black text-mira-text shadow-[0_8px_20px_rgba(45,38,64,0.04)] transition hover:-translate-y-0.5 hover:border-mira-primary/30 active:scale-[0.98]"
+    >
+      {label}
+    </button>
   );
 }

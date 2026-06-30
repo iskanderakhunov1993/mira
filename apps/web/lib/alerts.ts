@@ -1,5 +1,6 @@
 import type { MiraLocalData, CyclePhase, DailyCheckIn, BadSymptom } from "./types";
-import { getCycleDay, getCyclePhase, getPhaseLabel, getDaysUntilPeriod, dateKey } from "./store";
+import { getCyclePhase, getPhaseLabel, getDaysUntilPeriod, dateKey } from "./store";
+import { getCycleNorm } from "./cycleEngine";
 
 // ── #1 Smart Reminders ──
 
@@ -15,8 +16,8 @@ export function getSmartReminders(data: MiraLocalData): SmartReminder[] {
   if (!profile) return [];
 
   const daysUntil = getDaysUntilPeriod(profile);
-  const cycleDay = getCycleDay(profile);
-  const cycleLength = profile.cycleConfig.cycleLength;
+  const norm = getCycleNorm(profile);
+  const cycleLength = norm.cycleLength;
   const reminders: SmartReminder[] = [];
 
   if (daysUntil >= 2 && daysUntil <= 4) {
@@ -66,11 +67,11 @@ export function getSmartReminders(data: MiraLocalData): SmartReminder[] {
     });
   }
 
-  if (cycleDay > cycleLength + 3) {
+  if (norm.delayDays > 3) {
     reminders.push({
       type: "delay",
-      title: `Задержка ${cycleDay - cycleLength} дней`,
-      body: `Цикл обычно длится ${cycleLength} дней. Сейчас ${cycleDay}-й день. Это может быть вариантом нормы, но если задержка продолжится — стоит обратить внимание.`,
+      title: `Задержка ${norm.delayDays} дн.`,
+      body: `По твоей норме цикл обычно длится ${cycleLength} дн. Сейчас задержка ${norm.delayDays} дн. Это может быть вариантом нормы, но если задержка продолжится — стоит обратить внимание.`,
     });
   }
 
@@ -117,7 +118,7 @@ export function getSexCycleInsight(data: MiraLocalData): SexCycleInsight | null 
   const window = getFertileWindow(profile);
   const inFertileWindow = cycleDay >= window.start && cycleDay <= window.end;
   const daysSinceSex = Math.max(0, Math.floor((new Date(dateKey()).getTime() - new Date(latest.date).getTime()) / 86_400_000));
-  const delayDays = getCycleDay(profile) - profile.cycleConfig.cycleLength;
+  const delayDays = getCycleNorm(profile).delayDays;
 
   const hadUnprotectedRisk = intimacy.protection === "unprotected" || intimacy.protection === "interrupted";
   const hasPain = intimacy.feeling === "pain" || intimacy.feeling === "discomfort";
@@ -178,9 +179,10 @@ export function getRedFlags(data: MiraLocalData): RedFlag[] {
   const checkIns = Object.values(data.checkIns);
 
   const flags: RedFlag[] = [];
-  const cycleLength = profile.cycleConfig.cycleLength;
+  const norm = getCycleNorm(profile);
+  const cycleLength = norm.cycleLength;
   const periodLength = profile.cycleConfig.periodLength;
-  const currentDelayDays = Math.max(0, getCycleDay(profile) - cycleLength);
+  const currentDelayDays = norm.delayDays;
   const badEpisodes = checkIns.flatMap(c => c.badEpisodes ?? []);
   const countBadSymptom = (symptom: BadSymptom) => badEpisodes.filter(episode => episode.symptoms.includes(symptom)).length;
   const intimacyPain = checkIns.filter(c => c.intimacy?.feeling === "pain" || c.intimacy?.feeling === "discomfort");
@@ -561,7 +563,8 @@ export function getDoctorScript(data: MiraLocalData): DoctorScript {
   const dataPoints: string[] = [];
 
   if (profile) {
-    dataPoints.push(`Длина цикла: ${profile.cycleConfig.cycleLength} дней`);
+    const norm = getCycleNorm(profile);
+    dataPoints.push(`Личная длина цикла: ${norm.cycleLength} дней`);
     dataPoints.push(`Длительность месячных: ${profile.cycleConfig.periodLength} дней`);
     dataPoints.push(`Данных собрано: ${checkIns.length} дней`);
   }
@@ -578,7 +581,7 @@ export function getDoctorScript(data: MiraLocalData): DoctorScript {
     dataPoints.push(`Обильные месячные: ${heavy.length} дней`);
   }
 
-  if (profile && profile.cycleConfig.cycleLength > 35) {
+  if (profile && getCycleNorm(profile).cycleLength > 35) {
     questions.push("Какие причины длинного цикла стоит проверить?");
   }
 
@@ -619,8 +622,9 @@ export function getDailyPhaseCard(data: MiraLocalData): DailyPhaseCard | null {
   const profile = data.profile;
   if (!profile) return null;
 
-  const cycleDay = getCycleDay(profile);
-  const cycleLength = profile.cycleConfig.cycleLength;
+  const norm = getCycleNorm(profile);
+  const cycleDay = norm.isDelayed ? norm.cycleLength : norm.cycleDay;
+  const cycleLength = norm.cycleLength;
   const periodLength = profile.cycleConfig.periodLength;
   const phase = getCyclePhase(cycleDay, periodLength, cycleLength);
 
@@ -686,7 +690,7 @@ export function getDailyPhaseCard(data: MiraLocalData): DailyPhaseCard | null {
         "Энергия и настроение могут снизиться",
         "Тяга к сладкому — прогестерон повышает аппетит",
         "Сон может ухудшиться",
-        "Раздражительность может быть частью твоего паттерна",
+        "Похоже, раздражительность может повторяться",
       ],
     },
   };

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { PwaRegister } from "./pwa-register";
+import { RouterShell } from "@/components/layout/RouterShell";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -39,7 +40,7 @@ export default function RootLayout({
     <html lang="ru">
       <body className={`${jakarta.variable} font-sans antialiased`}>
         <PwaRegister />
-        {children}
+        <RouterShell>{children}</RouterShell>
       </body>
     </html>
   );

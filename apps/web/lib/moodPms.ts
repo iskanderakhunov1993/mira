@@ -62,7 +62,7 @@ export function getMoodPmsCard(phase: CyclePhase, daysUntilPeriod: number, check
   if (isPmsWindow) {
     return {
       tone: "sensitive",
-      label: "ПМС-прогноз",
+      label: "Возможные симптомы перед месячными",
       title: "Возможна повышенная чувствительность",
       body: "Это не значит, что с тобой что-то не так. Полезно оставить больше воздуха в календаре и быть мягче к себе.",
       pmsForecast: `До месячных примерно ${Math.max(0, daysUntilPeriod)} дн. — отслеживай настроение, сон и тягу к сладкому.`,

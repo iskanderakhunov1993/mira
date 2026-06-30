@@ -33,7 +33,7 @@ export function NormMap({ data }: { data: MiraLocalData }) {
           </p>
           <p className="mt-0.5 text-xs text-mira-muted">
             {overallPercent < 20 ? "Только начинаем тебя узнавать" :
-             overallPercent < 50 ? "Собираю твои паттерны" :
+             overallPercent < 50 ? "Смотрю, что повторяется" :
              overallPercent < 80 ? "Уже многое понятно" :
              "Хорошо тебя знаю"}
           </p>

@@ -1,5 +1,6 @@
 import type { MiraLocalData, CyclePhase, DailyCheckIn } from "./types";
-import { getCycleDay, getCyclePhase, getCheckIn, dateKey } from "./store";
+import { getCyclePhase, getCheckIn, dateKey } from "./store";
+import { getCycleNorm } from "./cycleEngine";
 
 export type VitaminRec = {
   name: string;
@@ -37,8 +38,9 @@ export function getVitaminRecommendations(data: MiraLocalData): VitaminCard | nu
   const profile = data.profile;
   if (!profile) return null;
 
-  const cycleDay = getCycleDay(profile);
-  const cycleLength = profile.cycleConfig.cycleLength;
+  const norm = getCycleNorm(profile);
+  const cycleDay = norm.isDelayed ? norm.cycleLength : norm.cycleDay;
+  const cycleLength = norm.cycleLength;
   const periodLength = profile.cycleConfig.periodLength;
   const phase = getCyclePhase(cycleDay, periodLength, cycleLength);
   const today = getCheckIn(data);

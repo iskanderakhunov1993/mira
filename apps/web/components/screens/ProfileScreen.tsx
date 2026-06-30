@@ -4,19 +4,18 @@ import { useState, useEffect } from "react";
 import {
   UserRound, Calendar, Shield, Download, Trash2,
   ChevronRight, Lock, Bell, Heart, Users, Database, Eye, Moon, Award, Cloud, ScanFace, EyeOff, BellRing, BookOpen, HeartPulse, Plus,
-  ClipboardList,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SyncSettings } from "@/components/sync/SyncSettings";
 import { madhabs, type Madhab } from "@/lib/islamic";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PagePurposeCard } from "@/components/ui/PagePurposeCard";
 import { saveProfile, clearData } from "@/lib/store";
 import { clearPin, cloudSyncCategories, defaultPartnerShare, hasPin, savePin } from "@/lib/privacy";
 import { notificationsSupported, notificationsEnabled, requestNotifications, setNotificationsPref } from "@/lib/notifications";
 import { getPersonalReminders, getReminderSettings, personalReminderCatalog } from "@/lib/personalReminders";
 import { getUnlockedCount } from "@/lib/gamification";
-import { getAgeHealthGuidance } from "@/lib/ageHealthGuidance";
 import { AchievementsCard } from "./AchievementsCard";
 import type { ScreenProps } from "./types";
 
@@ -103,6 +102,14 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
     persist(saveProfile(data, { ...profile, pinEnabled: true }));
   }
 
+  function confirmAndClearAllData() {
+    if (confirm("Это действие нельзя отменить. Все записи, симптомы, заметки и отчёты будут удалены.")) {
+      clearPin();
+      clearData();
+      window.location.reload();
+    }
+  }
+
   if (!profile) {
     return (
       <div>
@@ -115,39 +122,30 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
   }
 
   const unlockedCount = getUnlockedCount(data);
-  const ageGuidance = getAgeHealthGuidance(profile.age);
 
   const menuGroups: { title: string; items: { icon: typeof UserRound; label: string; desc: string; id: string }[] }[] = [
     {
-      title: "Цикл и тело",
+      title: "Личное и цикл",
       items: [
         { icon: UserRound, label: "О себе", desc: profile.age ? `${profile.name}, ${profile.age} лет` : profile.name, id: "data" },
         { icon: Calendar, label: "Настройки цикла", desc: `${profile.cycleConfig.cycleLength} дн., период ${profile.cycleConfig.periodLength} дн.`, id: "cycle" },
-        { icon: ClipboardList, label: "Возрастной чек-лист", desc: ageGuidance.shortTitle, id: "age-health" },
       ],
     },
     {
-      title: "Прогресс",
+      title: "Приватность и данные",
       items: [
-        { icon: BookOpen, label: "Обучение", desc: "Как пользоваться главной", id: "education" },
-        { icon: Award, label: "Достижения", desc: `${unlockedCount.unlocked} из ${unlockedCount.total} открыто`, id: "achievements" },
-      ],
-    },
-    {
-      title: "Режимы",
-      items: [
-        { icon: Moon, label: "Режим мусульманки", desc: profile.additionalMode === "islam" ? `${madhabs[profile.madhab ?? "hanafi"].name} · активен` : "Не активен", id: "islamic" },
-        { icon: Users, label: "Режим партнёра", desc: "Поделись фазой цикла", id: "partner" },
-      ],
-    },
-    {
-      title: "Данные и приватность",
-      items: [
+        { icon: Shield, label: "Приватность", desc: "PIN, скрытый режим, доступ", id: "privacy" },
         { icon: Cloud, label: "Синхронизация", desc: syncEmail ? `Включена · ${syncEmail}` : "Резервная копия между устройствами", id: "sync" },
         { icon: BellRing, label: "Напоминания", desc: "Вода, симптомы, аптечка, врач", id: "reminders" },
-        { icon: Shield, label: "Приватность", desc: "Напоминания, отметки", id: "privacy" },
         { icon: Database, label: "Хранение данных", desc: "Что храним и где", id: "mydata" },
         { icon: Download, label: "Экспорт данных", desc: "Скачать свою копию", id: "export" },
+      ],
+    },
+    {
+      title: "Помощь и прогресс",
+      items: [
+        { icon: BookOpen, label: "Как работает Mira", desc: "Что делать на главной и где искать данные", id: "education" },
+        { icon: Award, label: "Достижения", desc: `${unlockedCount.unlocked} из ${unlockedCount.total} открыто`, id: "achievements" },
       ],
     },
   ];
@@ -257,9 +255,14 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
             <div className="rounded-2xl border border-mira-success/20 bg-[#E0F5E8]/40 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Lock className="h-4 w-4 text-mira-success" />
-                <p className="text-sm font-bold text-mira-success">Только на твоём устройстве</p>
+                <p className="text-sm font-bold text-mira-success">Где хранятся данные</p>
               </div>
-              <p className="text-xs text-mira-muted">Мы не собираем, не передаём и не продаём твои данные. Нет аккаунта, нет сервера, нет рекламных трекеров.</p>
+              <p className="text-xs leading-relaxed text-mira-muted">
+                Сейчас данные хранятся только на этом устройстве. Если очистить браузер или удалить данные сайта, записи могут пропасть.
+              </p>
+              <Button className="mt-3 w-full" onClick={() => setSection("sync")}>
+                <Cloud className="h-4 w-4" /> Включить резервную копию
+              </Button>
             </div>
 
             <div className="space-y-2">
@@ -286,7 +289,9 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
 
             <div className="space-y-2">
               <p className="text-sm font-semibold text-mira-text">Как удалить</p>
-              <p className="text-xs text-mira-muted">Профиль → «Удалить данные» — безвозвратно удаляет всё. Или очисти localStorage браузера.</p>
+              <p className="text-xs leading-relaxed text-mira-muted">
+                Перед удалением Mira предупредит: это действие нельзя отменить. Все записи, симптомы, заметки и отчёты будут удалены.
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -306,6 +311,12 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
         <button onClick={() => setSection(null)} className="mb-4 text-sm text-mira-muted hover:text-mira-primary transition">← Назад</button>
         <Card className="max-w-lg p-6">
           <p className="mb-4 text-sm text-mira-muted">Скачай свои данные в формате JSON. Файл содержит все записи, профиль и настройки.</p>
+          <div className="mb-4 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
+            <p className="text-sm font-bold text-mira-text">Копия твоих данных</p>
+            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+              Ты можешь скачать копию своих данных в любой момент. Это удобно для резервного хранения или переноса.
+            </p>
+          </div>
           <Button className="w-full" onClick={() => {
             const exported = { ...data, exportedAt: new Date().toISOString() };
             const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
@@ -318,7 +329,9 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
           }}>
             <Download className="h-4 w-4" /> Скачать JSON
           </Button>
-          <p className="mt-4 text-xs text-mira-muted">Данные сохраняются только на твоём устройстве. Экспорт создаёт копию для резервного хранения.</p>
+          <p className="mt-4 text-xs leading-relaxed text-mira-muted">
+            Файл останется у тебя. Mira не отправляет экспорт врачу или партнёру автоматически.
+          </p>
         </Card>
       </div>
     );
@@ -347,7 +360,7 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
       {
         n: 2,
         title: "Отметь состояние",
-        body: "Нажми «Отметить состояние» и сохрани боль, настроение, сон, симптомы или питание. Так появляется твоя личная норма.",
+        body: "Нажми «Отметить состояние» и сохрани боль, настроение, сон или симптомы. Так Mira начинает понимать, что для тебя обычно.",
         icon: Plus,
       },
       {
@@ -409,51 +422,7 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
             <input type="number" min={10} max={90} value={profile.age ?? ""} placeholder="не указан"
               onChange={e => persist(saveProfile(data, { ...profile, age: e.target.value ? +e.target.value : undefined }))}
               className="mt-1 w-full bg-transparent text-sm font-semibold text-mira-text focus:outline-none" />
-            <p className="mt-1 text-[10px] text-mira-muted">Влияет на режим: подросток, молодая, зрелая, перименопауза</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (section === "age-health") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-bold text-mira-text">Возрастной чек-лист</h1>
-        <button onClick={() => setSection(null)} className="mb-4 text-sm text-mira-muted hover:text-mira-primary transition">← Назад</button>
-        <Card className="max-w-lg p-6">
-          <div className="mb-5 rounded-2xl border border-mira-primary/10 bg-mira-lavender-light/30 p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-mira-primary" />
-              <p className="text-sm font-bold text-mira-text">{ageGuidance.title}</p>
-            </div>
-            <p className="text-xs leading-relaxed text-mira-muted">{ageGuidance.todayTip}</p>
-          </div>
-
-          <div className="mb-5">
-            <p className="mb-3 text-sm font-bold text-mira-text">Что держать в поле зрения</p>
-            <div className="space-y-2">
-              {ageGuidance.checklist.map((item) => (
-                <div key={item} className="rounded-2xl bg-mira-bg px-3 py-2.5 text-xs leading-relaxed text-mira-text">{item}</div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <p className="mb-3 text-sm font-bold text-mira-text">Вопросы врачу</p>
-            <div className="space-y-2">
-              {ageGuidance.doctorQuestions.map((question, index) => (
-                <div key={question} className="flex items-start gap-2 rounded-2xl border border-mira-lavender/20 bg-white px-3 py-2.5">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-mira-lavender-light text-[10px] font-bold text-mira-primary">{index + 1}</span>
-                  <p className="text-xs leading-relaxed text-mira-text">{question}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-mira-cycle/15 bg-[#F8E8EE]/35 p-4">
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-mira-cycle">Не терпеть</p>
-            <p className="text-xs leading-relaxed text-mira-muted">{ageGuidance.redFlags.join(" · ")}</p>
+            <p className="mt-1 text-[10px] text-mira-muted">Нужен для более аккуратного отчёта врачу и возрастных подсказок.</p>
           </div>
         </Card>
       </div>
@@ -601,10 +570,17 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
               </p>
             </div>
 
+            <div className="rounded-2xl border border-mira-cycle/10 bg-[#F8E8EE]/25 p-4">
+              <p className="text-sm font-bold text-mira-text">Чувствительные данные под твоим контролем</p>
+              <p className="mt-1 text-xs leading-relaxed text-mira-muted">
+                Секс, задержки, анализы, личные заметки, лекарства и врачебный отчёт не показываются партнёру. Их можно исключить из облака ниже, а в отчёте интимные данные скрыты по умолчанию.
+              </p>
+            </div>
+
             <PrivacyRow
               icon={Lock}
               label="PIN-код"
-              desc={pinReady ? "Включён на этом устройстве" : "Защита приложения при открытии"}
+              desc={pinReady ? "PIN защищает вход в приложение на этом устройстве" : "PIN защищает вход в приложение на этом устройстве"}
               on={!!profile.pinEnabled && pinReady}
               onToggle={() => void togglePin()}
             />
@@ -716,7 +692,7 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
 
             <button
               type="button"
-              onClick={() => { if (confirm("Безвозвратно удалить все локальные данные Mira?")) { clearPin(); clearData(); window.location.reload(); } }}
+              onClick={confirmAndClearAllData}
               className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-left transition hover:bg-red-100"
             >
               <Trash2 className="h-5 w-5 text-red-500" />
@@ -733,9 +709,24 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-mira-text">Профиль</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-mira-text">Профиль</h1>
+        <p className="mt-1 text-sm leading-relaxed text-mira-muted">
+          Управление циклом, приватностью, напоминаниями и тем, какие данные Mira учитывает.
+        </p>
+      </div>
 
-      <Card className="max-w-lg p-6">
+      <div className="mb-5">
+        <PagePurposeCard
+          items={[
+            { label: "Зачем", title: "Настроить Mira", body: "Возраст, цикл и режимы делают советы точнее." },
+            { label: "Что сделать", title: "Проверь разделы", body: "Начни с цикла, приватности и напоминаний." },
+            { label: "Что получишь", title: "Контроль данных", body: "Ты выбираешь, что хранить, защищать и синхронизировать." },
+          ]}
+        />
+      </div>
+
+      <Card className="p-6">
         <div className="mb-6 flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-mira-rose-light to-mira-lavender-light text-2xl font-bold text-mira-primary">
             {profile.name.charAt(0).toUpperCase()}
@@ -743,6 +734,36 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
           <div>
             <p className="text-lg font-bold text-mira-text">{profile.name}</p>
             <p className="text-xs text-mira-muted">Mira</p>
+          </div>
+        </div>
+
+        <div className="mb-5 rounded-3xl border border-mira-primary/10 bg-mira-lavender-light/25 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Database className="h-4 w-4 text-mira-primary" />
+            <p className="text-sm font-bold text-mira-text">Где хранятся данные</p>
+          </div>
+          <p className="text-xs leading-relaxed text-mira-muted">
+            Сейчас данные хранятся только на этом устройстве. Если очистить браузер или удалить данные сайта, записи могут пропасть.
+          </p>
+          {!syncEmail && (
+            <Button className="mt-3 w-full" onClick={() => setSection("sync")}>
+              <Cloud className="h-4 w-4" /> Включить резервную копию
+            </Button>
+          )}
+        </div>
+
+        <div className="mb-5 grid gap-2 sm:grid-cols-3">
+          <div className="rounded-2xl bg-mira-bg px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Данные</p>
+            <p className="mt-1 text-xs font-semibold text-mira-text">на устройстве</p>
+          </div>
+          <div className="rounded-2xl bg-mira-bg px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Синхронизация</p>
+            <p className="mt-1 text-xs font-semibold text-mira-text">{syncEmail ? "включена" : "локально"}</p>
+          </div>
+          <div className="rounded-2xl bg-mira-bg px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Защита</p>
+            <p className="mt-1 text-xs font-semibold text-mira-text">{profile.pinEnabled ? "PIN включён" : "PIN выключен"}</p>
           </div>
         </div>
 
@@ -772,7 +793,7 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
           ))}
 
           <button
-            onClick={() => { if (confirm("Удалить все данные? Это действие нельзя отменить.")) { clearData(); window.location.reload(); } }}
+            onClick={confirmAndClearAllData}
             className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-red-50"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-400">

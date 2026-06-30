@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Calendar,
   ClipboardList,
+  Copy,
   Download,
   Droplets,
   FileText,
@@ -26,8 +27,8 @@ import { Badge } from "@/components/ui/badge";
 import { getDoctorScript, getPhaseCorrelations } from "@/lib/alerts";
 import { getCycleAnalytics } from "@/lib/cycleAnalytics";
 import { getCorrelations } from "@/lib/correlations";
-import { getAgeHealthGuidance } from "@/lib/ageHealthGuidance";
-import { evaluateLab, getHormoneCheckup45, getLabRange } from "@/lib/labs";
+import { getCycleNorm } from "@/lib/cycleEngine";
+import { evaluateLab, getLabRange } from "@/lib/labs";
 import type { DailyCheckIn, MiraLocalData } from "@/lib/types";
 import type { ScreenProps } from "./types";
 
@@ -36,6 +37,51 @@ const periods = [
   { label: "3 месяца", months: 3 },
   { label: "6 месяцев", months: 6 },
   { label: "12 месяцев", months: 12 },
+];
+
+type ReportSectionId =
+  | "periodDates"
+  | "delays"
+  | "painSymptoms"
+  | "moodEnergy"
+  | "sleep"
+  | "labs"
+  | "doctorQuestions"
+  | "privateNotes"
+  | "sex";
+
+const reportSectionLabels: Array<{ id: ReportSectionId; label: string; sensitive?: boolean }> = [
+  { id: "periodDates", label: "Даты месячных" },
+  { id: "delays", label: "Задержки" },
+  { id: "painSymptoms", label: "Боль и симптомы" },
+  { id: "moodEnergy", label: "Настроение и энергия" },
+  { id: "sleep", label: "Сон" },
+  { id: "labs", label: "Анализы" },
+  { id: "doctorQuestions", label: "Вопросы врачу" },
+  { id: "privateNotes", label: "Личные заметки", sensitive: true },
+  { id: "sex", label: "Секс и контрацепция", sensitive: true },
+];
+
+const defaultReportSections: Record<ReportSectionId, boolean> = {
+  periodDates: true,
+  delays: true,
+  painSymptoms: true,
+  moodEnergy: true,
+  sleep: true,
+  labs: true,
+  doctorQuestions: true,
+  privateNotes: false,
+  sex: false,
+};
+
+const urgentHelpItems = [
+  "резкая или очень сильная боль;",
+  "обморок;",
+  "очень обильное кровотечение;",
+  "кровь после секса;",
+  "положительный тест и боль;",
+  "сильная слабость;",
+  "задержка больше обычного и есть тревожные симптомы.",
 ];
 
 const painLabels: Record<string, string> = {
@@ -104,7 +150,7 @@ function cycleDayFor(date: string, profile: MiraLocalData["profile"]) {
   const start = new Date(`${config.periodStart}T00:00:00`);
   const current = new Date(`${date}T00:00:00`);
   const diff = Math.floor((current.getTime() - start.getTime()) / 86400000);
-  const length = config.cycleLength || 28;
+  const length = getCycleNorm(profile).cycleLength;
   return ((diff % length) + length) % length + 1;
 }
 
@@ -152,14 +198,14 @@ function summarizeCareData(data: MiraLocalData, cutoffStr: string) {
   };
 }
 
-export function ReportScreen({ data, navigate }: ScreenProps) {
+export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(3);
-  const [includeSex, setIncludeSex] = useState(false);
-  const [showFullReport, setShowFullReport] = useState(false);
+  const [showFullReport, setShowFullReport] = useState(true);
+  const [includedSections, setIncludedSections] = useState<Record<ReportSectionId, boolean>>(defaultReportSections);
 
   const report = useMemo(() => {
     const profile = data.profile;
-    const cycleLength = profile?.cycleConfig.cycleLength ?? 28;
+    const cycleLength = getCycleNorm(profile).cycleLength;
     const periodLength = profile?.cycleConfig.periodLength ?? 5;
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - selectedPeriod);
@@ -279,7 +325,6 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
   function generateTextReport(): string {
     const now = new Date().toLocaleDateString("ru-RU");
     const from = report.cutoffDate.toLocaleDateString("ru-RU");
-    const ageGuidance = getAgeHealthGuidance(data.profile?.age);
     const lines = [
       "ОТЧЁТ ДЛЯ ВРАЧА — Mira",
       `Период: ${from} — ${now}`,
@@ -287,16 +332,16 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
       "",
       "КРАТКО",
       `Цикл по профилю: ${report.cycleLength} дней, месячные: ${report.periodLength} дней`,
-      `Даты месячных с отметками: ${report.periodEntries.map(entry => entry.date).join(", ") || "нет данных"}`,
-      `Боль: ${report.painEntries.length} дней, сильная боль: ${report.strongPainEntries.length} дней`,
-      `Обильность: ${report.heavyFlowEntries.length} дней с обильными/очень обильными отметками`,
-      `Задержки: ${report.delayChecks.length ? report.delayChecks.map(item => `${item.date}: ${item.delay.delayDays} дн.`).join("; ") : "нет отметок"}`,
-      `Настроение отмечено: ${report.moodEntries.length} дней`,
-      `Сон ухудшался: ${report.badSleepEntries.length} дней`,
+      includedSections.periodDates ? `Даты месячных с отметками: ${report.periodEntries.map(entry => entry.date).join(", ") || "нет данных"}` : null,
+      includedSections.painSymptoms ? `Боль: ${report.painEntries.length} дней, сильная боль: ${report.strongPainEntries.length} дней` : null,
+      includedSections.painSymptoms ? `Обильность: ${report.heavyFlowEntries.length} дней с обильными/очень обильными отметками` : null,
+      includedSections.delays ? `Задержки: ${report.delayChecks.length ? report.delayChecks.map(item => `${item.date}: ${item.delay.delayDays} дн.`).join("; ") : "нет отметок"}` : null,
+      includedSections.moodEnergy ? `Настроение отмечено: ${report.moodEntries.length} дней` : null,
+      includedSections.sleep ? `Сон ухудшался: ${report.badSleepEntries.length} дней` : null,
       `Лекарства: ${report.medicationEntries.map(entry => `${entry.date}: ${entry.symptomLog?.medications?.join(", ")}`).join("; ") || "нет отметок"}`,
       "",
       "ГЛАВНОЕ ДЛЯ ВРАЧА",
-      ...(report.doctorHighlights.length ? report.doctorHighlights.map(item => `— ${item}`) : ["— Повторяющихся тревожных сигналов пока мало"]),
+      ...(getVisiblePersonalItems(report.doctorHighlights).length ? getVisiblePersonalItems(report.doctorHighlights).map(item => `— ${item}`) : ["— Повторяющихся тревожных сигналов пока мало"]),
       "",
       "ЗАКОНОМЕРНОСТИ ИЗ АНАЛИТИКИ",
       ...(report.analyticsFindings.length ? report.analyticsFindings.map(item => `— ${item}`) : ["— Данных пока недостаточно для личных закономерностей"]),
@@ -308,21 +353,16 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
       `— Тренировки: ${report.care.workouts.length} записей, выполнено: ${report.care.completedWorkouts}`,
       `— Вес: ${report.care.weightEntries.length} замеров${report.care.latestWeight ? `, последний ${report.care.latestWeight.weight.toFixed(1)} кг` : ""}`,
       "",
-      "ВОЗРАСТНОЙ ЧЕК-ЛИСТ",
-      `— ${ageGuidance.title}`,
-      ...ageGuidance.checklist.map(item => `— ${item}`),
-      "",
-      "ВОПРОСЫ ПО ВОЗРАСТУ",
-      ...ageGuidance.doctorQuestions.map((question, index) => `${index + 1}. ${question}`),
-      "",
       "ЧТО ОБСУДИТЬ",
-      ...(report.focusItems.length ? report.focusItems.map(item => `— ${item}`) : ["— Явных повторяющихся сигналов в выбранном периоде мало"]),
+      ...(getVisiblePersonalItems(report.focusItems).length ? getVisiblePersonalItems(report.focusItems).map(item => `— ${item}`) : ["— Явных повторяющихся сигналов в выбранном периоде мало"]),
       "",
       "ЧАСТЫЕ СИМПТОМЫ",
-      ...(report.symptomCounts.length ? report.symptomCounts.map(([symptom, count]) => `— ${symptom}: ${count}`) : ["— нет частых симптомов"]),
+      ...(includedSections.painSymptoms
+        ? (report.symptomCounts.length ? report.symptomCounts.map(([symptom, count]) => `— ${symptom}: ${count}`) : ["— нет частых симптомов"])
+        : ["— скрыто пользователем"]),
       "",
-      includeSex ? "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ" : "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ: скрыто пользователем",
-      ...(includeSex
+      includedSections.sex ? "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ" : "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ: скрыто пользователем",
+      ...(includedSections.sex
         ? [
           `Дней с отметкой: ${report.intimacyEntries.length}`,
           `Риски/дискомфорт: ${report.intimacyRiskEntries.map(entry => `${entry.date}: ${[
@@ -334,18 +374,20 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
         : []),
       "",
       "ВОПРОСЫ ВРАЧУ",
-      ...report.questions.map((question, index) => `${index + 1}. ${question}`),
+      ...(includedSections.doctorQuestions ? report.questions.map((question, index) => `${index + 1}. ${question}`) : ["скрыто пользователем"]),
       "",
       "ДЕТАЛИ ПО ДНЯМ",
       ...(report.tableRows.length ? report.tableRows.map(row => {
         const parts = [
-          row.period ? `месячные: ${flowLabels[row.period.intensity] ?? row.period.intensity}` : null,
-          hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
-          row.mood ? `настроение: ${moodLabels[row.mood.value] ?? row.mood.value}` : null,
-          row.energy ? `энергия: ${energyLabels[row.energy.value] ?? row.energy.value}` : null,
-          row.sleep ? `сон: ${sleepLabels[row.sleep.quality] ?? row.sleep.quality}` : null,
+          includedSections.periodDates && row.period ? `месячные: ${flowLabels[row.period.intensity] ?? row.period.intensity}` : null,
+          includedSections.painSymptoms && hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
+          includedSections.moodEnergy && row.mood ? `настроение: ${moodLabels[row.mood.value] ?? row.mood.value}` : null,
+          includedSections.moodEnergy && row.energy ? `энергия: ${energyLabels[row.energy.value] ?? row.energy.value}` : null,
+          includedSections.sleep && row.sleep ? `сон: ${sleepLabels[row.sleep.quality] ?? row.sleep.quality}` : null,
           row.symptomLog?.medications?.length ? `лекарства: ${row.symptomLog.medications.join(", ")}` : null,
-          row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
+          includedSections.painSymptoms && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
+          includedSections.delays && row.delayChecks?.length ? `задержка: ${row.delayChecks.map(delay => `${delay.delayDays} дн.`).join(", ")}` : null,
+          includedSections.privateNotes && row.note?.text ? `личная заметка: ${row.note.text}` : null,
         ].filter(Boolean);
         return `— ${row.date}: ${parts.join("; ")}`;
       }) : ["— нет детальных записей"]),
@@ -354,6 +396,27 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
     ];
 
     return lines.join("\n");
+  }
+
+  function toggleSection(id: ReportSectionId) {
+    setIncludedSections(prev => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function handleCopyQuestions() {
+    const text = report.questions.map((question, index) => `${index + 1}. ${question}`).join("\n");
+    void navigator.clipboard?.writeText(text);
+  }
+
+  function getVisiblePersonalItems(items: string[]) {
+    return items.filter(item => {
+      const text = item.toLowerCase();
+      if (!includedSections.sex && (text.includes("секс") || text.includes("контрацеп") || text.includes("кровь после"))) return false;
+      if (!includedSections.painSymptoms && (text.includes("боль") || text.includes("обильн") || text.includes("кровотеч"))) return false;
+      if (!includedSections.delays && text.includes("задерж")) return false;
+      if (!includedSections.sleep && text.includes("сон")) return false;
+      if (!includedSections.moodEnergy && (text.includes("энерг") || text.includes("слаб"))) return false;
+      return true;
+    });
   }
 
   function handleExportText() {
@@ -377,29 +440,43 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
     const result = evaluateLab(lab.testId, lab.value);
     return result && result.status !== "ok";
   });
-  const hormoneCheckup = getHormoneCheckup45(data);
-  const ageGuidance = getAgeHealthGuidance(data.profile?.age);
-  const rawReadyScore = Math.min(
-    100,
-    Math.round(
-      Math.min(report.entries.length, 14) * 4 +
-      (report.periodEntries.length > 0 ? 12 : 0) +
-      (report.painEntries.length > 0 ? 10 : 0) +
-      (report.moodEntries.length > 0 ? 8 : 0) +
-      (report.tableRows.length >= 5 ? 10 : 0)
-    )
-  );
-  const readyScore = report.entries.length > 0 ? Math.max(12, rawReadyScore) : 0;
-  const readinessTitle = report.entries.length < 5
-    ? "Нужно ещё несколько отметок"
-    : report.focusItems.length > 0
-      ? "Есть что обсудить с врачом"
-      : "Отчёт уже можно показать";
-  const readinessBody = report.entries.length < 5
-    ? "Mira уже собрала первые записи, но врачу будет полезнее увидеть хотя бы 5-7 дней наблюдений."
-    : report.focusItems.length > 0
-      ? "В отчёте выделены повторяющиеся или тревожные сигналы, чтобы не объяснять всё с нуля на приёме."
-      : "Данных достаточно, чтобы показать цикл, симптомы и вопросы без лишней тревоги.";
+  const visibleDoctorHighlights = getVisiblePersonalItems(report.doctorHighlights);
+  const visibleFocusItems = getVisiblePersonalItems(report.focusItems);
+  const hasCycleData = Boolean(data.profile?.cycleConfig.periodStart);
+  const reportIsAlmostEmpty = report.entries.length < 2 && labs.length === 0;
+
+  if (!hasCycleData) {
+    return (
+      <div>
+        <div className="mb-6 print:hidden">
+          <h1 className="text-2xl font-bold text-mira-text">Отчёт врачу</h1>
+          <p className="mt-1 text-sm text-mira-muted">Симптомы, даты и закономерности, чтобы не вспоминать всё на приёме</p>
+        </div>
+        <ReportEmptyState
+          title="Mira пока не знает твой цикл"
+          body="Добавь дату последних месячных, чтобы получить прогноз и основу для отчёта врачу."
+          onProfile={() => navigate("profile")}
+        />
+      </div>
+    );
+  }
+
+  if (reportIsAlmostEmpty) {
+    return (
+      <div>
+        <div className="mb-6 print:hidden">
+          <h1 className="text-2xl font-bold text-mira-text">Отчёт врачу</h1>
+          <p className="mt-1 text-sm text-mira-muted">Симптомы, даты и закономерности, чтобы не вспоминать всё на приёме</p>
+        </div>
+        <ReportEmptyState
+          title="Пока отчёт почти пустой"
+          body="Добавь месячные, симптомы, боль или заметки — и Mira соберёт факты для приёма."
+          onCheckIn={onCheckIn}
+          onPeriod={onCheckIn}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -408,40 +485,96 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
         <p className="mt-1 text-sm text-mira-muted">Симптомы, даты и закономерности, чтобы не вспоминать всё на приёме</p>
       </div>
 
-      <Card className="mb-5 overflow-hidden border-mira-primary/15 bg-white p-5 print:hidden">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-xl">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Готовность отчёта</p>
-            <h2 className="mt-1 text-xl font-bold text-mira-text">{readinessTitle}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-mira-muted">{readinessBody}</p>
+      <Card className="mb-5 border-mira-primary/15 bg-white p-5 print:hidden">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Краткое резюме</p>
+            <h2 className="mt-1 text-lg font-bold text-mira-text">
+              {visibleFocusItems.length > 0 ? "Есть факты для обсуждения" : "Собрана история наблюдений"}
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-mira-muted">
+              Даты, симптомы, повторы, анализы и вопросы врачу. Без диагнозов и лишнего объяснения.
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div
-              className="grid h-24 w-24 place-items-center rounded-full"
-              style={{ background: `conic-gradient(#70B68A ${readyScore}%, #EEE9F5 0)` }}
-              aria-label={`Готовность отчёта ${readyScore}%`}
-            >
-              <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">
-                <span className="text-2xl font-bold text-mira-text">{readyScore}%</span>
-                <span className="-mt-2 text-[10px] font-bold uppercase text-mira-muted">готово</span>
-              </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handlePrintPdf}>
+              <Printer className="h-4 w-4" /> Скачать PDF
+            </Button>
+            <Button variant="outline" onClick={handleExportText}>
+              <Download className="h-4 w-4" /> Скачать TXT
+            </Button>
+            <Button variant="outline" onClick={handleCopyQuestions}>
+              <Copy className="h-4 w-4" /> Вопросы
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <MiniStat label="Дней с данными" value={`${report.entries.length}`} note={`за ${selectedPeriod} мес.`} />
+          <MiniStat label="Симптомы" value={`${report.painEntries.length + report.unusualEntries.length}`} note="боль и сигналы" />
+          <MiniStat label="Анализы" value={`${labs.length}`} note={`вне реф.: ${abnormalLabs.length}`} />
+          <MiniStat label="Вопросы" value={`${report.questions.length}`} note="для приёма" />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr]">
+          <div className="rounded-2xl border border-mira-lavender/20 bg-mira-bg p-3">
+            <p className="text-sm font-medium text-mira-text">Период отчёта</p>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {periods.map(period => (
+                <button
+                  key={period.months}
+                  onClick={() => setSelectedPeriod(period.months)}
+                  className={`rounded-xl px-2 py-2.5 text-xs font-semibold transition ${
+                    selectedPeriod === period.months ? "bg-mira-primary text-white shadow-glow" : "bg-white text-mira-muted"
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-mira-lavender/20 bg-mira-bg p-3">
+            <p className="text-sm font-medium text-mira-text">Что включить в отчёт?</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-mira-muted">
+              Ты сама выбираешь, какие данные попадут в отчёт. Личные заметки не включаются по умолчанию.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {reportSectionLabels.map(section => (
+                <ReportCheckbox
+                  key={section.id}
+                  checked={includedSections[section.id]}
+                  label={section.label}
+                  sensitive={section.sensitive}
+                  onClick={() => toggleSection(section.id)}
+                />
+              ))}
             </div>
           </div>
         </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <MiniStat label="Дней с данными" value={`${report.entries.length}`} note={`за ${selectedPeriod} мес.`} />
-          <MiniStat label="Вопросов врачу" value={`${report.questions.length}`} note={report.focusItems.length ? "по данным Mira" : "стартовый список"} />
-          <MiniStat label="Детальных записей" value={`${report.tableRows.length}`} note="для истории" />
+        <div className="mt-4 grid gap-2 md:grid-cols-3">
+          {[
+            ["Зачем", "Не вспоминать симптомы на приёме по памяти."],
+            ["Что сделать", "Выбрать период, проверить приватность и скачать PDF/TXT."],
+            ["Что получишь", "Факты, даты, повторы, анализы и вопросы врачу."],
+          ].map(([label, text]) => (
+            <div key={label} className="rounded-2xl bg-mira-bg px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">{label}</p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-mira-text">{text}</p>
+            </div>
+          ))}
         </div>
+      </Card>
 
-        <div className="mt-5 flex gap-3">
-          <Button className="flex-1" onClick={handlePrintPdf}>
-            <Printer className="h-4 w-4" /> Скачать PDF
-          </Button>
-          <Button variant="outline" className="flex-1" onClick={handleExportText}>
-            <Download className="h-4 w-4" /> TXT
-          </Button>
+      <Card className="mb-5 border-mira-cycle/20 bg-mira-rose-light/20 p-5 print:hidden">
+        <div className="mb-4 flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-mira-cycle" />
+          <p className="text-sm font-bold text-mira-text">Когда лучше обратиться за помощью срочно</p>
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          {urgentHelpItems.map(item => (
+            <div key={item} className="rounded-2xl bg-white/80 px-3 py-2 text-sm leading-relaxed text-mira-text">
+              {item}
+            </div>
+          ))}
         </div>
       </Card>
 
@@ -451,7 +584,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           <p className="text-sm font-semibold text-mira-text">Главное для врача</p>
         </div>
         <div className="space-y-2">
-          {(report.doctorHighlights.length ? report.doctorHighlights : ["Повторяющихся тревожных сигналов пока мало. Отчёт всё равно полезен как история наблюдений."]).slice(0, 5).map((item, index) => (
+          {(visibleDoctorHighlights.length ? visibleDoctorHighlights : ["Повторяющихся тревожных сигналов пока мало. Отчёт всё равно полезен как история наблюдений."]).slice(0, 5).map((item, index) => (
             <DoctorPoint key={item} index={index + 1} text={item} />
           ))}
         </div>
@@ -464,42 +597,19 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <InfoRow label="Цикл" value={`${report.periodEntries.length} дней месячных, цикл ${report.cycleLength} дн.`} />
-          <InfoRow label="Симптомы" value={`${report.painEntries.length} дней с болью, ${report.unusualEntries.length} необычных сигналов`} />
-          <InfoRow label="Состояние" value={`${report.moodEntries.length} настроений, ${report.lowEnergyEntries.length} дней низкой энергии`} />
-          <InfoRow label="Лекарства и задержки" value={`${report.medicationEntries.length} лекарств, ${report.delayChecks.length} разборов задержки`} />
+          {includedSections.painSymptoms && <InfoRow label="Симптомы" value={`${report.painEntries.length} дней с болью, ${report.unusualEntries.length} необычных сигналов`} />}
+          {includedSections.moodEnergy && <InfoRow label="Состояние" value={`${report.moodEntries.length} настроений, ${report.lowEnergyEntries.length} дней низкой энергии`} />}
+          {includedSections.delays && <InfoRow label="Лекарства и задержки" value={`${report.medicationEntries.length} лекарств, ${report.delayChecks.length} разборов задержки`} />}
           <InfoRow label="Забота" value={`${report.care.waterEntries.length} воды, ${report.care.walkingEntries.length} ходьбы, ${report.care.weightEntries.length} веса`} />
-          <InfoRow label="Анализы" value={`${labs.length} результатов, вне референса: ${abnormalLabs.length}`} />
+          {includedSections.labs && <InfoRow label="Анализы" value={`${labs.length} результатов, вне референса: ${abnormalLabs.length}`} />}
           <InfoRow label="Закономерности" value={`${report.analyticsFindings.length} выводов из аналитики`} />
         </div>
 
-        <div className="mt-4 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-3">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-mira-text">Секс и контрацепция</p>
-              <p className="text-[10px] text-mira-muted">{includeSex ? "Включится в PDF/TXT" : "Скрыто по умолчанию"}</p>
-            </div>
-            <button
-              onClick={() => setIncludeSex(value => !value)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
-                includeSex ? "bg-mira-primary text-white" : "border border-mira-lavender/30 text-mira-muted"
-              }`}
-            >
-              {includeSex ? "Включено" : "Включить"}
-            </button>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {periods.map(period => (
-              <button
-                key={period.months}
-                onClick={() => setSelectedPeriod(period.months)}
-                className={`rounded-xl px-2 py-2.5 text-xs font-semibold transition ${
-                  selectedPeriod === period.months ? "bg-mira-primary text-white shadow-glow" : "bg-white text-mira-muted"
-                }`}
-              >
-                {period.label}
-              </button>
-            ))}
-          </div>
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-mira-success/15 bg-[#E0F5E8]/25 p-3">
+          <Shield className="mt-0.5 h-4 w-4 shrink-0 text-mira-success" />
+          <p className="text-xs leading-relaxed text-mira-muted">
+            Это предварительный отчёт для тебя. Личные заметки, секс и контрацепция скрыты по умолчанию и попадут в файл только после твоего выбора.
+          </p>
         </div>
       </Card>
 
@@ -509,14 +619,15 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           <p className="text-sm font-semibold text-mira-text">На приёме сказать главное</p>
         </div>
         <p className="rounded-2xl bg-mira-lavender-light/25 p-3 text-sm italic leading-relaxed text-mira-text">"{doctorScript.intro}"</p>
-        {report.focusItems.length > 0 && (
+        {visibleFocusItems.length > 0 && (
           <div className="mt-3 rounded-2xl border border-mira-cycle/15 bg-mira-rose-light/20 p-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Не забыть обсудить</p>
-            <p className="mt-1 text-sm leading-relaxed text-mira-text">{report.focusItems.join(" · ")}</p>
+            <p className="mt-1 text-sm leading-relaxed text-mira-text">{visibleFocusItems.join(" · ")}</p>
           </div>
         )}
       </Card>
 
+      {includedSections.labs && (
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-mira-primary" />
@@ -528,11 +639,12 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           ))}
         </div>
       </Card>
+      )}
 
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
           <Activity className="h-4 w-4 text-mira-primary" />
-          <p className="text-sm font-semibold text-mira-text">Факторы заботы</p>
+          <p className="text-sm font-semibold text-mira-text">Что может влиять на самочувствие</p>
         </div>
         <div className="grid gap-3 md:grid-cols-5">
           <CareFactor icon={<Droplets className="h-4 w-4" />} label="Вода" value={`${report.care.waterEntries.length}`} note={`мало: ${report.care.lowWaterDays}`} />
@@ -548,30 +660,13 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
 
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-mira-primary" />
-          <p className="text-sm font-semibold text-mira-text">{ageGuidance.reportTitle}</p>
-        </div>
-        <p className="mb-3 text-xs leading-relaxed text-mira-muted">{ageGuidance.todayTip}</p>
-        <div className="space-y-2">
-          {ageGuidance.checklist.slice(0, 4).map(item => (
-            <InfoRow key={item} label="Пункт" value={item} />
-          ))}
-        </div>
-        <div className="mt-3 rounded-2xl border border-mira-cycle/15 bg-[#F8E8EE]/35 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-cycle">Сигналы внимания</p>
-          <p className="mt-1 text-xs leading-relaxed text-mira-muted">{ageGuidance.redFlags.join(" · ")}</p>
-        </div>
-      </Card>
-
-      <Card className="mb-5 p-5 print:hidden">
-        <div className="mb-4 flex items-center gap-2">
           <FlaskConical className="h-4 w-4 text-mira-primary" />
           <p className="text-sm font-semibold text-mira-text">Анализы в отчёте</p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
           <MiniStat label="Сохранено" value={`${labs.length}`} note="результатов" />
           <MiniStat label="Вне референса" value={`${abnormalLabs.length}`} note="обсудить с врачом" />
-          <MiniStat label="45+ чекап" value={hormoneCheckup.show ? "есть" : "нет"} note="по возрасту/сигналам" />
+          <MiniStat label="Для врача" value={labs.length > 0 ? "есть" : "нет"} note="факты без диагноза" />
         </div>
         <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-relaxed text-mira-muted">
@@ -584,22 +679,6 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
       </Card>
 
       <div className="space-y-5 print:space-y-3">
-        {!showFullReport && (
-          <Card className="border-mira-lavender/20 bg-white p-5 print:hidden">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-mira-text">Полный отчёт скрыт, чтобы экран не перегружал</p>
-                <p className="mt-1 text-xs leading-relaxed text-mira-muted">
-                  Открой его перед приёмом, если хочешь проверить даты, симптомы и вопросы врачу.
-                </p>
-              </div>
-              <Button variant="outline" onClick={() => setShowFullReport(true)}>
-                <FileText className="h-4 w-4" /> Посмотреть отчёт
-              </Button>
-            </div>
-          </Card>
-        )}
-
         {showFullReport && (
           <>
         <Card className="border-mira-primary/15 bg-white p-5 print:border-none print:shadow-none">
@@ -616,7 +695,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
 
           <div className="mt-4 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
             <p className="text-sm font-semibold text-mira-text">
-              {report.focusItems.length > 0 ? "Есть темы, которые стоит обсудить на приёме" : "В выбранном периоде мало повторяющихся тревожных сигналов"}
+              {visibleFocusItems.length > 0 ? "Есть темы, которые стоит обсудить на приёме" : "В выбранном периоде мало повторяющихся тревожных сигналов"}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-mira-muted">
               Отчёт показывает наблюдения пользователя и не ставит диагноз. Данные могут быть неполными, если дни не заполнялись.
@@ -635,10 +714,10 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
             <MiniStat label="Месячные" value={`${report.periodEntries.length}`} note={`профиль: ${report.periodLength} дн.`} />
             <MiniStat label="Задержки" value={`${report.delayChecks.length}`} note="разборов" />
           </div>
-          {report.focusItems.length > 0 && (
+          {visibleFocusItems.length > 0 && (
             <div className="mt-3 rounded-2xl border border-mira-cycle/15 bg-mira-rose-light/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Вынести в разговор</p>
-              <p className="mt-1 text-sm text-mira-text">{report.focusItems.join(" · ")}</p>
+              <p className="mt-1 text-sm text-mira-text">{visibleFocusItems.join(" · ")}</p>
             </div>
           )}
         </Card>
@@ -649,13 +728,14 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
             <p className="text-sm font-semibold text-mira-text">Главное для врача</p>
           </div>
           <div className="space-y-2">
-            {(report.doctorHighlights.length ? report.doctorHighlights : ["Повторяющихся тревожных сигналов пока мало. Отчёт полезен как история наблюдений."]).slice(0, 6).map((item, index) => (
+            {(visibleDoctorHighlights.length ? visibleDoctorHighlights : ["Повторяющихся тревожных сигналов пока мало. Отчёт полезен как история наблюдений."]).slice(0, 6).map((item, index) => (
               <DoctorPoint key={item} index={index + 1} text={item} />
             ))}
           </div>
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-2">
+          {includedSections.periodDates && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-mira-primary" />
@@ -667,11 +747,13 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
               ))}
             </div>
           </Card>
+          )}
 
+          {includedSections.painSymptoms && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-mira-primary" />
-              <p className="text-sm font-semibold text-mira-text">Факторы заботы</p>
+              <p className="text-sm font-semibold text-mira-text">Что может влиять на самочувствие</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <MiniStat label="Вода" value={`${report.care.waterEntries.length}`} note={`мало: ${report.care.lowWaterDays}`} />
@@ -680,33 +762,11 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
               <MiniStat label="Вес" value={`${report.care.weightEntries.length}`} note={report.care.latestWeight ? `${report.care.latestWeight.weight.toFixed(1)} кг` : "нет"} />
             </div>
           </Card>
+          )}
         </div>
 
-        <Card className="p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-mira-primary" />
-            <p className="text-sm font-semibold text-mira-text">{ageGuidance.reportTitle}</p>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-2">
-              {ageGuidance.checklist.map(item => (
-                <InfoRow key={item} label="Чек-лист" value={item} />
-              ))}
-            </div>
-            <div className="rounded-2xl bg-mira-bg p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Вопросы врачу</p>
-              <div className="mt-3 space-y-2">
-                {ageGuidance.doctorQuestions.map((question, index) => (
-                  <p key={question} className="text-xs leading-relaxed text-mira-text">
-                    <span className="font-bold text-mira-primary">{index + 1}.</span> {question}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-
         <div className="grid gap-5 lg:grid-cols-2">
+          {(includedSections.moodEnergy || includedSections.sleep) && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-mira-primary" />
@@ -720,7 +780,9 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
             </div>
             <DatePills dates={report.periodEntries.map(entry => entry.date)} empty="Нет отметок месячных за период" />
           </Card>
+          )}
 
+          {includedSections.delays && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-mira-cycle" />
@@ -741,6 +803,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
               </div>
             )}
           </Card>
+          )}
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
@@ -789,7 +852,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           </Card>
         </div>
 
-        {includeSex && (
+        {includedSections.sex && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <HeartHandshake className="h-4 w-4 text-mira-primary" />
@@ -821,7 +884,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           </Card>
         )}
 
-        {labs.length > 0 && (
+        {includedSections.labs && labs.length > 0 && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Moon className="h-4 w-4 text-[#7E8EC4]" />
@@ -843,29 +906,6 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           </Card>
         )}
 
-        {hormoneCheckup.show && (
-          <Card className="p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-mira-primary" />
-              <p className="text-sm font-semibold text-mira-text">Чекап 45+ / гормоны</p>
-            </div>
-            <p className="text-xs leading-relaxed text-mira-muted">{hormoneCheckup.body}</p>
-            <div className="mt-3 rounded-2xl bg-mira-bg p-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Если назначат прогестерон</p>
-              <p className="mt-1 text-xs leading-relaxed text-mira-text">
-                Ориентир для текущей длины цикла — примерно {hormoneCheckup.progesteroneDay}-й день, не строго 21-й для всех.
-              </p>
-            </div>
-            <div className="mt-3 space-y-2">
-              {hormoneCheckup.doctorQuestions.map((question, index) => (
-                <p key={question} className="text-xs leading-relaxed text-mira-text">
-                  <span className="font-bold text-mira-primary">{index + 1}.</span> {question}
-                </p>
-              ))}
-            </div>
-          </Card>
-        )}
-
         <Card className="p-5">
           <div className="mb-4 flex items-center gap-2">
             <FileText className="h-4 w-4 text-mira-primary" />
@@ -881,7 +921,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
               <div key={row.date} className="grid grid-cols-[72px_54px_1fr] border-t border-mira-lavender/15 px-3 py-3 text-xs">
                 <span className="font-semibold text-mira-text">{formatDate(row.date)}</span>
                 <span className="text-mira-muted">{cycleDayFor(row.date, report.profile) ?? "—"}</span>
-                <span className="leading-relaxed text-mira-text">{describeRow(row, includeSex)}</span>
+                <span className="leading-relaxed text-mira-text">{describeRow(row, includedSections)}</span>
               </div>
             )) : (
               <p className="p-3 text-xs text-mira-muted">Нет детальных записей за выбранный период.</p>
@@ -889,6 +929,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
           </div>
         </Card>
 
+        {includedSections.doctorQuestions && (
         <Card className="border-mira-primary/15 p-5">
           <div className="mb-4 flex items-center gap-2">
             <MessageSquare className="h-4 w-4 text-mira-primary" />
@@ -905,6 +946,7 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
             ))}
           </ol>
         </Card>
+        )}
 
         <Card className="border-mira-primary/15 bg-mira-lavender-light/20 p-5">
           <div className="mb-3 flex items-center gap-2">
@@ -937,7 +979,10 @@ export function ReportScreen({ data, navigate }: ScreenProps) {
             <Printer className="h-4 w-4" /> Скачать PDF
           </Button>
           <Button variant="outline" className="flex-1" onClick={handleExportText}>
-            <Download className="h-4 w-4" /> TXT
+            <Download className="h-4 w-4" /> Скачать TXT
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={handleCopyQuestions}>
+            <Copy className="h-4 w-4" /> Скопировать вопросы врачу
           </Button>
         </div>
       </div>
@@ -952,6 +997,69 @@ function MiniStat({ label, value, note }: { label: string; value: string; note: 
       <p className="mt-1 text-xl font-bold text-mira-text">{value}</p>
       <p className="mt-0.5 text-[10px] text-mira-muted">{note}</p>
     </div>
+  );
+}
+
+function ReportEmptyState({
+  title,
+  body,
+  onCheckIn,
+  onPeriod,
+  onProfile,
+}: {
+  title: string;
+  body: string;
+  onCheckIn?: () => void;
+  onPeriod?: () => void;
+  onProfile?: () => void;
+}) {
+  return (
+    <Card className="border-mira-primary/10 bg-white p-6 shadow-[0_12px_32px_rgba(45,38,64,0.05)]">
+      <div className="flex items-start gap-3">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-mira-lavender-light text-mira-primary">
+          <FileText className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-xl font-black text-mira-text">{title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-mira-muted">{body}</p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            {onCheckIn && <Button onClick={onCheckIn}>Добавить состояние</Button>}
+            {onPeriod && <Button variant="outline" onClick={onPeriod}>Отметить месячные</Button>}
+            {onProfile && <Button onClick={onProfile}>Добавить дату</Button>}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ReportCheckbox({ checked, label, sensitive, onClick }: { checked: boolean; label: string; sensitive?: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-11 items-center gap-2 rounded-2xl border px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98] ${
+        checked ? "border-mira-primary/35 bg-white text-mira-text" : "border-mira-lavender/20 bg-white/60 text-mira-muted"
+      }`}
+    >
+      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+        checked ? "border-mira-primary bg-mira-primary text-white" : "border-mira-lavender/40 bg-white"
+      }`}>
+        {checked && <CheckMark />}
+      </span>
+      <span className="min-w-0">
+        {label}
+        {sensitive && <span className="ml-1 font-semibold text-mira-muted">личное</span>}
+      </span>
+    </button>
+  );
+}
+
+function CheckMark() {
+  return (
+    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden="true">
+      <path d="M3.5 8.2 6.4 11 12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -1004,20 +1112,21 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function describeRow(row: DailyCheckIn, includeSex: boolean) {
+function describeRow(row: DailyCheckIn, includedSections: Record<ReportSectionId, boolean>) {
   const parts = [
-    row.period ? `месячные: ${flowLabels[row.period.intensity] ?? row.period.intensity}` : null,
-    hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
-    row.mood ? `настроение: ${moodLabels[row.mood.value] ?? row.mood.value}` : null,
-    row.energy ? `энергия: ${energyLabels[row.energy.value] ?? row.energy.value}` : null,
-    row.sleep ? `сон: ${sleepLabels[row.sleep.quality] ?? row.sleep.quality}` : null,
-    row.symptomLog?.appetite ? `аппетит: ${row.symptomLog.appetite}` : null,
-    row.symptomLog?.sweetCraving ? "тяга к сладкому" : null,
-    row.symptomLog?.anxiety ? "тревога" : null,
+    includedSections.periodDates && row.period ? `месячные: ${flowLabels[row.period.intensity] ?? row.period.intensity}` : null,
+    includedSections.painSymptoms && hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
+    includedSections.moodEnergy && row.mood ? `настроение: ${moodLabels[row.mood.value] ?? row.mood.value}` : null,
+    includedSections.moodEnergy && row.energy ? `энергия: ${energyLabels[row.energy.value] ?? row.energy.value}` : null,
+    includedSections.sleep && row.sleep ? `сон: ${sleepLabels[row.sleep.quality] ?? row.sleep.quality}` : null,
+    includedSections.painSymptoms && row.symptomLog?.appetite ? `аппетит: ${row.symptomLog.appetite}` : null,
+    includedSections.painSymptoms && row.symptomLog?.sweetCraving ? "тяга к сладкому" : null,
+    includedSections.moodEnergy && row.symptomLog?.anxiety ? "тревога" : null,
     row.symptomLog?.medications?.length ? `лекарства: ${row.symptomLog.medications.join(", ")}` : null,
-    row.delayChecks?.length ? `задержка: ${row.delayChecks.map(delay => `${delay.delayDays} дн.`).join(", ")}` : null,
-    row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
-    includeSex && row.intimacy?.happened ? `секс: ${[
+    includedSections.delays && row.delayChecks?.length ? `задержка: ${row.delayChecks.map(delay => `${delay.delayDays} дн.`).join(", ")}` : null,
+    includedSections.painSymptoms && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
+    includedSections.privateNotes && row.note?.text ? `личная заметка: ${row.note.text}` : null,
+    includedSections.sex && row.intimacy?.happened ? `секс: ${[
       row.intimacy.protection ? protectionLabels[row.intimacy.protection] : null,
       row.intimacy.feeling === "pain" ? "боль" : null,
       row.intimacy.feeling === "discomfort" ? "дискомфорт" : null,

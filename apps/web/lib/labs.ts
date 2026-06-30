@@ -133,7 +133,7 @@ export function getHormoneCheckup45(data: MiraLocalData): {
 
 /*
  * Часть 1 — какие анализы/обследования стоит ОБСУДИТЬ с врачом,
- * исходя из паттернов в логах. Это рекомендация, не назначение.
+ * исходя из повторений в логах. Это рекомендация, не назначение.
  */
 export function getLabRecommendations(data: MiraLocalData): LabRecommendation[] {
   const recs: LabRecommendation[] = [];

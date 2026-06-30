@@ -4,14 +4,14 @@ import { motion } from "framer-motion";
 import { Compass, Zap, Moon, Brain, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { getDayPrediction } from "@/lib/insights";
-import { getCycleDay } from "@/lib/store";
+import { getCycleNorm } from "@/lib/cycleEngine";
 import type { MiraLocalData } from "@/lib/types";
 
 export function DayPrediction({ data }: { data: MiraLocalData }) {
   const profile = data.profile;
-  const cycleDay = getCycleDay(profile);
-  const cycleLength = profile?.cycleConfig.cycleLength ?? 28;
-  const tomorrowCycleDay = cycleDay >= cycleLength ? 1 : cycleDay + 1;
+  const norm = getCycleNorm(profile);
+  const cycleDay = norm.isDelayed ? norm.cycleLength : norm.cycleDay;
+  const tomorrowCycleDay = norm.isDelayed ? norm.cycleLength : cycleDay >= norm.cycleLength ? 1 : cycleDay + 1;
   const prediction = getDayPrediction(data, tomorrowCycleDay);
 
   if (!prediction) return null;

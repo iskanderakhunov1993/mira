@@ -9,19 +9,19 @@ import type { MiraLocalData } from "@/lib/types";
 import { readData, writeData, createEmpty } from "@/lib/store";
 import { syncOnLoad, schedulePush } from "@/lib/sync";
 
-import { TodayScreen } from "@/components/screens/TodayScreen";
+import { TodayPage } from "@/components/screens/TodayPage";
 import { DiaryScreen } from "@/components/screens/DiaryScreen";
-import { AnalyticsScreen } from "@/components/screens/AnalyticsScreen";
-import { CareScreen } from "@/components/screens/CareScreen";
+import { AnalyticsPage } from "@/components/screens/AnalyticsPage";
+import { CarePage } from "@/components/screens/CarePage";
 import { IslamicScreen } from "@/components/screens/IslamicScreen";
 import { LabsScreen } from "@/components/screens/LabsScreen";
 import { ReportScreen } from "@/components/screens/ReportScreen";
-import { ProfileScreen } from "@/components/screens/ProfileScreen";
+import { ProfilePage } from "@/components/screens/ProfilePage";
 import { OnboardingScreen } from "@/components/screens/OnboardingScreen";
 import { CheckInModal } from "@/components/screens/CheckInModal";
-import { BadStateModal } from "@/components/screens/BadStateModal";
+import { PainModal } from "@/components/screens/PainModal";
 import { DelayCheckModal } from "@/components/screens/DelayCheckModal";
-import { getCycleDay } from "@/lib/store";
+import { getCycleNorm } from "@/lib/cycleEngine";
 import { hasPin, verifyPin } from "@/lib/privacy";
 
 export function AppShell() {
@@ -102,22 +102,29 @@ export function AppShell() {
     onDelayCheck: () => setDelayCheckOpen(true),
   };
   const isIslamic = data.profile?.additionalMode === "islam";
-  const delayDays = data.profile ? Math.max(0, getCycleDay(data.profile) - data.profile.cycleConfig.cycleLength) : 0;
+  const delayDays = data.profile ? getCycleNorm(data.profile).delayDays : 0;
 
   const screens: Record<NavPage, React.ReactNode> = {
-    today: <TodayScreen {...screenProps} />,
+    today: (
+      <TodayPage
+        onPain={() => setBadStateOpen(true)}
+        onPeriod={openCheckIn}
+        onCheckIn={openCheckIn}
+        onCare={() => setPage("care")}
+      />
+    ),
     diary: <DiaryScreen {...screenProps} />,
-    analytics: <AnalyticsScreen {...screenProps} />,
-    care: <CareScreen {...screenProps} />,
+    analytics: <AnalyticsPage onOpenDoctorReport={() => setPage("report")} />,
+    care: <CarePage />,
     islamic: <IslamicScreen {...screenProps} />,
     labs: <LabsScreen {...screenProps} />,
     report: <ReportScreen {...screenProps} />,
-    profile: <ProfileScreen {...screenProps} />,
+    profile: <ProfilePage />,
   };
 
   return (
     <div className="min-h-screen bg-mira-bg text-mira-text lg:flex">
-      <Sidebar active={page} onChange={setPage} onCheckIn={openCheckIn} isIslamic={isIslamic} />
+      <Sidebar active={page} onChange={setPage} onCheckIn={openCheckIn} onBadState={() => setBadStateOpen(true)} isIslamic={isIslamic} />
       <main className="flex-1 pb-24 lg:pb-0">
         <div className={`mx-auto w-full px-4 py-6 sm:px-6 lg:py-8 ${page === "analytics" ? "max-w-[1180px]" : page === "labs" ? "max-w-[920px]" : "max-w-[660px]"}`}>
           <AnimatePresence mode="wait">
@@ -133,7 +140,7 @@ export function AppShell() {
           </AnimatePresence>
         </div>
       </main>
-      <BottomNav active={page} onChange={setPage} onCheckIn={openCheckIn} isIslamic={isIslamic} />
+      <BottomNav active={page} onChange={setPage} onCheckIn={openCheckIn} onBadState={() => setBadStateOpen(true)} isIslamic={isIslamic} />
       <AnimatePresence>
         {checkInOpen && (
           <CheckInModal
@@ -145,11 +152,13 @@ export function AppShell() {
           />
         )}
         {badStateOpen && (
-          <BadStateModal
+          <PainModal
             open={badStateOpen}
             onClose={() => setBadStateOpen(false)}
-            data={data}
-            persist={persist}
+            onOpenDoctorReport={() => {
+              setBadStateOpen(false);
+              setPage("report");
+            }}
           />
         )}
         {delayCheckOpen && (
