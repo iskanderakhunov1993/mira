@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PagePurposeCard } from "@/components/ui/PagePurposeCard";
 import { dateKey, getCyclePhase, getPhaseLabel, saveCheckIn } from "@/lib/store";
 import type { DailyCheckIn, MiraLocalData } from "@/lib/types";
 import type { ScreenProps } from "./types";
@@ -113,23 +112,13 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
         </p>
       </div>
 
-      <div className="mb-5">
-        <PagePurposeCard
-          items={[
-            { label: "Зачем", title: "Понять день", body: "Записывай контекст: стресс, события, мысли, что помогло." },
-            { label: "Что сделать", title: "Выбери дату", body: "Открой день в календаре и добавь личную запись или отметку состояния." },
-            { label: "Что получишь", title: "Историю цикла", body: "Mira связывает записи с аналитикой и отчётом врачу." },
-          ]}
-        />
-      </div>
-
       <Card className="mb-5 border-mira-lavender/20 bg-white p-4">
         <div className="flex items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mira-bg text-mira-primary">
             <Shield className="h-4 w-4" />
           </span>
           <div>
-            <p className="text-sm font-bold text-mira-text">Личные заметки остаются личными</p>
+            <p className="text-sm font-bold text-mira-text">Дневник отвечает на вопрос: что было в этот день?</p>
             <p className="mt-1 text-xs leading-relaxed text-mira-muted">
               Личная заметка видна только тебе. Она не попадёт в отчёт врачу, пока ты сама не включишь её.
             </p>
@@ -263,7 +252,7 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
         {diaryEntries.length === 0 ? (
           <div className="rounded-lg border border-dashed border-mira-lavender/40 bg-mira-bg p-4 text-center">
             <p className="text-sm font-semibold text-mira-text">Пока нет личных записей</p>
-            <p className="mt-1 text-xs text-mira-muted">Напиши пару строк выше — день сразу появится здесь.</p>
+            <p className="mt-1 text-xs text-mira-muted">Добавь заметку или отметь состояние 3–5 дней, и Mira начнёт видеть первые повторения.</p>
           </div>
         ) : (
           <div className="space-y-2">

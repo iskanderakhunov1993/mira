@@ -341,7 +341,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
           <div>
             <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A]">💧 Забота</h1>
             <p className="mt-2 text-sm font-semibold text-[#8E8E93]">
-              Достаточно заполнить 2 из 8 пунктов. Отметь только то, что легко вспомнить.
+              Достаточно заполнить 2 из 6 пунктов. Отметь только то, что легко вспомнить.
             </p>
           </div>
           <div className="mira-card rounded-2xl px-4 py-3 text-right text-sm font-black text-[#202033]">
@@ -359,10 +359,13 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
         <div className="mt-6 space-y-6">
           {/* Цели */}
           <SectionCard delay={30}>
-            <Eyebrow>Daily intake</Eyebrow>
+            <Eyebrow tone="dark">Что может влиять на самочувствие</Eyebrow>
             <h2 className="mt-1 mb-5 text-xl font-black leading-snug text-[#1A1A1A]">
-              Твои цели на сегодня 🎯
+              Сегодня достаточно 2 отметок
             </h2>
+            <p className="mb-5 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+              Вода, питание, движение, тренировка, вес и аптечка помогают Mira искать связи с болью, настроением и энергией. Не нужно заполнять всё.
+            </p>
             <div className="space-y-6">
               <div className="mira-gradient-health rounded-[28px] p-5 text-white shadow-[0_18px_44px_rgba(122,101,242,0.22)]">
                 <Eyebrow>Калории</Eyebrow>
@@ -392,7 +395,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
           </SectionCard>
 
           {/* Витамины */}
-          <SectionCard title="💊 Витамины и добавки" delay={80}>
+          <SectionCard title="💊 Витамины и добавки (необязательно)" delay={80}>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.vitamins.map((vitamin, index) => {
                 const status = vitaminStatus[vitamin.id];
@@ -427,7 +430,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
               })}
             </div>
             <p className="mt-4 text-sm font-semibold text-[#8E8E93]">
-              📖 Статья: “Цинк и ПМС: как он помогает при акне” → <button className="font-black text-[#E872A0]" type="button">Читать</button>
+              Перед приёмом добавок лучше проконсультироваться с врачом. 📖 “Цинк и ПМС” → <button className="font-black text-[#E872A0]" type="button">Читать</button>
             </p>
           </SectionCard>
 
@@ -469,7 +472,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
                   onClick={() => setWater((current) => Math.min(3, Math.round((current + 0.2) * 10) / 10))}
                 >
                   <Droplets className="h-4 w-4" />
-                  Add Drink
+                  Добавить стакан
                 </Button>
                 <button
                   type="button"
@@ -488,8 +491,8 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
                 className="mira-gradient-night overflow-hidden rounded-[32px] border-0 p-6 text-white shadow-[0_20px_52px_rgba(34,39,63,0.26)] transition hover:-translate-y-0.5"
                 style={{ animation: `miraCareIn 420ms ease 180ms both` }}
               >
-                <Eyebrow>Workout challenge</Eyebrow>
-                <h3 className="mt-2 text-2xl font-black">Cardio 🏃‍♀️</h3>
+                <Eyebrow>Движение</Eyebrow>
+                <h3 className="mt-2 text-2xl font-black">Лёгкая активность 🏃‍♀️</h3>
                 <p className="mt-2 text-sm font-semibold leading-relaxed text-white/75">
                   Лёгкая активность сегодня помогает снизить спазмы и поднять настроение.
                 </p>
@@ -510,7 +513,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
                     className="rounded-2xl bg-white text-[#1A1A1A] hover:bg-white/90"
                   >
                     <Play className="h-4 w-4" />
-                    Start
+                    Выбрать
                   </Button>
                 </div>
               </Card>
@@ -534,7 +537,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Кожа и волосы */}
-            <SectionCard title="🧴 Кожа и волосы" delay={230}>
+            <SectionCard title="🧴 Кожа и волосы (необязательно)" delay={230}>
               <div className="space-y-3">
                 <CheckboxRow checked={skin.acne} label={`Акне / прыщи (${skin.acneCount} шт.)`} onChange={() => toggleSkin("acne")} />
                 <CheckboxRow checked={skin.dryness} label="Сухость / шелушение" onChange={() => toggleSkin("dryness")} />
@@ -548,7 +551,7 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
             </SectionCard>
 
             {/* Желание */}
-            <SectionCard title="❤️ Желание (опционально)" delay={280}>
+            <SectionCard title="❤️ Желание (необязательно)" delay={280}>
               <p className="mb-3 text-sm font-black text-[#1A1A1A]">Как сегодня?</p>
               <RadioPills value={libido} options={["нет желания", "слабое", "среднее", "сильное"]} onChange={setLibido} />
               <p className="mt-4 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">

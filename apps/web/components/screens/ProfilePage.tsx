@@ -327,6 +327,15 @@ function ProfilePageComponent({ data = mockProfileData }: ProfilePageProps) {
           <section>
             <h2 className="mb-4 text-lg font-black uppercase tracking-widest text-[#8E8E93]">⚙️ Настройки</h2>
             <div className="grid gap-6 md:grid-cols-2">
+              <SectionCard title="🔐 Где хранятся данные" delay={175}>
+                <p className="text-sm font-semibold leading-relaxed text-[#1A1A1A]">
+                  Сейчас данные хранятся только на этом устройстве. Если очистить браузер или удалить данные сайта, записи могут пропасть.
+                </p>
+                <Button type="button" variant="outline" className="mt-4 rounded-2xl bg-white">
+                  Включить резервную копию
+                </Button>
+              </SectionCard>
+
               <SectionCard title="📊 Настройки цикла" delay={190}>
                 <p className="text-sm font-semibold text-[#1A1A1A]">
                   Средняя длина: {settings.cycleLength} дн. | Период: {settings.periodLength} дн.
@@ -339,6 +348,9 @@ function ProfilePageComponent({ data = mockProfileData }: ProfilePageProps) {
                   <p className="text-sm font-bold text-[#1A1A1A]">PIN-код</p>
                   <Switch checked={settings.pin} onChange={() => setSettings((current) => ({ ...current, pin: !current.pin }))} />
                 </div>
+                <p className="mt-3 text-xs font-semibold leading-relaxed text-[#8E8E93]">
+                  PIN защищает вход в приложение на этом устройстве.
+                </p>
                 <p className="mt-4 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">
                   Данные: {settings.dataStorage === "device" ? "Только на устройстве" : "С резервной копией"}
                 </p>
@@ -393,6 +405,9 @@ function ProfilePageComponent({ data = mockProfileData }: ProfilePageProps) {
               </SectionCard>
 
               <SectionCard title="📁 Управление данными" delay={280}>
+                <p className="mb-4 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+                  Ты можешь скачать копию своих данных в любой момент. Удаление нельзя отменить.
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Button type="button" variant="outline" className="rounded-2xl bg-white" onClick={exportData}>📤 Экспорт данных</Button>
                   <Button type="button" className="rounded-2xl bg-[#FF6B6B] text-white hover:bg-[#F25353]" onClick={() => setDeleteOpen(true)}>🗑️ Удалить все</Button>

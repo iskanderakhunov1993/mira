@@ -659,6 +659,22 @@ function AnalyticsPageComponent({
             </SectionCard>
           )}
 
+          <SectionCard eyebrow="Что делать дальше" title="3 простых шага" delay={55}>
+            <div className="grid gap-3 md:grid-cols-3">
+              {[
+                ["1", "Отмечай состояние", "3–5 дней подряд достаточно, чтобы Mira нашла первые повторения."],
+                ["2", "Смотри, что повторяется", "Симптомы важнее отдельных графиков: Mira объяснит, почему это может быть важно."],
+                ["3", "Покажи врачу факты", "Если есть боль, обильность или задержки, открой отчёт и выбери, что включить."],
+              ].map(([number, title, body]) => (
+                <div key={number} className="rounded-[22px] bg-[#FAF8F5] p-4">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-black text-[#E872A0] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">{number}</span>
+                  <p className="mt-3 text-sm font-black text-[#1A1A1A]">{title}</p>
+                  <p className="mt-1 text-xs font-semibold leading-relaxed text-[#8E8E93]">{body}</p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Длина цикла */}
             <SectionCard eyebrow="Как обычно у тебя" delay={70}>

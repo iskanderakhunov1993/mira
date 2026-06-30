@@ -111,6 +111,7 @@ export function AppShell() {
         onPeriod={openCheckIn}
         onCheckIn={openCheckIn}
         onCare={() => setPage("care")}
+        onReport={() => setPage("report")}
       />
     ),
     diary: <DiaryScreen {...screenProps} />,

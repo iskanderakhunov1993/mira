@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 type PainStep = "question" | "result" | "saved";
 
 interface PainData {
-  locations: string[];
+  symptoms: string[];
   intensity: number | null;
   actions: string[];
 }
 
 type SavedPainData = {
-  locations: string[];
+  symptoms: string[];
   intensity: number;
   actions: string[];
 };
@@ -26,7 +26,7 @@ type PainModalProps = {
   cycleDayLabel?: string;
 };
 
-const locations = ["Низ живота", "Спазмы", "Голова", "Грудь", "Спина"];
+const symptomOptions = ["Сильная боль", "Очень обильные месячные", "Задержка", "Слабость / нет сил", "Тревога / паника", "Тошнота", "Головная боль", "Другое"];
 const actionOptions = ["Приняла обезболивающее", "Приложила грелку", "Отдыхаю", "Ничего не помогает"];
 const intensityLabels: Record<number, string> = {
   1: "Легко",
@@ -107,25 +107,25 @@ function PainModalComponent({
   cycleDayLabel = "15-й день цикла",
 }: PainModalProps) {
   const [step, setStep] = useState<PainStep>("question");
-  const [data, setData] = useState<PainData>({ locations: [], intensity: null, actions: [] });
+  const [data, setData] = useState<PainData>({ symptoms: [], intensity: null, actions: [] });
 
   const completeData = useMemo<SavedPainData>(() => ({
-    locations: data.locations,
+    symptoms: data.symptoms,
     intensity: data.intensity ?? 0,
     actions: data.actions,
   }), [data]);
 
-  const canSubmit = data.locations.length > 0 && data.intensity !== null;
+  const canSubmit = data.symptoms.length > 0 && data.intensity !== null;
   const recommendation = canSubmit ? getRecommendation(completeData) : "";
 
   if (!open) return null;
 
-  function toggleLocation(location: string) {
+  function toggleSymptom(symptom: string) {
     setData((current) => ({
       ...current,
-      locations: current.locations.includes(location)
-        ? current.locations.filter((item) => item !== location)
-        : [...current.locations, location],
+      symptoms: current.symptoms.includes(symptom)
+        ? current.symptoms.filter((item) => item !== symptom)
+        : [...current.symptoms, symptom],
     }));
   }
 
@@ -140,7 +140,7 @@ function PainModalComponent({
 
   function resetAndClose() {
     setStep("question");
-    setData({ locations: [], intensity: null, actions: [] });
+    setData({ symptoms: [], intensity: null, actions: [] });
     onClose();
   }
 
@@ -179,11 +179,11 @@ function PainModalComponent({
 
             <div className="space-y-6">
               <section>
-                <p className="mb-3 text-sm font-black uppercase tracking-widest text-[#1A1A1A]">❓ 1. Где болит?</p>
+                <p className="mb-3 text-sm font-black uppercase tracking-widest text-[#1A1A1A]">❓ 1. Что случилось?</p>
                 <div className="flex flex-wrap gap-2">
-                  {locations.map((location) => (
-                    <ToggleChip key={location} selected={data.locations.includes(location)} onClick={() => toggleLocation(location)}>
-                      {location}
+                  {symptomOptions.map((symptom) => (
+                    <ToggleChip key={symptom} selected={data.symptoms.includes(symptom)} onClick={() => toggleSymptom(symptom)}>
+                      {symptom}
                     </ToggleChip>
                   ))}
                 </div>
@@ -219,6 +219,16 @@ function PainModalComponent({
                   ))}
                 </div>
               </section>
+
+              <section className="rounded-2xl bg-[#FAF8F5] p-4">
+                <p className="text-sm font-black text-[#1A1A1A]">Что Mira сделает</p>
+                <ul className="mt-2 space-y-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+                  <li>— сохранит это в дневник;</li>
+                  <li>— добавит в аналитику;</li>
+                  <li>— предложит показать врачу;</li>
+                  <li>— подскажет, когда нужна срочная помощь.</li>
+                </ul>
+              </section>
             </div>
 
             <Button
@@ -240,7 +250,7 @@ function PainModalComponent({
             <h2 className="text-2xl font-black text-[#1A1A1A]">🩺 Рекомендация</h2>
             <div className="mt-5 rounded-2xl bg-[#FAF8F5] p-4 text-sm font-semibold leading-relaxed text-[#1A1A1A]">
               <p className="font-black">Ты отметила:</p>
-              <p className="mt-2">• Боль: {completeData.locations.join(", ")}</p>
+              <p className="mt-2">• Симптомы: {completeData.symptoms.join(", ")}</p>
               <p>• Интенсивность: {completeData.intensity} из 5 — {intensityLabels[completeData.intensity]}</p>
               <p>• Что делала: {completeData.actions.length ? completeData.actions.join(", ") : "ничего"}</p>
             </div>
@@ -251,7 +261,7 @@ function PainModalComponent({
             </div>
 
             <p className="mt-4 rounded-2xl bg-[#FFF7DE] px-4 py-3 text-sm font-bold leading-relaxed text-[#8A6500]">
-              ⚠️ Если боль не уменьшится через 2 часа — обратись к врачу без записи.
+              ⚠️ Если боль резкая, есть обморок, очень обильное кровотечение или сильная слабость — лучше обратиться за медицинской помощью.
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -271,7 +281,7 @@ function PainModalComponent({
             <div className="mt-5 rounded-2xl bg-[#FAF8F5] p-4 text-sm font-semibold leading-relaxed text-[#1A1A1A]">
               <p>{dateLabel}, {cycleDayLabel}</p>
               <p className="mt-2">
-                Боль: {completeData.locations.join(", ")}, {completeData.intensity}/5,{" "}
+                Симптомы: {completeData.symptoms.join(", ")}, сила {completeData.intensity}/5,{" "}
                 {completeData.actions.length ? completeData.actions.join(", ") : "действий не отмечено"}
               </p>
             </div>
