@@ -26,6 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { selectMostCommonSymptoms, selectRedFlags, selectSkinHistory, useMiraStore } from "@/store";
+import type { CycleState, DailyLog } from "@/store/types";
 
 type PeriodKey = "current" | "3" | "6" | "12";
 
@@ -93,37 +95,12 @@ const periods: Array<{ value: PeriodKey; label: string }> = [
 
 const mockData: Record<PeriodKey, AnalyticsData> = {
   current: {
-    cycleLengthData: [
-      { month: "И", length: 29 },
-      { month: "А", length: 28 },
-      { month: "С", length: 30 },
-    ],
-    flowData: [
-      { day: "Д1", count: 4 },
-      { day: "Д2", count: 6 },
-      { day: "Д3", count: 5 },
-      { day: "Д4", count: 3 },
-      { day: "Д5", count: 2 },
-      { day: "Д6", count: 1 },
-      { day: "Д7", count: 0 },
-    ],
-    symptoms: [
-      { name: "Вздутие", count: 3 },
-      { name: "Тревожность", count: 2 },
-      { name: "Головная боль", count: 1 },
-    ],
-    skinData: [
-      { cycleDay: 26, acneCount: 2 },
-      { cycleDay: 12, acneCount: 1 },
-    ],
-    factors: ["Мало воды → Головная боль (2 случая)"],
-    redFlags: ["Обильное кровотечение"],
-    periodStart: "14 июля",
-    periodEnd: "16 июля",
-    avgCycle: 29,
-    peakDay: "Д2",
-    peakCount: 6,
-    normalCount: 4,
+    cycleLengthData: [],
+    flowData: [],
+    symptoms: [],
+    skinData: [],
+    factors: [],
+    redFlags: [],
     trackedCycles: 1,
   },
   "3": {
@@ -278,6 +255,83 @@ function getDataset(period: PeriodKey, datasets?: Partial<Record<PeriodKey, Anal
   return datasets?.[period] ?? mockData[period];
 }
 
+function getMonthShort(date: string, fallback: string) {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return fallback;
+  return parsed.toLocaleDateString("ru-RU", { month: "short" }).slice(0, 1).toUpperCase();
+}
+
+function getLogsForPeriod(logs: DailyLog[], period: PeriodKey, cycle: CycleState) {
+  const sorted = [...logs].sort((a, b) => a.date.localeCompare(b.date));
+  if (period === "current") return sorted.filter((log) => log.cycleDay <= cycle.currentDay).slice(-cycle.averageLength);
+  const cycleCount = Number(period);
+  return sorted.slice(-cycle.averageLength * cycleCount);
+}
+
+function countCondition(logs: DailyLog[], condition: (log: DailyLog) => boolean) {
+  return logs.reduce((sum, log) => sum + (condition(log) ? 1 : 0), 0);
+}
+
+function buildDataFromLogs(
+  logs: DailyLog[],
+  cycle: CycleState,
+  symptoms: SymptomPoint[],
+  redFlags: string[],
+  skinPoints: SkinCyclePoint[],
+  period: PeriodKey
+): AnalyticsData {
+  const periodLogs = getLogsForPeriod(logs, period, cycle);
+  const trackedCycles = Math.max(1, period === "current" ? 1 : Math.min(Number(period), Math.ceil(periodLogs.length / cycle.averageLength)));
+  const cycleLengthData =
+    cycle.cycles.length > 0
+      ? cycle.cycles.slice(-trackedCycles).map((item, index) => ({
+          month: getMonthShort(item.startDate, `Ц${index + 1}`),
+          length: item.length,
+        }))
+      : period === "current"
+        ? []
+        : [{ month: "Т", length: cycle.averageLength }];
+
+  const flowData = Array.from({ length: 7 }, (_, index) => {
+    const cycleDay = index + 1;
+    const dayLogs = periodLogs.filter((log) => log.cycleDay === cycleDay);
+    const averagePads = dayLogs.length
+      ? Math.round(dayLogs.reduce((sum, log) => sum + log.symptoms.bleeding.pads, 0) / dayLogs.length)
+      : 0;
+    return { day: `Д${cycleDay}`, count: averagePads };
+  });
+  const peak = flowData.reduce((max, item) => (item.count > max.count ? item : max), flowData[0] ?? { day: "Д1", count: 0 });
+  const normalCount = Math.max(3, Math.round(flowData.reduce((sum, item) => sum + item.count, 0) / Math.max(1, flowData.filter((item) => item.count > 0).length)));
+
+  const stressDelayCount = countCondition(periodLogs, (log) => log.symptoms.context.includes("stress") && log.cycleDay > cycle.averageLength);
+  const lowWaterHeadacheCount = countCondition(
+    periodLogs,
+    (log) => log.selfCare.water > 0 && log.selfCare.water < 1.2 && log.symptoms.pain.location.includes("head")
+  );
+  const poorSleepLowEnergyCount = countCondition(
+    periodLogs,
+    (log) => log.symptoms.sleep.quality === "poor" && (log.symptoms.energy === "low" || log.symptoms.energy === "exhausted")
+  );
+
+  return {
+    cycleLengthData,
+    flowData,
+    symptoms,
+    skinData: skinPoints,
+    factors: [
+      stressDelayCount > 0 ? `Стресс → Задержка (${stressDelayCount} случая)` : null,
+      lowWaterHeadacheCount > 0 ? `Мало воды → Головная боль (${lowWaterHeadacheCount} случаев)` : null,
+      poorSleepLowEnergyCount > 0 ? `Плохой сон → Низкая энергия (${poorSleepLowEnergyCount} случаев)` : null,
+    ].filter(Boolean) as string[],
+    redFlags,
+    avgCycle: cycle.averageLength,
+    peakDay: peak.count > 0 ? peak.day : undefined,
+    peakCount: peak.count || undefined,
+    normalCount,
+    trackedCycles,
+  };
+}
+
 function getCycleCaption(points: CyclePoint[]) {
   if (points.length < 2) return "Начни трекать цикл, чтобы увидеть аналитику";
   const lengths = points.map((point) => point.length);
@@ -308,7 +362,37 @@ function getMoreNotesNeeded(data: AnalyticsData) {
   return Math.max(0, 72 - getNotesCount(data));
 }
 
+function getSampleSizeFromText(text: string) {
+  const match = text.match(/(\d+)\s*(?:случа|раз|дн)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function getSampleTone(sampleSize: number | null) {
+  if (!sampleSize || sampleSize < 5) return "red";
+  if (sampleSize < 10) return "yellow";
+  return "green";
+}
+
+function getSampleExplanation(sampleSize: number | null) {
+  if (!sampleSize || sampleSize < 5) return "Малая выборка: это наблюдение, не вывод.";
+  if (sampleSize < 10) return "Первые повторения: стоит подтвердить ещё отметками.";
+  return "Связь повторялась достаточно часто, чтобы учитывать её в отчёте.";
+}
+
 function getMainInsight(data: AnalyticsData) {
+  if (data.redFlags.length > 0) {
+    return `Есть сигнал, который лучше не терпеть: ${data.redFlags[0].toLowerCase()}.`;
+  }
+
+  const reliableFactor = data.factors.find((factor) => {
+    const sampleSize = getSampleSizeFromText(factor);
+    return sampleSize !== null && sampleSize >= 5;
+  });
+
+  if (reliableFactor) {
+    return `Похоже, повторяется связь: ${reliableFactor.toLowerCase()}.`;
+  }
+
   const topSymptoms = data.symptoms.slice(0, 2).map((item) => item.name);
   if (topSymptoms.length >= 2) {
     return `Похоже, перед месячными у тебя чаще повторяются ${topSymptoms[0].toLowerCase()} и ${topSymptoms[1].toLowerCase()}.`;
@@ -317,6 +401,14 @@ function getMainInsight(data: AnalyticsData) {
     return `Похоже, симптом “${topSymptoms[0]}” начинает повторяться в твоём цикле.`;
   }
   return "Mira пока собирает первые данные и скоро покажет, что повторяется.";
+}
+
+function getNextAnalyticsAction(data: AnalyticsData, notesNeeded: number) {
+  if (data.redFlags.length > 0) return "Сформируй отчёт врачу и добавь туда тревожные симптомы.";
+  if (notesNeeded > 0) return `Отметь ещё ${notesNeeded} наблюдений, чтобы Mira точнее отделяла случайность от повторения.`;
+  if ((data.peakCount ?? 0) > (data.normalCount ?? 4)) return "Продолжай отмечать обильность в первые 3 дня месячных.";
+  if (data.factors.length > 0) return "Проверь одну связь 7 дней подряд: сон, вода или стресс.";
+  return "Начни с симптомов, сна и энергии: этого достаточно для первых выводов.";
 }
 
 function InsightNote({ title, body }: { title: string; body: string }) {
@@ -485,6 +577,57 @@ function ExportButton({ label, icon, onClick }: { label: string; icon: React.Rea
   );
 }
 
+function SafetyCard({ redFlags, onOpenDoctorReport }: { redFlags: string[]; onOpenDoctorReport?: () => void }) {
+  const hasFlags = redFlags.length > 0;
+
+  return (
+    <Card
+      className={`rounded-[30px] border-0 p-6 shadow-[0_22px_56px_rgba(255,107,107,0.12)] ${
+        hasFlags ? "bg-[#FFF0F0]" : "bg-white"
+      }`}
+      style={{ animation: "miraAnalyticsIn 420ms ease 40ms both" }}
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#FF6B6B] shadow-[0_6px_20px_rgba(255,107,107,0.12)]">
+          <Stethoscope className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <Eyebrow>Безопасность всегда видна</Eyebrow>
+          <h2 className="mt-2 text-xl font-black text-[#1A1A1A]">
+            {hasFlags ? "Это лучше обсудить с врачом" : "Когда не стоит терпеть"}
+          </h2>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+            Mira не ставит диагноз. Она помогает заметить симптомы, которые нельзя игнорировать.
+          </p>
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {(hasFlags
+              ? redFlags
+              : ["Резкая или очень сильная боль", "Обморок или сильная слабость", "Очень обильное кровотечение", "Кровь после секса"]
+            ).map((flag) => (
+              <div
+                key={flag}
+                className="flex items-center gap-3 rounded-[20px] bg-white px-4 py-3 text-sm font-bold text-[#1A1A1A]"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFF0F0] text-[#FF6B6B]">
+                  !
+                </span>
+                {flag}
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            className="mt-5 w-full rounded-[20px] bg-[#FF6B6B] text-white hover:bg-[#EF5D5D] md:w-auto"
+            onClick={onOpenDoctorReport}
+          >
+            📋 Подготовить для врача
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function AnalyticsPageComponent({
   datasets,
   onOpenDoctorReport,
@@ -493,13 +636,27 @@ function AnalyticsPageComponent({
   onSendToSelf,
 }: AnalyticsPageProps) {
   const [period, setPeriod] = useState<PeriodKey>("3");
-  const data = useMemo(() => getDataset(period, datasets), [period, datasets]);
+  const logs = useMiraStore((state) => state.logs.dailyLogs);
+  const cycle = useMiraStore((state) => state.cycle);
+  const storeSymptoms = useMiraStore(selectMostCommonSymptoms);
+  const storeRedFlags = useMiraStore(selectRedFlags);
+  const storeSkinHistory = useMiraStore(selectSkinHistory);
+  const realDatasets = useMemo<Partial<Record<PeriodKey, AnalyticsData>> | undefined>(() => {
+    if (logs.length === 0) return undefined;
+    return periods.reduce((acc, item) => {
+      acc[item.value] = buildDataFromLogs(logs, cycle, storeSymptoms, storeRedFlags, storeSkinHistory.points, item.value);
+      return acc;
+    }, {} as Partial<Record<PeriodKey, AnalyticsData>>);
+  }, [cycle, logs, storeRedFlags, storeSkinHistory.points, storeSymptoms]);
+  const data = useMemo(() => getDataset(period, datasets ?? realDatasets), [period, datasets, realDatasets]);
   const hasEnoughForForecast = data.trackedCycles >= 2;
   const chartTick = { fill: muted, fontSize: 12 };
   const confidence = getConfidencePercent(data.trackedCycles);
   const notesCount = getNotesCount(data);
   const notesNeeded = getMoreNotesNeeded(data);
   const mainInsight = getMainInsight(data);
+  const nextAction = getNextAnalyticsAction(data, notesNeeded);
+  const isCurrentEducational = period === "current" && getNotesCount(data) < 8;
 
   const doctorPhrases = useMemo(() => {
     const cyclesText = data.trackedCycles === 1 ? "1 месяц" : `${data.trackedCycles} месяца`;
@@ -598,9 +755,7 @@ function AnalyticsPageComponent({
                       </div>
                       <div className="rounded-[22px] bg-white/16 p-4 backdrop-blur">
                         <p className="text-xs font-bold uppercase tracking-wide text-white/65">Что сделать дальше</p>
-                        <p className="mt-1 text-sm font-black text-white">
-                          {notesNeeded > 0 ? `Ещё ${notesNeeded} отметок сделают прогноз точнее.` : "Продолжай отмечать симптомы в конце цикла."}
-                        </p>
+                        <p className="mt-1 text-sm font-black text-white">{nextAction}</p>
                       </div>
                     </div>
                   </>
@@ -621,40 +776,21 @@ function AnalyticsPageComponent({
             </div>
           </Card>
 
-          {/* Красные флаги */}
-          {data.redFlags.length > 0 && (
-            <SectionCard delay={40}>
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F0] text-[#FF6B6B]">
-                  <Stethoscope className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Eyebrow>Когда не стоит терпеть</Eyebrow>
-                  <h2 className="mt-2 text-xl font-black text-[#1A1A1A]">Это лучше обсудить с врачом</h2>
-                  <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">
-                    Mira не ставит диагноз, но помогает не пропустить важные повторяющиеся симптомы.
-                  </p>
-                  <ul className="mt-4 space-y-2">
-                    {data.redFlags.map((flag) => (
-                      <li
-                        key={flag}
-                        className="flex items-center gap-3 rounded-[20px] bg-[#FFF0F0] px-4 py-3 text-sm font-bold text-[#1A1A1A]"
-                      >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[#FF6B6B] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-                          !
-                        </span>
-                        {flag}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    type="button"
-                    className="mt-5 w-full rounded-[20px] bg-[#E872A0] text-white hover:bg-[#D95F8E]"
-                    onClick={onOpenDoctorReport}
-                  >
-                    📋 Показать врачу
-                  </Button>
-                </div>
+          <SafetyCard redFlags={data.redFlags} onOpenDoctorReport={onOpenDoctorReport} />
+
+          {isCurrentEducational && (
+            <SectionCard eyebrow="Текущий цикл" title="Пока мало данных для выводов" delay={48}>
+              <div className="grid gap-3 md:grid-cols-3">
+                {[
+                  ["Что это значит", "Mira видит только текущие отметки. Это ещё не закономерность."],
+                  ["Что сделать", "Добавь месячные, боль, настроение, сон или заботу 3–5 дней."],
+                  ["Что получишь", "После первых отметок появятся честные выводы: что повторяется и что показать врачу."],
+                ].map(([title, body]) => (
+                  <div key={title} className="rounded-[22px] bg-[#FAF8F5] p-4">
+                    <p className="text-sm font-black text-[#1A1A1A]">{title}</p>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-[#8E8E93]">{body}</p>
+                  </div>
+                ))}
               </div>
             </SectionCard>
           )}
@@ -765,17 +901,29 @@ function AnalyticsPageComponent({
             {data.factors.length > 0 && (
               <SectionCard eyebrow="Что влияет на самочувствие" title="Что может ухудшать состояние" delay={170}>
                 <div className="space-y-3">
-                  {data.factors.slice(0, 3).map((factor) => (
-                    <div
-                      key={factor}
-                      className="flex items-center gap-3 rounded-[20px] bg-[#FAF8F5] px-4 py-3 text-sm font-bold text-[#1A1A1A]"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-base shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-                        📉
-                      </span>
-                      {factor}
-                    </div>
-                  ))}
+                  {data.factors.slice(0, 3).map((factor) => {
+                    const sampleSize = getSampleSizeFromText(factor);
+                    const tone = getSampleTone(sampleSize) as "green" | "yellow" | "red";
+
+                    return (
+                      <div key={factor} className="rounded-[20px] bg-[#FAF8F5] px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-base shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+                            📉
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-bold text-[#1A1A1A]">{factor}</p>
+                              <StatBadge value={sampleSize ? `n=${sampleSize}` : "n мало"} tone={tone} />
+                            </div>
+                            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#8E8E93]">
+                              {getSampleExplanation(sampleSize)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </SectionCard>
             )}
@@ -786,34 +934,54 @@ function AnalyticsPageComponent({
             </SectionCard>
           </div>
 
-          {/* Фразы для врача */}
-          <SectionCard eyebrow="Подготовка к визиту" title="Фразы для врача" delay={320}>
-            <div className="space-y-3">
-              {doctorPhrases.map((phrase, index) => (
-                <div
-                  key={phrase}
-                  className="flex items-start gap-3 rounded-[20px] bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1A1A1A]"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-[#E872A0] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-                    {index + 1}
-                  </span>
-                  {phrase}
+          {/* Отчёт врачу */}
+          <Card
+            className="overflow-hidden rounded-[34px] border-0 bg-white p-0 shadow-[0_28px_72px_rgba(232,114,160,0.18)]"
+            style={{ animation: "miraAnalyticsIn 420ms ease 320ms both" }}
+          >
+            <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+              <div className="mira-gradient-cycle p-6 text-white">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/70">Главная польза аналитики</p>
+                <h2 className="mt-2 text-3xl font-black leading-tight">Подготовить визит к врачу</h2>
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-white/78">
+                  Mira переводит отметки в факты: даты, повторы, обильность, симптомы и вопросы врачу.
+                </p>
+                <div className="mt-5 grid gap-3">
+                  <div className="rounded-[22px] bg-white/16 p-4 backdrop-blur">
+                    <p className="text-xs font-bold uppercase tracking-wide text-white/65">Что включено</p>
+                    <p className="mt-1 text-sm font-black text-white">
+                      {data.trackedCycles} циклов, {notesCount} отметок, {data.redFlags.length || "нет"} тревожных сигналов.
+                    </p>
+                  </div>
+                  <div className="rounded-[22px] bg-white/16 p-4 backdrop-blur">
+                    <p className="text-xs font-bold uppercase tracking-wide text-white/65">Приватность</p>
+                    <p className="mt-1 text-sm font-black text-white">Личные заметки скрыты, пока ты сама их не включишь.</p>
+                  </div>
                 </div>
-              ))}
+              </div>
+              <div className="p-6">
+                <Eyebrow>Фразы для врача</Eyebrow>
+                <div className="mt-4 space-y-3">
+                  {doctorPhrases.map((phrase, index) => (
+                    <div
+                      key={phrase}
+                      className="flex items-start gap-3 rounded-[20px] bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#1A1A1A]"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-[#E872A0] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+                        {index + 1}
+                      </span>
+                      {phrase}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                  <ExportButton label="PDF" icon={<FileText className="h-4 w-4" />} onClick={onExportPdf} />
+                  <ExportButton label="TXT" icon={<FileText className="h-4 w-4" />} onClick={onExportTxt} />
+                  <ExportButton label="Отправить себе" icon={<Mail className="h-4 w-4" />} onClick={onSendToSelf} />
+                </div>
+              </div>
             </div>
-          </SectionCard>
-
-          {/* Экспорт */}
-          <SectionCard delay={370}>
-            <div className="grid gap-3 md:grid-cols-3">
-              <ExportButton label="PDF" icon={<FileText className="h-4 w-4" />} onClick={onExportPdf} />
-              <ExportButton label="TXT" icon={<FileText className="h-4 w-4" />} onClick={onExportTxt} />
-              <ExportButton label="Отправить себе" icon={<Mail className="h-4 w-4" />} onClick={onSendToSelf} />
-            </div>
-            <p className="mt-4 rounded-[20px] bg-[#FAF8F5] px-4 py-3 text-sm font-bold text-[#8E8E93]">
-              🔒 Личные заметки скрыты.
-            </p>
-          </SectionCard>
+          </Card>
 
           <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
             <div className="rounded-2xl bg-white px-3 py-2 text-[#34C759] shadow-[0_4px_12px_rgba(0,0,0,0.05)]">Норма</div>

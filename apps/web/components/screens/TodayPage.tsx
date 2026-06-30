@@ -272,6 +272,20 @@ function TodayPageComponent({ data = mockTodayData, onPain, onPeriod, onCheckIn,
           <QuickAction onClick={openReport}>📋 Отчёт врачу</QuickAction>
         </div>
 
+        <Card className="mt-4 rounded-[28px] border-0 bg-[#FFF0F0] p-5 shadow-[0_18px_42px_rgba(255,107,107,0.12)]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-[#FF6B6B]">
+              <HeartPulse className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-[#1A1A1A]">Когда срочно за помощью</p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+                Резкая боль, обморок, очень обильное кровотечение, кровь после секса или сильная слабость — это повод обратиться к врачу.
+              </p>
+            </div>
+          </div>
+        </Card>
+
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <div className="space-y-6">
             <SectionCard title="Что сделать сегодня" delay={40}>
