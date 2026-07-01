@@ -1,9 +1,10 @@
 "use client";
 
 import React, { memo, useMemo, useState } from "react";
-import { CalendarDays, HeartPulse, Plus, Siren } from "lucide-react";
+import { CalendarDays, HeartPulse, Plus, Siren, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useMiraStore, type DailyLog } from "@/store";
 
 type SymptomColor = "red" | "yellow" | "blue" | "green";
 type CalendarDayType = "period" | "pms" | "normal" | "note" | "empty";
@@ -39,6 +40,15 @@ type FactAction = {
   fact: string;
   action: string;
   tone: SymptomColor;
+};
+
+type FirstPattern = {
+  isReady: boolean;
+  title: string;
+  body: string;
+  why: string;
+  next: string;
+  sample: string;
 };
 
 type TodayPageProps = {
@@ -225,6 +235,133 @@ function getCareProgress() {
   return { items, done, total: items.length, percent: Math.round((done / items.length) * 100) };
 }
 
+function isDailyLog(log: unknown): log is DailyLog {
+  if (!log || typeof log !== "object") return false;
+  const value = log as Partial<DailyLog>;
+  return typeof value.date === "string" && typeof value.cycleDay === "number" && !!value.symptoms && typeof value.symptoms === "object";
+}
+
+function getSafeDailyLogs(logs: unknown): DailyLog[] {
+  if (!Array.isArray(logs)) return [];
+  return logs.filter(isDailyLog);
+}
+
+function formatCount(count: number) {
+  if (count === 1) return "1 отметка";
+  if (count > 1 && count < 5) return `${count} отметки`;
+  return `${count} отметок`;
+}
+
+function buildFirstPattern(logs: DailyLog[]): FirstPattern {
+  const sortedLogs = [...logs].sort((a, b) => a.date.localeCompare(b.date));
+  const sampleCount = sortedLogs.length;
+
+  if (sampleCount < 3) {
+    const needed = 3 - sampleCount;
+    return {
+      isReady: false,
+      title: "Mira учится понимать твой цикл",
+      body: `Ещё ${formatCount(needed)} — и Mira сможет заметить первый повтор.`,
+      why: "Пока рано делать выводы: нужно хотя бы 3 дня с отметками.",
+      next: "Нажми «Отслеживать» и добавь воду, настроение или симптом за сегодня.",
+      sample: `${formatCount(sampleCount)} сейчас`,
+    };
+  }
+
+  const lowEnergyCount = sortedLogs.filter((log) => ["low", "exhausted"].includes(log.symptoms.energy ?? "")).length;
+  const anxiousMoodCount = sortedLogs.filter((log) => ["anxious", "irritable", "low"].includes(log.symptoms.mood ?? "")).length;
+  const painCount = sortedLogs.filter((log) => (log.symptoms.pain?.level ?? 0) >= 3).length;
+  const poorSleepCount = sortedLogs.filter((log) => log.symptoms.sleep?.quality === "poor").length;
+
+  const candidates = [
+    {
+      count: painCount,
+      title: "Mira уже видит: боль повторяется",
+      body: "Боль 3/5 и выше встречалась несколько раз. Это стоит продолжать отмечать, чтобы понять дни и силу боли.",
+      why: "Если боль повторяется по циклам, врачу проще увидеть закономерность, а тебе — подготовиться заранее.",
+      next: "Следующие 7 дней отмечай боль по шкале 1–5 и добавляй, что помогло.",
+    },
+    {
+      count: lowEnergyCount,
+      title: "Mira уже видит: энергия иногда падает",
+      body: "Низкая энергия встречалась в нескольких отметках. Пока это первый сигнал, не окончательный вывод.",
+      why: "Так можно понять, связано ли состояние со сном, ПМС, нагрузкой или питанием.",
+      next: "Отмечай сон и энергию ещё неделю, чтобы Mira сравнила их между собой.",
+    },
+    {
+      count: anxiousMoodCount,
+      title: "Mira уже видит: настроение меняется",
+      body: "Тревога, раздражительность или низкое настроение появились в нескольких отметках.",
+      why: "Это помогает меньше винить себя и заранее снижать нагрузку в сложные дни.",
+      next: "Отмечай настроение каждый день до следующих месячных.",
+    },
+    {
+      count: poorSleepCount,
+      title: "Mira уже видит: сон может влиять на день",
+      body: "Плохой сон встречался в нескольких отметках. Mira будет смотреть, совпадает ли он с низкой энергией.",
+      why: "Связь сна и самочувствия часто становится первым полезным паттерном.",
+      next: "Добавляй качество сна и энергию утром ещё 7 дней.",
+    },
+  ].sort((a, b) => b.count - a.count);
+
+  const top = candidates[0];
+  if (!top || top.count < 2) {
+    return {
+      isReady: true,
+      title: "Mira уже может искать первые повторы",
+      body: "Данных стало достаточно для старта, но устойчивого повторения пока не видно.",
+      why: "Это нормально: первые закономерности обычно появляются после 5–7 отметок.",
+      next: "Продолжай отмечать состояние коротко: симптом, энергия, сон или настроение.",
+      sample: formatCount(sampleCount),
+    };
+  }
+
+  return {
+    isReady: true,
+    title: top.title,
+    body: top.body,
+    why: top.why,
+    next: top.next,
+    sample: `${formatCount(sampleCount)}, совпадений: ${top.count}`,
+  };
+}
+
+function FirstPatternCard({ insight }: { insight: FirstPattern }) {
+  return (
+    <Card
+      className="mira-card mt-4 overflow-hidden rounded-[30px] border-0 p-5 shadow-[0_22px_58px_rgba(76,66,126,0.12)]"
+      style={{ animation: "miraTodayIn 420ms ease 70ms both" }}
+    >
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F1E9FF] text-[#7B61C9] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8E8E93]">Первая польза</p>
+            <h2 className="mt-1 text-xl font-black text-[#1A1A1A]">{insight.title}</h2>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">{insight.body}</p>
+          </div>
+        </div>
+        <div className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-black ${insight.isReady ? "bg-[#EDFAF1] text-[#2F8E47]" : "bg-[#FFF7DE] text-[#8A6500]"}`}>
+          {insight.sample}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-2xl bg-[#FAF8F5] px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-wide text-[#8E8E93]">Почему важно</p>
+          <p className="mt-1 text-sm font-bold leading-relaxed text-[#1A1A1A]">{insight.why}</p>
+        </div>
+        <div className="rounded-2xl bg-[#FAF8F5] px-4 py-3">
+          <p className="text-xs font-black uppercase tracking-wide text-[#8E8E93]">Что дальше</p>
+          <p className="mt-1 text-sm font-bold leading-relaxed text-[#1A1A1A]">{insight.next}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function QuickAction({
   children,
   tone = "white",
@@ -285,9 +422,11 @@ function CalendarSection({ data, delay = 0 }: { data: TodayData["calendar"]; del
 
 function TodayPageComponent({ data = mockTodayData, onPain, onPeriod, onCheckIn, onCare, onReport }: TodayPageProps) {
   const [painOpen, setPainOpen] = useState(false);
+  const storeLogs = useMiraStore((state) => state.logs.dailyLogs);
   const status = useMemo(() => getTodayStatus(data), [data]);
   const factActions = useMemo(() => getFactActions(data, status), [data, status]);
   const careProgress = useMemo(() => getCareProgress(), []);
+  const firstPattern = useMemo(() => buildFirstPattern(getSafeDailyLogs(storeLogs)), [storeLogs]);
 
   function openPain() {
     if (onPain) {
@@ -379,6 +518,8 @@ function TodayPageComponent({ data = mockTodayData, onPain, onPeriod, onCheckIn,
             </div>
           </div>
         </Card>
+
+        <FirstPatternCard insight={firstPattern} />
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <div className="space-y-6">

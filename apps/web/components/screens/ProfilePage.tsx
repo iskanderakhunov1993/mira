@@ -454,7 +454,8 @@ function ProfilePageComponent({ data = mockProfileData }: ProfilePageProps) {
             </SectionCard>
           </div>
 
-          <SectionCard title="🗞️ Статьи, новости и обновления" delay={400}>
+          <div id="content" className="scroll-mt-8">
+            <SectionCard title="🗞️ Статьи, новости и обновления" delay={400}>
             <p className="mb-5 text-sm font-semibold leading-relaxed text-[#8E8E93]">
               Здесь будут полезные материалы Mira: короткие статьи, новости о женском здоровье и обновления приложения.
             </p>
@@ -473,7 +474,8 @@ function ProfilePageComponent({ data = mockProfileData }: ProfilePageProps) {
             <Button type="button" variant="outline" className="mt-5 w-full rounded-2xl bg-white">
               Открыть ленту
             </Button>
-          </SectionCard>
+            </SectionCard>
+          </div>
         </div>
       </div>
 
