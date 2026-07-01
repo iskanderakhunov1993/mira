@@ -717,8 +717,7 @@ function AnalyticsPageComponent({
   const rawLogs = useMiraStore((state) => state.logs.dailyLogs);
   const cycle = useMiraStore((state) => state.cycle);
   const logs = useMemo(() => getSafeLogs(rawLogs), [rawLogs]);
-  const realDatasets = useMemo<Partial<Record<PeriodKey, AnalyticsData>> | undefined>(() => {
-    if (logs.length === 0) return undefined;
+  const realDatasets = useMemo<Partial<Record<PeriodKey, AnalyticsData>>>(() => {
     return periods.reduce((acc, item) => {
       acc[item.value] = buildDataFromLogs(logs, cycle, item.value);
       return acc;
