@@ -1,11 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar, Check, ChevronLeft, ChevronRight, HeartPulse, Sparkles, UserRound } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Battery,
+  CalendarDays,
+  Check,
+  FileText,
+  Heart,
+  HeartPulse,
+  Lock,
+  Moon,
+  Shield,
+  Smile,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { MiraLogo } from "@/components/ui/MiraLogo";
 import { saveProfile } from "@/lib/store";
 import type { MiraLocalData, TrackingCategory, UserProfile } from "@/lib/types";
 
@@ -15,43 +28,57 @@ type Props = {
   onComplete: () => void;
 };
 
-type CycleChoice = "unknown" | "21-24" | "25-28" | "29-32" | "33-36" | "36plus";
-type GoalId = "cycle" | "delay" | "pain_pms" | "doctor" | "care";
+type CycleChoice = "unknown" | "21-24" | "25-28" | "29-32" | "33-35" | "irregular";
+type PeriodChoice = "2-3" | "4-5" | "6-7" | "8plus" | "unknown";
+type GoalId = "cycle" | "pain" | "doctor" | "pms" | "diary";
+type SymptomId = "period" | "pain" | "mood" | "energy" | "sleep" | "pms" | "sex" | "notes";
 
-const totalSteps = 5;
+const totalSteps = 8;
 
 const cycleOptions: Array<{ id: CycleChoice; label: string; value: number }> = [
   { id: "unknown", label: "Не знаю", value: 28 },
   { id: "21-24", label: "21-24", value: 24 },
   { id: "25-28", label: "25-28", value: 28 },
   { id: "29-32", label: "29-32", value: 31 },
-  { id: "33-36", label: "33-36", value: 35 },
-  { id: "36plus", label: "Больше 36", value: 38 },
+  { id: "33-35", label: "33-35", value: 34 },
+  { id: "irregular", label: "Нерегулярный", value: 30 },
 ];
 
-const goals: Array<{ id: GoalId; label: string; preferences: TrackingCategory[] }> = [
-  { id: "cycle", label: "Понимать цикл", preferences: ["cycle", "mood", "energy"] },
-  { id: "delay", label: "Следить за задержками", preferences: ["cycle", "pain", "intimacy"] },
-  { id: "pain_pms", label: "Следить за болью и ПМС", preferences: ["cycle", "pain", "mood", "energy", "sleep"] },
-  { id: "doctor", label: "Подготовиться к врачу", preferences: ["cycle", "pain", "mood", "energy", "sleep", "intimacy"] },
-  { id: "care", label: "Питание и тренировки", preferences: ["cycle", "nutrition", "workout", "energy", "sleep"] },
+const periodOptions: Array<{ id: PeriodChoice; label: string; value: number }> = [
+  { id: "2-3", label: "2-3 дня", value: 3 },
+  { id: "4-5", label: "4-5 дней", value: 5 },
+  { id: "6-7", label: "6-7 дней", value: 7 },
+  { id: "8plus", label: "8+ дней", value: 8 },
+  { id: "unknown", label: "Не знаю", value: 5 },
 ];
 
-const helpItems = [
-  "что происходит с циклом;",
-  "что лучше отметить;",
-  "что может повторяться;",
-  "что можно обсудить с врачом.",
+const goals: Array<{ id: GoalId; label: string; body: string; icon: typeof CalendarDays; preferences: TrackingCategory[] }> = [
+  { id: "cycle", label: "Понять цикл", body: "день, фаза, задержки", icon: CalendarDays, preferences: ["cycle", "mood", "energy"] },
+  { id: "pain", label: "Боль и симптомы", body: "что повторяется", icon: HeartPulse, preferences: ["cycle", "pain", "mood", "energy", "sleep"] },
+  { id: "doctor", label: "Отчёт врачу", body: "факты без памяти", icon: FileText, preferences: ["cycle", "pain", "mood", "energy", "sleep", "intimacy"] },
+  { id: "pms", label: "ПМС и настроение", body: "эмоции, сон, энергия", icon: Smile, preferences: ["cycle", "mood", "energy", "sleep"] },
+  { id: "diary", label: "Приватный дневник", body: "заметки и история", icon: Lock, preferences: ["cycle", "mood", "energy", "sleep"] },
+];
+
+const symptoms: Array<{ id: SymptomId; label: string; icon: typeof CalendarDays; tone: "lime" | "pink" }> = [
+  { id: "period", label: "Месячные", icon: CalendarDays, tone: "pink" },
+  { id: "pain", label: "Боль", icon: HeartPulse, tone: "pink" },
+  { id: "mood", label: "Настроение", icon: Smile, tone: "lime" },
+  { id: "energy", label: "Энергия", icon: Battery, tone: "lime" },
+  { id: "sleep", label: "Сон", icon: Moon, tone: "lime" },
+  { id: "pms", label: "ПМС", icon: Sparkles, tone: "pink" },
+  { id: "sex", label: "Секс/контрацепция", icon: Heart, tone: "lime" },
+  { id: "notes", label: "Личные заметки", icon: FileText, tone: "lime" },
 ];
 
 const slideVariants = {
-  enter: (direction: number) => ({ x: direction > 0 ? 48 : -48, opacity: 0 }),
+  enter: (direction: number) => ({ x: direction > 0 ? 28 : -28, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction > 0 ? -48 : 48, opacity: 0 }),
+  exit: (direction: number) => ({ x: direction > 0 ? -28 : 28, opacity: 0 }),
 };
 
 function dateDaysAgo(days: number) {
-  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 }
 
 export function OnboardingScreen({ data, persist, onComplete }: Props) {
@@ -60,35 +87,46 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
   const [name, setName] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [cycleChoice, setCycleChoice] = useState<CycleChoice>("25-28");
+  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>("4-5");
   const [selectedGoals, setSelectedGoals] = useState<GoalId[]>(["cycle"]);
+  const [selectedSymptoms, setSelectedSymptoms] = useState<SymptomId[]>(["period", "pain", "mood", "energy", "sleep"]);
+  const [hiddenNotifications, setHiddenNotifications] = useState(true);
+  const [privateMarks, setPrivateMarks] = useState(true);
 
-  const canGoNext = step === 0 ? name.trim().length > 0 : step === 1 ? Boolean(periodStart) : true;
+  const canGoNext = step === 0 ? name.trim().length > 0 : step === 2 ? Boolean(periodStart) : true;
+  const percent = Math.round(((step + 1) / totalSteps) * 100);
+
+  const selectedPreferences = useMemo(() => {
+    const preferences = new Set<TrackingCategory>(["cycle", "pain", "mood", "energy", "sleep"]);
+    selectedGoals.forEach((goalId) => {
+      goals.find((goal) => goal.id === goalId)?.preferences.forEach((item) => preferences.add(item));
+    });
+    if (selectedSymptoms.includes("sex")) preferences.add("intimacy");
+    return Array.from(preferences);
+  }, [selectedGoals, selectedSymptoms]);
 
   function next() {
     if (!canGoNext) return;
     setDirection(1);
-    setStep(current => Math.min(current + 1, totalSteps - 1));
+    setStep((current) => Math.min(current + 1, totalSteps - 1));
   }
 
   function back() {
     setDirection(-1);
-    setStep(current => Math.max(current - 1, 0));
+    setStep((current) => Math.max(current - 1, 0));
   }
 
   function toggleGoal(id: GoalId) {
-    setSelectedGoals(current => {
-      if (current.includes(id)) return current.filter(item => item !== id);
-      return [...current, id];
-    });
+    setSelectedGoals((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  function toggleSymptom(id: SymptomId) {
+    setSelectedSymptoms((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
   function finish() {
-    const selectedCycle = cycleOptions.find(option => option.id === cycleChoice) ?? cycleOptions[2];
-    const preferences = new Set<TrackingCategory>(["cycle", "pain", "mood", "energy", "sleep"]);
-    selectedGoals.forEach(goalId => {
-      goals.find(goal => goal.id === goalId)?.preferences.forEach(item => preferences.add(item));
-    });
-
+    const selectedCycle = cycleOptions.find((option) => option.id === cycleChoice) ?? cycleOptions[2];
+    const selectedPeriod = periodOptions.find((option) => option.id === periodChoice) ?? periodOptions[1];
     const anchorStart = periodStart || dateDaysAgo(14);
     const profile: UserProfile = {
       name: name.trim() || "Mira",
@@ -96,14 +134,14 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
       cycleConfig: {
         periodStart: anchorStart,
         cycleLength: selectedCycle.value,
-        periodLength: 5,
+        periodLength: selectedPeriod.value,
         periodStarts: [anchorStart],
       },
-      trackingPreferences: Array.from(preferences),
+      trackingPreferences: selectedPreferences,
       additionalMode: "none",
       pinEnabled: false,
-      hiddenNotifications: false,
-      privateMarks: true,
+      hiddenNotifications,
+      privateMarks,
     };
 
     persist({ ...saveProfile(data, profile), onboardingCompleted: true });
@@ -111,140 +149,254 @@ export function OnboardingScreen({ data, persist, onComplete }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-mira-bg px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="mb-5 flex items-center justify-center gap-2">
-          {Array.from({ length: totalSteps }, (_, index) => (
-            <span
-              key={index}
-              className={`h-2 rounded-full transition-all ${index === step ? "w-7 bg-mira-primary" : "w-2 bg-mira-lavender"}`}
-            />
-          ))}
+    <main className="min-h-screen bg-[#050505] text-[#F5F0ED]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[440px] flex-col px-5 pb-6 pt-5">
+        <header className="mb-10 flex items-center justify-between border-b border-[#2E2826] pb-5">
+          <div className="flex items-center gap-2">
+            <span className="text-4xl font-black leading-none text-[#B3FF6A] mira-stitch-title">Mira</span>
+          </div>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#404A35] bg-[#1D1816] text-[#B3FF6A]">
+            <Shield className="h-5 w-5" />
+          </span>
+        </header>
+
+        <div className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-[13px] font-black uppercase tracking-[0.22em] text-[#BFCAAF]">Шаг {step + 1} из {totalSteps}</span>
+            <span className="text-lg font-black text-[#B3FF6A]">{percent}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-[#3A3331]">
+            <div className="h-full rounded-full bg-[#B3FF6A] transition-all duration-300" style={{ width: `${percent}%` }} />
+          </div>
         </div>
 
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.div
-            key={step}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.22, ease: "easeOut" }}
-          >
-            {step === 0 && (
-              <OnboardingCard icon={<UserRound className="h-5 w-5" />} title="Как тебя зовут?" subtitle="Так Mira будет обращаться к тебе в подсказках.">
-                <input
-                  value={name}
-                  onChange={event => setName(event.target.value)}
-                  autoFocus
-                  placeholder="Имя"
-                  className="w-full rounded-2xl border border-mira-lavender/30 bg-white px-4 py-3 text-base font-semibold text-mira-text outline-none transition placeholder:text-mira-muted focus:border-mira-primary/50 focus:ring-4 focus:ring-mira-primary/10"
-                />
-              </OnboardingCard>
-            )}
+        <div className="min-h-0 flex-1">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.section
+              key={step}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="h-full"
+            >
+              {step === 0 && (
+                <Step title="Как тебя называть?" body="Так Mira будет обращаться к тебе в подсказках. Можно указать любое имя.">
+                  <div className="mira-stitch-inset mt-8 rounded-[20px] p-4">
+                    <label className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-[#8D817B]">Имя</label>
+                    <input
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      autoFocus
+                      placeholder="Например, Амина"
+                      className="w-full bg-transparent text-2xl font-black text-[#F5F0ED] outline-none placeholder:text-[#6A5D57]"
+                    />
+                  </div>
+                </Step>
+              )}
 
-            {step === 1 && (
-              <OnboardingCard icon={<Calendar className="h-5 w-5" />} title="Когда начались последние месячные?" subtitle="Это нужно, чтобы Mira показала день цикла и прогноз.">
-                <input
-                  type="date"
-                  value={periodStart}
-                  onChange={event => setPeriodStart(event.target.value)}
-                  className="w-full rounded-2xl border border-mira-lavender/30 bg-white px-4 py-3 text-base font-semibold text-mira-text outline-none transition focus:border-mira-primary/50 focus:ring-4 focus:ring-mira-primary/10"
-                />
-              </OnboardingCard>
-            )}
+              {step === 1 && (
+                <Step title="Сколько обычно длится цикл?" body="Если не знаешь точно, выбери ближайший вариант. Mira уточнит прогноз по будущим отметкам.">
+                  <ChoiceGrid>
+                    {cycleOptions.map((option) => (
+                      <ChoiceTile key={option.id} active={cycleChoice === option.id} onClick={() => setCycleChoice(option.id)}>
+                        {option.label}
+                      </ChoiceTile>
+                    ))}
+                  </ChoiceGrid>
+                </Step>
+              )}
 
-            {step === 2 && (
-              <OnboardingCard icon={<Sparkles className="h-5 w-5" />} title="Сколько обычно длится цикл?" subtitle="Если не знаешь точно, выбери «Не знаю». Mira уточнит по отметкам.">
-                <div className="grid grid-cols-2 gap-2">
-                  {cycleOptions.map(option => (
-                    <ChoiceButton key={option.id} active={cycleChoice === option.id} onClick={() => setCycleChoice(option.id)}>
-                      {option.label}
-                    </ChoiceButton>
-                  ))}
-                </div>
-              </OnboardingCard>
-            )}
+              {step === 2 && (
+                <Step title="Когда начались последние месячные?" body="Это главный якорь: по нему Mira покажет день цикла, фазу и задержку.">
+                  <div className="mira-stitch-inset mt-8 rounded-[20px] p-4">
+                    <label className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-[#8D817B]">Дата начала</label>
+                    <input
+                      type="date"
+                      value={periodStart}
+                      onChange={(event) => setPeriodStart(event.target.value)}
+                      className="w-full bg-transparent text-xl font-black text-[#F5F0ED] outline-none [color-scheme:dark]"
+                    />
+                  </div>
+                </Step>
+              )}
 
-            {step === 3 && (
-              <OnboardingCard icon={<HeartPulse className="h-5 w-5" />} title="Что для тебя важно?" subtitle="Можно выбрать несколько вариантов.">
-                <div className="space-y-2">
-                  {goals.map(goal => (
-                    <ChoiceButton key={goal.id} active={selectedGoals.includes(goal.id)} onClick={() => toggleGoal(goal.id)}>
-                      {goal.label}
-                    </ChoiceButton>
-                  ))}
-                </div>
-              </OnboardingCard>
-            )}
+              {step === 3 && (
+                <Step title="Сколько обычно длятся месячные?" body="Нужно для прогноза и отчёта врачу. Если цикл плавает, это нормально.">
+                  <ChoiceGrid>
+                    {periodOptions.map((option) => (
+                      <ChoiceTile key={option.id} active={periodChoice === option.id} onClick={() => setPeriodChoice(option.id)}>
+                        {option.label}
+                      </ChoiceTile>
+                    ))}
+                  </ChoiceGrid>
+                </Step>
+              )}
 
-            {step === 4 && (
-              <OnboardingCard icon={<Check className="h-5 w-5" />} title="Как Mira будет помогать" subtitle="Каждый день Mira покажет:">
-                <div className="mb-5 flex justify-center">
-                  <MiraLogo size={78} />
-                </div>
-                <div className="space-y-2">
-                  {helpItems.map((item, index) => (
-                    <div key={item} className="flex items-start gap-3 rounded-2xl bg-mira-bg px-3 py-2.5">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mira-lavender-light text-xs font-black text-mira-primary">
-                        {index + 1}
-                      </span>
-                      <p className="text-sm font-semibold leading-relaxed text-mira-text">{item}</p>
+              {step === 4 && (
+                <Step title="Что ты хочешь отслеживать в Mira?" body="Выбери основные категории для Today и быстрых отметок.">
+                  <div className="mt-8 grid grid-cols-2 gap-3">
+                    {goals.map((goal) => (
+                      <LargeTile key={goal.id} active={selectedGoals.includes(goal.id)} icon={goal.icon} title={goal.label} body={goal.body} onClick={() => toggleGoal(goal.id)} />
+                    ))}
+                  </div>
+                </Step>
+              )}
+
+              {step === 5 && (
+                <Step title="Какие данные добавить в быстрый лог?" body="Эти пункты будут доступны в Track. Секс и заметки останутся приватными по умолчанию.">
+                  <div className="mt-8 grid grid-cols-2 gap-3">
+                    {symptoms.map((symptom) => (
+                      <LargeTile
+                        key={symptom.id}
+                        active={selectedSymptoms.includes(symptom.id)}
+                        icon={symptom.icon}
+                        title={symptom.label}
+                        tone={symptom.tone}
+                        onClick={() => toggleSymptom(symptom.id)}
+                      />
+                    ))}
+                  </div>
+                </Step>
+              )}
+
+              {step === 6 && (
+                <Step title="Приватность по умолчанию" body="Mira хранит данные локально. Личные заметки и секс не попадут в отчёт врачу без твоего выбора.">
+                  <div className="mt-8 space-y-3">
+                    <PrivacyToggle title="Скрытые уведомления" body="Без слов про месячные, секс и здоровье на экране блокировки." checked={hiddenNotifications} onClick={() => setHiddenNotifications((value) => !value)} />
+                    <PrivacyToggle title="Приватные отметки" body="Интимность и заметки скрыты из отчёта врачу по умолчанию." checked={privateMarks} onClick={() => setPrivateMarks((value) => !value)} />
+                    <div className="mira-stitch-card rounded-[22px] p-4">
+                      <div className="flex items-start gap-3">
+                        <Shield className="mt-1 h-5 w-5 text-[#B3FF6A]" />
+                        <p className="text-sm font-semibold leading-relaxed text-[#BFCAAF]">
+                          Данные о здоровье не покидают устройство без твоего разрешения.
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </OnboardingCard>
-            )}
-          </motion.div>
-        </AnimatePresence>
+                  </div>
+                </Step>
+              )}
 
-        <div className="mt-5 flex gap-2">
+              {step === 7 && (
+                <Step title="Готово. Mira настроена" body="Сегодня ты увидишь день цикла, быстрый лог и путь к отчёту врачу.">
+                  <div className="mt-8 space-y-3">
+                    {[
+                      ["Today", "короткая сводка дня"],
+                      ["Track", "медицинские факты и заметки"],
+                      ["Report", "данные врачу с приватностью"],
+                    ].map(([title, body]) => (
+                      <div key={title} className="mira-stitch-card flex items-center justify-between rounded-[20px] p-4">
+                        <div>
+                          <p className="text-base font-black text-[#F5F0ED]">{title}</p>
+                          <p className="mt-1 text-sm font-semibold text-[#B7AAA4]">{body}</p>
+                        </div>
+                        <Check className="h-5 w-5 text-[#B3FF6A]" />
+                      </div>
+                    ))}
+                  </div>
+                </Step>
+              )}
+            </motion.section>
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-8 flex gap-3">
           {step > 0 && (
-            <Button variant="ghost" className="flex-1" onClick={back}>
-              <ChevronLeft className="h-4 w-4" /> Назад
-            </Button>
+            <button
+              type="button"
+              onClick={back}
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[#2E2826] bg-[#1D1816] text-[#F5F0ED] active:scale-95"
+              aria-label="Назад"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
           )}
           {step < totalSteps - 1 ? (
-            <Button className="flex-1" onClick={next} disabled={!canGoNext}>
-              Далее <ChevronRight className="h-4 w-4" />
+            <Button className="h-16 flex-1 rounded-full text-lg" onClick={next} disabled={!canGoNext}>
+              Далее <ArrowRight className="h-5 w-5" />
             </Button>
           ) : (
-            <Button className="flex-1" onClick={finish}>
-              Начать <ChevronRight className="h-4 w-4" />
+            <Button className="h-16 flex-1 rounded-full text-lg" onClick={finish}>
+              Начать <ArrowRight className="h-5 w-5" />
             </Button>
           )}
         </div>
       </div>
+    </main>
+  );
+}
+
+function Step({ title, body, children }: { title: string; body: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h1 className="mira-stitch-title text-[38px] font-black leading-[1.08] tracking-tight text-[#F5F0ED]">{title}</h1>
+      <p className="mt-5 text-xl font-medium leading-relaxed text-[#BFCAAF]">{body}</p>
+      {children}
     </div>
   );
 }
 
-function OnboardingCard({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle: string; children: React.ReactNode }) {
-  return (
-    <Card className="border-mira-primary/10 bg-white p-6 shadow-[0_18px_48px_rgba(45,38,64,0.08)]">
-      <div className="mb-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-mira-lavender-light text-mira-primary">
-          {icon}
-        </div>
-        <h1 className="text-2xl font-black text-mira-text">{title}</h1>
-        <p className="mt-2 text-sm leading-relaxed text-mira-muted">{subtitle}</p>
-      </div>
-      {children}
-    </Card>
-  );
+function ChoiceGrid({ children }: { children: React.ReactNode }) {
+  return <div className="mt-8 grid grid-cols-2 gap-3">{children}</div>;
 }
 
-function ChoiceButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ChoiceTile({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-12 w-full rounded-2xl border px-4 py-3 text-left text-sm font-black transition active:scale-[0.98] ${
-        active ? "border-mira-primary bg-mira-lavender-light text-mira-primary shadow-glow" : "border-mira-lavender/25 bg-white text-mira-text"
+      className={`min-h-20 rounded-[22px] border p-4 text-left text-lg font-black transition active:scale-[0.98] ${
+        active ? "border-[#B3FF6A] bg-[#B3FF6A] text-[#11100F]" : "border-[#2E2826] bg-[#1D1816] text-[#F5F0ED]"
       }`}
     >
       {children}
+    </button>
+  );
+}
+
+function LargeTile({
+  active,
+  icon: Icon,
+  title,
+  body,
+  tone = "lime",
+  onClick,
+}: {
+  active: boolean;
+  icon: typeof CalendarDays;
+  title: string;
+  body?: string;
+  tone?: "lime" | "pink";
+  onClick: () => void;
+}) {
+  const accent = tone === "pink" ? "#FFB0CE" : "#B3FF6A";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-[132px] rounded-[22px] border p-4 text-left transition active:scale-[0.98] ${
+        active ? "border-[#B3FF6A] bg-[#223018]" : "border-[#2E2826] bg-[#1D1816]"
+      }`}
+    >
+      <Icon className="mb-6 h-8 w-8" style={{ color: accent }} />
+      <p className="text-lg font-black leading-tight text-[#F5F0ED]">{title}</p>
+      {body && <p className="mt-2 text-xs font-semibold leading-snug text-[#B7AAA4]">{body}</p>}
+    </button>
+  );
+}
+
+function PrivacyToggle({ title, body, checked, onClick }: { title: string; body: string; checked: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="mira-stitch-card flex w-full items-center gap-4 rounded-[22px] p-4 text-left active:scale-[0.99]">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border ${checked ? "border-[#B3FF6A] bg-[#B3FF6A] text-[#11100F]" : "border-[#404A35] text-transparent"}`}>
+        <Check className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-black text-[#F5F0ED]">{title}</span>
+        <span className="mt-1 block text-sm font-semibold leading-snug text-[#B7AAA4]">{body}</span>
+      </span>
     </button>
   );
 }

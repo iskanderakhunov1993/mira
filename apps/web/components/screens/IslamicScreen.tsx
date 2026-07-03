@@ -64,8 +64,8 @@ export function IslamicScreen({ data, persist }: ScreenProps) {
   }
 
   const statusColors: Record<string, string> = {
-    hayd: "border-[#C47E9B]/20 bg-[#F5E0EA]/30",
-    nifas: "border-[#C47E9B]/20 bg-[#F5E0EA]/30",
+    hayd: "border-[#7F6AAD]/20 bg-[#F4F0FA]/30",
+    nifas: "border-[#7F6AAD]/20 bg-[#F4F0FA]/30",
     istihada: "border-[#C4B07E]/20 bg-[#F5F0E0]/30",
     purity: "border-mira-success/20 bg-[#E0F5E8]/30",
     unknown: "border-mira-lavender/20 bg-mira-bg",
@@ -114,7 +114,7 @@ export function IslamicScreen({ data, persist }: ScreenProps) {
                 {dayStatus.shouldPray ? (
                   <Badge className="bg-mira-success/15 text-mira-success border-mira-success/30">Молись</Badge>
                 ) : (
-                  <Badge className="bg-[#F5E0EA] text-[#C47E9B] border-[#C47E9B]/30">Намаз не обязателен</Badge>
+                  <Badge className="bg-[#F4F0FA] text-[#7F6AAD] border-[#7F6AAD]/30">Намаз не обязателен</Badge>
                 )}
               </div>
               <p className="text-xs text-mira-muted leading-relaxed">{dayStatus.explanation}</p>
@@ -265,7 +265,7 @@ export function IslamicScreen({ data, persist }: ScreenProps) {
                         <span className="text-xs text-mira-muted">Пропуск: {y.missed}</span>
                         <span className="text-xs text-mira-success">Каза: {y.madeUp}</span>
                         {y.remaining > 0 && (
-                          <Badge className="bg-[#F5E0EA] text-[#C47E9B] text-[10px]">Осталось: {y.remaining}</Badge>
+                          <Badge className="bg-[#F4F0FA] text-[#7F6AAD] text-[10px]">Осталось: {y.remaining}</Badge>
                         )}
                       </div>
                     </div>

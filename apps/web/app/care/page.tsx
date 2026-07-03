@@ -1,5 +1,5 @@
-import { CarePage } from "@/components/screens/CarePage";
+import { CareRoute } from "./CareRoute";
 
 export default function Page() {
-  return <CarePage />;
+  return <CareRoute />;
 }

@@ -73,8 +73,8 @@ function ToggleChip({
       type="button"
       className={`rounded-2xl border px-4 py-2 text-sm font-bold transition ${
         selected
-          ? "border-[#E872A0] bg-[#E872A0] text-white shadow-[0_8px_18px_rgba(232,114,160,0.22)]"
-          : "border-[#E8DDE3] bg-white text-[#1A1A1A] hover:border-[#E872A0]/50"
+          ? "border-[#8B6FB3] bg-[#8B6FB3] text-white shadow-[0_8px_18px_rgba(139,111,179,0.22)]"
+          : "border-[#DED4E8] bg-white text-[#1A1A1A] hover:border-[#8B6FB3]/50"
       }`}
       onClick={onClick}
     >
@@ -90,7 +90,7 @@ function CheckboxRow({ checked, label, onClick }: { checked: boolean; label: str
       className="flex w-full items-center gap-3 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-left text-sm font-bold text-[#1A1A1A]"
       onClick={onClick}
     >
-      <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${checked ? "border-[#E872A0] bg-[#E872A0] text-white" : "border-[#D8CBD2] bg-white"}`}>
+      <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${checked ? "border-[#8B6FB3] bg-[#8B6FB3] text-white" : "border-[#D8CBD2] bg-white"}`}>
         {checked ? "✓" : ""}
       </span>
       {label}
@@ -199,7 +199,7 @@ function PainModalComponent({
                         key={value}
                         type="button"
                         className={`rounded-2xl border px-2 py-3 text-center transition ${
-                          active ? "border-[#E872A0] bg-[#FFF0F5] text-[#E872A0]" : "border-[#E8DDE3] bg-white text-[#8E8E93]"
+                          active ? "border-[#8B6FB3] bg-[#F4F0FA] text-[#8B6FB3]" : "border-[#DED4E8] bg-white text-[#8E8E93]"
                         }`}
                         onClick={() => setData((current) => ({ ...current, intensity: value }))}
                       >
@@ -234,7 +234,7 @@ function PainModalComponent({
             <Button
               type="button"
               disabled={!canSubmit}
-              className="mt-6 h-12 w-full rounded-2xl bg-[#E872A0] text-white hover:bg-[#D95F8E] disabled:bg-[#E5E5EA] disabled:text-[#8E8E93]"
+              className="mt-6 h-12 w-full rounded-2xl bg-[#8B6FB3] text-white hover:bg-[#74599A] disabled:bg-[#E5E5EA] disabled:text-[#8E8E93]"
               onClick={() => setStep("result")}
             >
               🔍 Узнать, что делать
@@ -255,7 +255,7 @@ function PainModalComponent({
               <p>• Что делала: {completeData.actions.length ? completeData.actions.join(", ") : "ничего"}</p>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-[#FFF0F5] p-4">
+            <div className="mt-4 rounded-2xl bg-[#F4F0FA] p-4">
               <p className="text-sm font-black text-[#1A1A1A]">Что делать:</p>
               <p className="mt-2 text-sm font-semibold leading-relaxed text-[#1A1A1A]">{recommendation}</p>
             </div>
@@ -285,7 +285,7 @@ function PainModalComponent({
                 {completeData.actions.length ? completeData.actions.join(", ") : "действий не отмечено"}
               </p>
             </div>
-            <Button type="button" className="mt-5 w-full rounded-2xl bg-[#E872A0] text-white hover:bg-[#D95F8E]" onClick={resetAndClose}>
+            <Button type="button" className="mt-5 w-full rounded-2xl bg-[#8B6FB3] text-white hover:bg-[#74599A]" onClick={resetAndClose}>
               Закрыть
             </Button>
           </div>

@@ -1,0 +1,45 @@
+{
+  "projectId": "14123755652071843167",
+  "screens": {
+    "666dbcc9cd5546c49dcda9f094bced3d": {
+      "imageUrl": "https://example.com/stitch/log-track-details.png",
+      "codeUrl": "https://example.com/stitch/log-track-details.tsx"
+    },
+    "1fec994bf084456bab0c29b8f18c3142": {
+      "imageUrl": "https://example.com/stitch/onboarding-privacy.png",
+      "codeUrl": "https://example.com/stitch/onboarding-privacy.tsx"
+    },
+    "217d7b755aa447158c40082b6e1ecc0a": {
+      "imageUrl": "https://example.com/stitch/onboarding-name.png",
+      "codeUrl": "https://example.com/stitch/onboarding-name.tsx"
+    },
+    "41b2c2a8e52d418db3e4151f8b395f61": {
+      "imageUrl": "https://example.com/stitch/onboarding-symptoms.png",
+      "codeUrl": "https://example.com/stitch/onboarding-symptoms.tsx"
+    },
+    "8617925a185d45a9bd6d55abb26c47fe": {
+      "imageUrl": "https://example.com/stitch/onboarding-period-duration.png",
+      "codeUrl": "https://example.com/stitch/onboarding-period-duration.tsx"
+    },
+    "9aa7f14ece1245529ab24f90bb8b8b80": {
+      "imageUrl": "https://example.com/stitch/log-care-details.png",
+      "codeUrl": "https://example.com/stitch/log-care-details.tsx"
+    },
+    "dc331803eb244cf495529f70d8ee8791": {
+      "imageUrl": "https://example.com/stitch/onboarding-cycle-start.png",
+      "codeUrl": "https://example.com/stitch/onboarding-cycle-start.tsx"
+    },
+    "dfda375a42b84a3f8a1ee67dfc58208c": {
+      "imageUrl": "https://example.com/stitch/onboarding-cycle-length.png",
+      "codeUrl": "https://example.com/stitch/onboarding-cycle-length.tsx"
+    },
+    "fb5aa89db59b48e2bee504da46a97969": {
+      "imageUrl": "https://example.com/stitch/onboarding-ready.png",
+      "codeUrl": "https://example.com/stitch/onboarding-ready.tsx"
+    },
+    "fc4fb1fb31bd4098a859069af3359dad": {
+      "imageUrl": "https://example.com/stitch/onboarding-goals.png",
+      "codeUrl": "https://example.com/stitch/onboarding-goals.tsx"
+    }
+  }
+}

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        :root {
+            --safe-area-inset-top: env(safe-area-inset-top);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom);
+        }
+        body {
+            background-color: #050505;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden; /* Lock scroll for onboarding */
+        }
+        .option-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .option-card:active {
+            transform: scale(0.98);
+        }
+        .gradient-mesh {
+            background: radial-gradient(circle at 50% -20%, #2a5000 0%, transparent 50%),
+                        radial-gradient(circle at 0% 100%, #171210 0%, transparent 40%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#7fde00",
+                        "inverse-surface": "#ebe0dc",
+                        "outline-variant": "#404a35",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "surface-dim": "#171210",
+                        "error-container": "#93000a",
+                        "tertiary": "#ffe7c1",
+                        "on-surface-variant": "#bfcaaf",
+                        "primary-fixed": "#98fc2a",
+                        "on-primary-fixed-variant": "#2a5000",
+                        "error": "#ffb4ab",
+                        "on-primary-container": "#356200",
+                        "tertiary-container": "#ffc451",
+                        "primary-fixed-dim": "#7fde00",
+                        "on-background": "#ebe0dc",
+                        "background": "#171210",
+                        "surface": "#171210",
+                        "on-secondary-container": "#ffebf0",
+                        "primary-container": "#84e600",
+                        "on-surface": "#ebe0dc",
+                        "surface-container-high": "#2e2927",
+                        "on-secondary": "#64003a",
+                        "surface-variant": "#3a3331",
+                        "outline": "#8a947b",
+                        "on-primary": "#1c3700",
+                        "secondary": "#ffb0ce",
+                        "surface-container": "#241e1c",
+                        "secondary-container": "#d20080",
+                        "primary": "#b3ff6a",
+                        "on-tertiary": "#412d00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "xl": "32px",
+                        "sm": "8px",
+                        "card-gap": "12px",
+                        "unit": "4px",
+                        "md": "16px",
+                        "container-padding": "20px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Manrope"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Manrope"],
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["15px", {"lineHeight": "22px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "500"}],
+                        "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "display": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["17px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface font-body-md selection:bg-primary/30">
+<!-- Subtle Background Shader -->
+<div class="fixed inset-0 z-0 gradient-mesh opacity-40 pointer-events-none"></div>
+<div class="relative z-10 flex flex-col h-screen max-w-md mx-auto px-container-padding pb-safe pt-4">
+<!-- Header / Navigation -->
+<header class="flex items-center justify-between h-14 mb-md">
+<button aria-label="Назад" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-on-surface">arrow_back_ios_new</span>
+</button>
+<div class="flex-1 px-md">
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-700 ease-out" style="width: 37.5%;"></div>
+</div>
+</div>
+<div class="w-10 flex justify-end">
+<span class="font-label-md text-label-md text-on-surface-variant">3/8</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col pt-lg overflow-y-auto no-scrollbar pb-xl">
+<div class="mb-xl">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-sm leading-tight">
+                    Сколько обычно длится твой цикл?
+                </h1>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80">
+                    Это поможет нам более точно предсказывать твою следующую менструацию и окно фертильности.
+                </p>
+</div>
+<!-- Options Grid/List -->
+<div class="flex flex-col gap-card-gap" id="options-container">
+<!-- Option 1 -->
+<button class="option-card group flex items-center justify-between p-md bg-surface-container border border-[#2E2826] rounded-xl hover:border-outline-variant transition-colors" onclick="selectOption(this)">
+<span class="font-body-lg text-body-lg text-on-surface">21-24 дня</span>
+<div class="radio-indicator w-5 h-5 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-primary transition-colors">
+<div class="w-2.5 h-2.5 rounded-full bg-primary scale-0 group-[.selected]:scale-100 transition-transform"></div>
+</div>
+</button>
+<!-- Option 2 (Default Selected) -->
+<button class="option-card selected group flex items-center justify-between p-md bg-surface-container border border-primary/40 rounded-xl hover:border-primary transition-colors shadow-[0_0_15px_rgba(179,255,106,0.05)]" onclick="selectOption(this)">
+<div class="flex flex-col items-start">
+<span class="font-body-lg text-body-lg text-on-surface font-semibold">25-28 дней</span>
+<span class="font-label-sm text-label-sm text-primary opacity-90 uppercase tracking-wider">Обычно</span>
+</div>
+<div class="radio-indicator w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+<div class="w-2.5 h-2.5 rounded-full bg-primary scale-100 transition-transform"></div>
+</div>
+</button>
+<!-- Option 3 -->
+<button class="option-card group flex items-center justify-between p-md bg-surface-container border border-[#2E2826] rounded-xl hover:border-outline-variant transition-colors" onclick="selectOption(this)">
+<span class="font-body-lg text-body-lg text-on-surface">29-32 дня</span>
+<div class="radio-indicator w-5 h-5 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-primary transition-colors">
+<div class="w-2.5 h-2.5 rounded-full bg-primary scale-0 group-[.selected]:scale-100 transition-transform"></div>
+</div>
+</button>
+<!-- Option 4 -->
+<button class="option-card group flex items-center justify-between p-md bg-surface-container border border-[#2E2826] rounded-xl hover:border-outline-variant transition-colors" onclick="selectOption(this)">
+<span class="font-body-lg text-body-lg text-on-surface">33-35 дней</span>
+<div class="radio-indicator w-5 h-5 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-primary transition-colors">
+<div class="w-2.5 h-2.5 rounded-full bg-primary scale-0 group-[.selected]:scale-100 transition-transform"></div>
+</div>
+</button>
+<!-- Divider -->
+<div class="h-px bg-[#2E2826] w-full my-sm"></div>
+<!-- Irregular -->
+<button class="option-card group flex items-center justify-between p-md bg-surface-container border border-[#2E2826] rounded-xl hover:border-outline-variant transition-colors" onclick="selectOption(this)">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">auto_graph</span>
+<span class="font-body-lg text-body-lg text-on-surface">Нерегулярный</span>
+</div>
+<div class="radio-indicator w-5 h-5 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-primary transition-colors">
+<div class="w-2.5 h-2.5 rounded-full bg-primary scale-0 group-[.selected]:scale-100 transition-transform"></div>
+</div>
+</button>
+<!-- Don't know -->
+<button class="option-card group flex items-center justify-between p-md bg-surface-container border border-[#2E2826] rounded-xl hover:border-outline-variant transition-colors" onclick="selectOption(this)">
+<span class="font-body-lg text-body-lg text-on-surface opacity-70">Не знаю</span>
+<div class="radio-indicator w-5 h-5 rounded-full border-2 border-outline-variant flex items-center justify-center group-[.selected]:border-primary transition-colors">
+<div class="w-2.5 h-2.5 rounded-full bg-primary scale-0 group-[.selected]:scale-100 transition-transform"></div>
+</div>
+</button>
+</div>
+</main>
+<!-- Fixed Footer Action -->
+<footer class="mt-auto py-lg">
+<button class="w-full h-14 bg-primary text-on-primary font-label-md text-md rounded-2xl flex items-center justify-center gap-sm active:scale-[0.97] transition-all duration-200 shadow-[0_8px_20px_rgba(179,255,106,0.15)]">
+<span class="font-bold tracking-wide">ДАЛЕЕ</span>
+<span class="material-symbols-outlined font-bold">arrow_forward</span>
+</button>
+<p class="text-center mt-md font-label-sm text-label-sm text-on-surface-variant opacity-60">
+                Ты сможешь изменить это позже в настройках профиля
+            </p>
+</footer>
+</div>
+<script>
+        function selectOption(element) {
+            // Remove selection from all options
+            const options = document.querySelectorAll('.option-card');
+            options.forEach(opt => {
+                opt.classList.remove('selected', 'border-primary', 'border-primary/40');
+                opt.classList.add('border-[#2E2826]');
+                // Reset radio indicator
+                const dot = opt.querySelector('.radio-indicator div');
+                const border = opt.querySelector('.radio-indicator');
+                dot.classList.add('scale-0');
+                dot.classList.remove('scale-100');
+                border.classList.add('border-outline-variant');
+                border.classList.remove('border-primary');
+            });
+
+            // Add selection to clicked option
+            element.classList.add('selected', 'border-primary/40');
+            element.classList.remove('border-[#2E2826]');
+            const dot = element.querySelector('.radio-indicator div');
+            const border = element.querySelector('.radio-indicator');
+            dot.classList.remove('scale-0');
+            dot.classList.add('scale-100');
+            border.classList.remove('border-outline-variant');
+            border.classList.add('border-primary');
+            
+            // Haptic feedback simulation
+            if (window.navigator.vibrate) {
+                window.navigator.vibrate(10);
+            }
+        }
+    </script>
+</body></html>

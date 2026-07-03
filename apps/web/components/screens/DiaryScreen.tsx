@@ -5,6 +5,7 @@ import {
   BookOpen,
   CalendarDays,
   PencilLine,
+  Plus,
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,37 @@ const sleepLabel: Record<string, string> = {
   insomnia: "бессонница",
 };
 
+const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,0,0,0.28)]";
+const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
+const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
+
+function ProgressBar({ value, max = 100, tone = "lime" }: { value: number; max?: number; tone?: "lime" | "pink" | "muted" }) {
+  const width = Math.min(100, Math.max(0, (value / max) * 100));
+  const color = {
+    lime: "bg-[#84E600]",
+    pink: "bg-[#F9359E]",
+    muted: "bg-[#6A5D57]",
+  }[tone];
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-[#342D2A]">
+      <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${width}%` }} />
+    </div>
+  );
+}
+
+function StatTile({ label, value, tone = "lime" }: { label: string; value: string; tone?: "lime" | "pink" | "muted" }) {
+  const dot = { lime: "bg-[#84E600]", pink: "bg-[#F9359E]", muted: "bg-[#6A5D57]" }[tone];
+  return (
+    <div className={`rounded-[16px] border px-3 py-3 ${darkInsetClass}`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#8D817B]">{label}</p>
+        <span className={`mt-0.5 h-2 w-2 rounded-full ${dot}`} />
+      </div>
+      <p className="mt-2 line-clamp-1 text-sm font-black text-[#F5F0ED]">{value}</p>
+    </div>
+  );
+}
+
 export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
   const [selectedDay, setSelectedDay] = useState(dateKey());
   const [diaryText, setDiaryText] = useState("");
@@ -83,6 +115,14 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
   const diaryEntries = checkIns
     .filter((entry) => entry.note?.text)
     .sort((a, b) => b.date.localeCompare(a.date));
+  const summaryCount = [
+    selectedCheckIn?.period,
+    selectedCheckIn?.pain?.level,
+    selectedCheckIn?.mood?.value,
+    selectedCheckIn?.energy?.value,
+    selectedCheckIn?.sleep?.quality,
+    selectedCheckIn?.note?.text,
+  ].filter(Boolean).length;
 
   useEffect(() => {
     setDiaryText(selectedCheckIn?.note?.text ?? "");
@@ -104,23 +144,36 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-mira-text">Мой личный дневник</h1>
-        <p className="mt-1 text-sm leading-relaxed text-mira-muted">
-          Место для личных заметок и просмотра того, что уже сохранено по каждому дню цикла.
-        </p>
-      </div>
+    <div className="text-[#F5F0ED]">
+      <header className={`mb-5 rounded-[22px] p-5 ${darkCardClass}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Track</p>
+            <h1 className="mt-1 text-[34px] font-black tracking-tight text-[#F5F0ED]">Отслеживать</h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+              Медицинские отметки: месячные, симптомы, боль, настроение, сон, секс и личные заметки.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onCheckIn?.(selectedDay)}
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] ${limeButtonClass}`}
+            aria-label="Добавить отметку"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
 
-      <Card className="mb-5 border-mira-lavender/20 bg-white p-4">
+      <Card className={`mb-5 rounded-[20px] p-4 ${darkCardClass}`}>
         <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-mira-bg text-mira-primary">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
             <Shield className="h-4 w-4" />
           </span>
           <div>
-            <p className="text-sm font-bold text-mira-text">Дневник отвечает на вопрос: что было в этот день?</p>
-            <p className="mt-1 text-xs leading-relaxed text-mira-muted">
-              Личная заметка видна только тебе. Она не попадёт в отчёт врачу, пока ты сама не включишь её.
+            <p className="text-sm font-black text-[#F5F0ED]">Что было в этот день?</p>
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">
+              Симптомы попадут в Анализ. Личная заметка видна только тебе и не попадёт в отчёт врачу по умолчанию.
             </p>
           </div>
         </div>
@@ -128,10 +181,10 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
 
       <div className="mb-3 flex items-end justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Календарь цикла</p>
-          <p className="text-sm font-semibold text-mira-text">Выбери день для записи</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Календарь цикла</p>
+          <p className="text-sm font-black text-[#F5F0ED]">Выбери день для записи</p>
         </div>
-        <CalendarDays className="h-5 w-5 text-mira-muted" />
+        <CalendarDays className="h-5 w-5 text-[#8D817B]" />
       </div>
 
       <div className="mb-5 grid grid-cols-7 gap-1.5">
@@ -144,12 +197,12 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
             <button
               key={day.key}
               onClick={() => setSelectedDay(day.key)}
-              className={`min-h-[76px] rounded-lg border p-1.5 text-center transition active:scale-[0.98] ${
+              className={`min-h-[76px] rounded-[16px] border p-1.5 text-center transition active:scale-[0.98] ${
                 isSelected
-                  ? "border-mira-primary bg-mira-primary text-white shadow-glow"
+                  ? "border-[#84E600]/40 bg-[#84E600] text-[#11100F] shadow-[0_12px_28px_rgba(132,230,0,0.18)]"
                   : day.isToday
-                    ? "border-mira-primary/30 bg-white text-mira-text"
-                    : "border-mira-lavender/20 bg-white/70 text-mira-muted"
+                    ? "border-[#84E600]/25 bg-[#252318] text-[#F5F0ED]"
+                    : "border-[#342D2A] bg-[#1D1816] text-[#8D817B]"
               }`}
             >
               <span className="block text-[10px] font-semibold">{day.weekDay}</span>
@@ -158,70 +211,79 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
                 {dayPhase ? `${dayPhase.cycleDay} дц` : "—"}
               </span>
               <span className="mt-1 flex items-center justify-center gap-1">
-                <span className={`block h-1.5 w-1.5 rounded-full ${hasData ? (isSelected ? "bg-white" : "bg-mira-primary") : "bg-transparent"}`} />
-                <span className={`block h-1.5 w-1.5 rounded-full ${hasNote ? (isSelected ? "bg-white" : "bg-mira-success") : "bg-transparent"}`} />
+                <span className={`block h-1.5 w-1.5 rounded-full ${hasData ? (isSelected ? "bg-[#11100F]" : "bg-[#84E600]") : "bg-transparent"}`} />
+                <span className={`block h-1.5 w-1.5 rounded-full ${hasNote ? (isSelected ? "bg-[#11100F]" : "bg-[#F9359E]") : "bg-transparent"}`} />
               </span>
             </button>
           );
         })}
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-[10px] font-semibold text-mira-muted">
+      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-[10px] font-semibold text-[#8D817B]">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-mira-primary" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[#84E600]" />
           отметки дня
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-mira-success" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[#F9359E]" />
           личная запись
         </span>
       </div>
 
-      <Card className="mb-5 border-mira-lavender/20 bg-white p-4">
+      <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Сводка дня</p>
-            <p className="text-sm font-bold text-mira-text">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Сводка дня</p>
+            <p className="text-lg font-black text-[#F5F0ED]">
               {new Date(selectedDay).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
             </p>
-            <p className="text-xs text-mira-muted">
+            <p className="text-xs font-semibold text-[#B7AAA4]">
               {phase ? `${phase.cycleDay}-й день цикла` : "День без привязки к циклу"}
             </p>
           </div>
+          <div className="min-w-[120px]">
+            <div className="mb-2 flex items-center justify-between text-[10px] font-black text-[#8D817B]">
+              <span>заполнено</span>
+              <span className="text-[#84E600]">{Math.round((summaryCount / 6) * 100)}%</span>
+            </div>
+            <ProgressBar value={summaryCount} max={6} />
+          </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <SummaryPill label="Месячные" value={selectedCheckIn?.period ? "есть" : "нет"} />
-          <SummaryPill label="Боль" value={selectedCheckIn?.pain?.level ? selectedCheckIn.pain.level : "нет"} />
-          <SummaryPill label="Настроение" value={selectedCheckIn?.mood?.value ? moodLabel[selectedCheckIn.mood.value] ?? selectedCheckIn.mood.value : "нет отметки"} />
-          <SummaryPill label="Энергия" value={selectedCheckIn?.energy?.value ? energyLabel[selectedCheckIn.energy.value] ?? selectedCheckIn.energy.value : "нет отметки"} />
-          <SummaryPill label="Сон" value={selectedCheckIn?.sleep?.quality ? sleepLabel[selectedCheckIn.sleep.quality] ?? selectedCheckIn.sleep.quality : "нет отметки"} />
-          <SummaryPill label="Заметка" value={selectedCheckIn?.note?.text ? selectedCheckIn.note.text : "нет"} />
+        <div className="grid gap-2 sm:grid-cols-3">
+          <StatTile label="Месячные" value={selectedCheckIn?.period ? "есть" : "нет"} tone={selectedCheckIn?.period ? "pink" : "muted"} />
+          <StatTile label="Боль" value={selectedCheckIn?.pain?.level ? selectedCheckIn.pain.level : "нет"} tone={selectedCheckIn?.pain?.level ? "pink" : "muted"} />
+          <StatTile label="Настроение" value={selectedCheckIn?.mood?.value ? moodLabel[selectedCheckIn.mood.value] ?? selectedCheckIn.mood.value : "нет"} tone="lime" />
+          <StatTile label="Энергия" value={selectedCheckIn?.energy?.value ? energyLabel[selectedCheckIn.energy.value] ?? selectedCheckIn.energy.value : "нет"} tone="lime" />
+          <StatTile label="Сон" value={selectedCheckIn?.sleep?.quality ? sleepLabel[selectedCheckIn.sleep.quality] ?? selectedCheckIn.sleep.quality : "нет"} tone="muted" />
+          <StatTile label="Заметка" value={selectedCheckIn?.note?.text ? "есть" : "нет"} tone={selectedCheckIn?.note?.text ? "pink" : "muted"} />
         </div>
 
         <div className="mt-4">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-mira-muted">Быстрые действия</p>
+          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Быстрые действия</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <DiaryQuickButton label="Отметить месячные" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Отметить боль" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Отметить настроение" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Отметить сон" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Добавить заметку" onClick={() => document.getElementById("diary-note")?.focus()} />
+            <DiaryQuickButton label="Месячные" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Симптомы" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Настроение / сон" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Секс" onClick={() => onCheckIn?.(selectedDay)} />
+            <DiaryQuickButton label="Заметка" onClick={() => document.getElementById("diary-note")?.focus()} />
           </div>
         </div>
       </Card>
 
-      <Card className="mb-5 border-mira-primary/10 bg-mira-lavender-light/20 p-4">
+      <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-primary">Личная запись</p>
-            <p className="text-sm font-bold text-mira-text">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F9359E]">Личная запись</p>
+            <p className="text-lg font-black text-[#F5F0ED]">
               {new Date(selectedDay).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
             </p>
-            <p className="text-xs text-mira-muted">
+            <p className="text-xs font-semibold text-[#B7AAA4]">
               {phase ? `${phase.cycleDay}-й день цикла · ${phase.label.toLowerCase()} фаза` : "День без привязки к циклу"}
             </p>
           </div>
-          <PencilLine className="h-5 w-5 shrink-0 text-mira-primary" />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
+            <PencilLine className="h-5 w-5" />
+          </span>
         </div>
         <textarea
           id="diary-note"
@@ -229,30 +291,30 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
           onChange={(event) => setDiaryText(event.target.value)}
           placeholder="Что сегодня происходило? Настроение, мысли, стресс, боль, важные события..."
           rows={5}
-          className="w-full resize-none rounded-lg border border-mira-lavender/30 bg-white p-3 text-sm leading-relaxed text-mira-text outline-none transition placeholder:text-mira-muted focus:border-mira-primary/50 focus:ring-4 focus:ring-mira-primary/10"
+          className="w-full resize-none rounded-[18px] border border-[#342D2A] bg-[#2A2523] p-4 text-sm font-semibold leading-relaxed text-[#F5F0ED] outline-none transition placeholder:text-[#6A5D57] focus:border-[#84E600]/45 focus:ring-4 focus:ring-[#84E600]/10"
         />
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[11px] leading-snug text-mira-muted">
+          <p className="text-[11px] font-semibold leading-snug text-[#8D817B]">
             Эта запись останется в выбранном дне и будет видна в истории цикла.
           </p>
-          <Button size="sm" onClick={saveDiaryNote}>
+          <Button size="sm" className={limeButtonClass} onClick={saveDiaryNote}>
             {savedNote ? "Сохранено" : "Сохранить"}
           </Button>
         </div>
       </Card>
 
-      <Card className="mb-5 p-5">
+      <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold text-mira-text">Записи по циклу</p>
-            <p className="text-xs text-mira-muted">Последние личные заметки с привязкой к дню цикла</p>
+            <p className="text-sm font-black text-[#F5F0ED]">Записи по циклу</p>
+            <p className="text-xs font-semibold text-[#B7AAA4]">Последние личные заметки с привязкой к дню цикла</p>
           </div>
-          <BookOpen className="h-5 w-5 text-mira-muted" />
+          <BookOpen className="h-5 w-5 text-[#8D817B]" />
         </div>
         {diaryEntries.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-mira-lavender/40 bg-mira-bg p-4 text-center">
-            <p className="text-sm font-semibold text-mira-text">Пока нет личных записей</p>
-            <p className="mt-1 text-xs text-mira-muted">Добавь заметку или отметь состояние 3–5 дней, и Mira начнёт видеть первые повторения.</p>
+          <div className={`rounded-[18px] border border-dashed p-4 text-center ${darkInsetClass}`}>
+            <p className="text-sm font-black text-[#F5F0ED]">Пока нет личных записей</p>
+            <p className="mt-1 text-xs font-semibold text-[#B7AAA4]">Добавь заметку или отметь состояние 3–5 дней, и Mira начнёт видеть первые повторения.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -262,17 +324,17 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
                 <button
                   key={entry.date}
                   onClick={() => setSelectedDay(entry.date)}
-                  className="w-full rounded-lg bg-mira-bg px-3 py-2.5 text-left transition hover:bg-mira-lavender-light/40 active:scale-[0.99]"
+                  className={`w-full rounded-[16px] border px-3 py-2.5 text-left transition hover:bg-[#302927] active:scale-[0.99] ${darkInsetClass}`}
                 >
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold text-mira-text">
+                    <p className="text-xs font-black text-[#F5F0ED]">
                       {new Date(entry.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
                     </p>
-                    <span className="shrink-0 text-[10px] font-semibold text-mira-primary">
+                    <span className="shrink-0 text-[10px] font-black text-[#84E600]">
                       {entryPhase ? `${entryPhase.cycleDay} дц` : "без цикла"}
                     </span>
                   </div>
-                  <p className="line-clamp-2 text-xs leading-snug text-mira-muted">{entry.note?.text}</p>
+                  <p className="line-clamp-2 text-xs font-semibold leading-snug text-[#B7AAA4]">{entry.note?.text}</p>
                 </button>
               );
             })}
@@ -286,9 +348,9 @@ export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
 
 function SummaryPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-mira-bg px-3 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">{label}</p>
-      <p className="mt-1 text-xs font-semibold text-mira-text">{value}</p>
+    <div className={`rounded-2xl border px-3 py-2 ${darkInsetClass}`}>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-[#8D817B]">{label}</p>
+      <p className="mt-1 text-xs font-semibold text-[#F5F0ED]">{value}</p>
     </div>
   );
 }
@@ -298,7 +360,7 @@ function DiaryQuickButton({ label, onClick }: { label: string; onClick: () => vo
     <button
       type="button"
       onClick={onClick}
-      className="min-h-11 rounded-2xl border border-mira-lavender/20 bg-white px-3 py-2 text-xs font-black text-mira-text shadow-[0_8px_20px_rgba(45,38,64,0.04)] transition hover:-translate-y-0.5 hover:border-mira-primary/30 active:scale-[0.98]"
+      className="min-h-11 rounded-2xl border border-[#342D2A] bg-[#251F1D] px-3 py-2 text-xs font-black text-[#F5F0ED] transition hover:-translate-y-0.5 hover:border-[#84E600]/35 hover:bg-[#2A2523] active:scale-[0.98]"
     >
       {label}
     </button>

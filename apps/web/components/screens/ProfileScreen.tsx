@@ -3,64 +3,30 @@
 import { useState, useEffect } from "react";
 import {
   UserRound, Calendar, Shield, Download, Trash2,
-  ChevronRight, Lock, Bell, Heart, Users, Database, Eye, Moon, Award, Cloud, ScanFace, EyeOff, BellRing, BookOpen, HeartPulse, Plus,
-  Pencil, Footprints, Droplets, Scale, BedDouble,
+  ChevronRight, Lock, Bell, Heart, Database, Eye, Moon, Award, Cloud, ScanFace, EyeOff, BellRing, BookOpen, HeartPulse, Plus,
+  Pencil,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SyncSettings } from "@/components/sync/SyncSettings";
 import { madhabs, type Madhab } from "@/lib/islamic";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PagePurposeCard } from "@/components/ui/PagePurposeCard";
 import { saveProfile, clearData } from "@/lib/store";
 import { getCycleNorm } from "@/lib/cycleEngine";
-import { clearPin, cloudSyncCategories, defaultPartnerShare, hasPin, savePin } from "@/lib/privacy";
+import { clearPin, cloudSyncCategories, hasPin, savePin } from "@/lib/privacy";
 import { notificationsSupported, notificationsEnabled, requestNotifications, setNotificationsPref } from "@/lib/notifications";
 import { getPersonalReminders, getReminderSettings, personalReminderCatalog } from "@/lib/personalReminders";
 import { getUnlockedCount } from "@/lib/gamification";
 import { AchievementsCard } from "./AchievementsCard";
 import type { ScreenProps } from "./types";
 
-function latestEntry<T extends { date: string }>(log: Record<string, T> | undefined): T | null {
-  if (!log) return null;
-  const dates = Object.keys(log).sort();
-  const last = dates[dates.length - 1];
-  return last ? log[last] : null;
-}
-
-function daysAgoLabel(date: string): string {
-  const diff = Math.round((Date.now() - new Date(date).getTime()) / 86_400_000);
-  if (diff <= 0) return "сегодня";
-  if (diff === 1) return "вчера";
-  return `${diff} дн. назад`;
-}
-
-function MetricTile({
-  icon: Icon,
-  label,
-  value,
-  caption,
-  tone,
-}: {
-  icon: typeof Footprints;
-  label: string;
-  value: string;
-  caption: string;
-  tone: string;
-}) {
-  return (
-    <div className={`rounded-2xl p-3.5 ${tone}`}>
-      <Icon className="h-4 w-4 opacity-80" />
-      <p className="mt-2 text-lg font-bold leading-none">{value}</p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-75">{label}</p>
-      <p className="mt-2 text-[10px] opacity-60">{caption}</p>
-    </div>
-  );
-}
+const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,0,0,0.28)]";
+const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
+const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className={`relative h-7 w-12 rounded-full transition ${on ? "bg-mira-primary" : "bg-mira-lavender"}`}>
+    <button onClick={onToggle} className={`relative h-7 w-12 rounded-full transition ${on ? "bg-[#84E600]" : "bg-[#342D2A]"}`}>
       <div className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
     </button>
   );
@@ -82,13 +48,13 @@ function PrivacyRow({
   disabled?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-3 rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4 ${disabled ? "opacity-55" : ""}`}>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mira-lavender-light text-mira-primary">
+    <div className={`flex items-center gap-3 rounded-[18px] border p-4 ${darkInsetClass} ${disabled ? "opacity-55" : ""}`}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#302927] text-[#F9359E]">
         <Icon className="h-5 w-5" />
       </div>
       <div className="flex-1">
-        <p className="text-sm font-semibold text-mira-text">{label}</p>
-        <p className="text-xs text-mira-muted">{desc}</p>
+        <p className="text-sm font-black text-[#F5F0ED]">{label}</p>
+        <p className="text-xs font-semibold text-[#B7AAA4]">{desc}</p>
       </div>
       <Toggle on={on} onToggle={() => { if (!disabled) onToggle(); }} />
     </div>
@@ -153,8 +119,8 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
     return (
       <div>
         <h1 className="mb-6 text-2xl font-bold text-mira-text">Профиль</h1>
-        <Card className="p-6">
-          <p className="text-sm text-mira-muted">Пройди онбординг чтобы настроить профиль</p>
+        <Card className={`p-6 ${darkCardClass}`}>
+          <p className="text-sm text-[#B7AAA4]">Пройди онбординг чтобы настроить профиль</p>
         </Card>
       </div>
     );
@@ -242,43 +208,6 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
               </div>
             </>
           )}
-        </Card>
-      </div>
-    );
-  }
-
-  if (section === "partner") {
-    return (
-      <div>
-        <h1 className="mb-6 text-2xl font-bold text-mira-text">Режим партнёра</h1>
-        <button onClick={() => setSection(null)} className="mb-4 text-sm text-mira-muted hover:text-mira-primary transition">← Назад</button>
-        <Card className="max-w-lg p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-mira-lavender-light">
-              <Users className="h-6 w-6 text-mira-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-mira-text">Покажи партнёру, что происходит</p>
-              <p className="text-xs text-mira-muted">Без интимных деталей — только фаза и советы</p>
-            </div>
-          </div>
-          <p className="text-sm text-mira-muted mb-4">
-            Партнёр увидит: текущую фазу цикла, что это значит для настроения и энергии, и что лучше делать / не делать. Никаких личных данных, симптомов или деталей.
-          </p>
-          <Button className="w-full" onClick={() => {
-            const url = `${window.location.origin}/partner`;
-            if (navigator.share) {
-              navigator.share({ title: "Mira — Режим партнёра", url }).catch(() => {});
-            } else {
-              navigator.clipboard.writeText(url).catch(() => {});
-              alert("Ссылка скопирована!");
-            }
-          }}>
-            <Users className="h-4 w-4" /> Поделиться ссылкой
-          </Button>
-          <div className="mt-4 rounded-2xl border border-mira-success/15 bg-[#E0F5E8]/30 p-3">
-            <p className="text-xs text-mira-success">Партнёр должен открыть ссылку на том же устройстве. Данные не передаются на сервер.</p>
-          </div>
         </Card>
       </div>
     );
@@ -591,8 +520,6 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
 
   if (section === "privacy") {
     const cloudExcluded = new Set(profile.cloudSyncExclude ?? []);
-    const partnerShare = profile.partnerShare ?? defaultPartnerShare;
-
     return (
       <div>
         <h1 className="mb-6 text-2xl font-bold text-mira-text">Приватность</h1>
@@ -609,7 +536,7 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-mira-cycle/10 bg-[#F8E8EE]/25 p-4">
+            <div className="rounded-2xl border border-mira-cycle/10 bg-[#F1ECF8]/25 p-4">
               <p className="text-sm font-bold text-mira-text">Чувствительные данные под твоим контролем</p>
               <p className="mt-1 text-xs leading-relaxed text-mira-muted">
                 Секс, задержки, анализы, личные заметки, лекарства и врачебный отчёт не показываются партнёру. Их можно исключить из облака ниже, а в отчёте интимные данные скрыты по умолчанию.
@@ -693,38 +620,13 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-mira-lavender/20 bg-mira-bg p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Users className="h-4 w-4 text-mira-primary" />
-                <p className="text-sm font-bold text-mira-text">Что видит партнёр</p>
-              </div>
-              {[
-                { key: "phase" as const, label: "Фаза цикла", desc: "день и общее состояние фазы" },
-                { key: "moodEnergy" as const, label: "Настроение и энергия", desc: "без личных записей и симптомов" },
-                { key: "tips" as const, label: "Советы поддержки", desc: "что лучше делать / не делать" },
-              ].map((item) => (
-                <div key={item.key} className="mt-2 flex items-center gap-3 rounded-xl bg-white px-3 py-2">
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-mira-text">{item.label}</p>
-                    <p className="text-[11px] text-mira-muted">{item.desc}</p>
-                  </div>
-                  <Toggle on={partnerShare[item.key]} onToggle={() => {
-                    persist(saveProfile(data, { ...profile, partnerShare: { ...partnerShare, [item.key]: !partnerShare[item.key] } }));
-                  }} />
-                </div>
-              ))}
-              <p className="mt-3 text-[11px] leading-relaxed text-mira-muted">
-                Партнёр не видит секс, беременность, заметки, лекарства, анализы, задержки и дневник.
-              </p>
-            </div>
-
             <div className="rounded-2xl border border-mira-lavender/20 bg-white p-4">
               <p className="text-sm font-bold text-mira-text">Политика приватности простыми словами</p>
               <div className="mt-2 space-y-1 text-xs leading-relaxed text-mira-muted">
                 <p>1. Локальные данные хранятся в браузере этого устройства.</p>
                 <p>2. Облако используется только для резервной копии после входа.</p>
                 <p>3. Чувствительные категории можно исключить из облака.</p>
-                <p>4. Партнёрский режим показывает только выбранные общие подсказки.</p>
+                <p>4. Секс и личные заметки выключены в отчёте врачу по умолчанию.</p>
                 <p>5. Удаление данных очищает локальный дневник без восстановления.</p>
               </div>
             </div>
@@ -748,150 +650,117 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-mira-text">Профиль</h1>
-        <p className="mt-1 text-sm leading-relaxed text-mira-muted">
-          Управление циклом, приватностью, напоминаниями и тем, какие данные Mira учитывает.
-        </p>
-      </div>
+      {(() => {
+        const norm = getCycleNorm(profile);
+        const checkInDates = Object.keys(data.checkIns ?? {}).sort();
+        const entriesCount = checkInDates.length;
+        const storageLabel = syncEmail ? "облако включено" : "только устройство";
+        const protectionLabel = profile.pinEnabled && pinReady ? "PIN включён" : "PIN выключен";
 
-      <div className="mb-5">
-        <PagePurposeCard
-          items={[
-            { label: "Зачем", title: "Настроить Mira", body: "Возраст, цикл и режимы делают советы точнее." },
-            { label: "Что сделать", title: "Проверь разделы", body: "Начни с цикла, приватности и напоминаний." },
-            { label: "Что получишь", title: "Контроль данных", body: "Ты выбираешь, что хранить, защищать и синхронизировать." },
-          ]}
-        />
-      </div>
+        return (
+          <>
+            <header className={`mb-5 rounded-[22px] p-5 ${darkCardClass}`}>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Настройки и доверие</p>
+              <h1 className="mt-1 text-[34px] font-black tracking-tight text-[#F5F0ED]">Профиль</h1>
+              <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+                Здесь настраиваются цикл, приватность, напоминания и то, какие данные Mira может использовать для Анализа и Отчёта.
+              </p>
+            </header>
 
-      <Card className="overflow-hidden p-0 mb-5">
-        <div className="bg-gradient-to-br from-mira-primary to-mira-cycle p-6 text-white">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/20 text-2xl font-bold backdrop-blur">
-                {profile.name.charAt(0).toUpperCase()}
+            <Card className={`mb-5 overflow-hidden rounded-[22px] p-5 text-white ${darkCardClass}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-[#84E600] text-2xl font-black text-[#11100F]">
+                    {profile.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black leading-tight">{profile.name || "Mira"}</p>
+                    <p className="mt-1 text-sm font-semibold text-white/70">
+                      {norm.cycleDay ? `День ${norm.cycleDay} цикла` : "Цикл ещё нужно настроить"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSection("data")}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#302927] px-3 py-2 text-xs font-black text-[#F9359E] transition hover:bg-[#3A302D]"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Изменить
+                </button>
               </div>
-              <div>
-                <p className="text-lg font-bold">{profile.name}</p>
-                <p className="text-xs text-white/80">
-                  {(() => {
-                    const norm = getCycleNorm(profile);
-                    return norm.cycleDay ? `День ${norm.cycleDay} цикла` : "Mira";
-                  })()}
-                </p>
+
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                {[
+                  ["Записей", `${entriesCount}`],
+                  ["Данные", storageLabel],
+                  ["Защита", protectionLabel],
+                ].map(([label, value]) => (
+                  <div key={label} className={`rounded-[18px] border px-3 py-3 ${darkInsetClass}`}>
+                    <p className="text-[10px] font-black uppercase tracking-wide text-[#8D817B]">{label}</p>
+                    <p className="mt-1 text-sm font-black text-white">{value}</p>
+                  </div>
+                ))}
               </div>
+            </Card>
+
+            <div className="mb-5 grid gap-3 md:grid-cols-3">
+              {[
+                { icon: Calendar, title: "Цикл", body: `${profile.cycleConfig.cycleLength} дн., месячные ${profile.cycleConfig.periodLength} дн.`, id: "cycle" },
+                { icon: Shield, title: "Приватность", body: "PIN, облако, скрытые категории", id: "privacy" },
+                { icon: Download, title: "Отчёт и экспорт", body: "Копия данных и подготовка врачу", id: "export" },
+              ].map((item) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  onClick={() => setSection(item.id)}
+                  className={`rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${darkCardClass}`}
+                >
+                  <item.icon className="h-5 w-5 text-[#F9359E]" />
+                  <p className="mt-3 text-sm font-black text-[#F5F0ED]">{item.title}</p>
+                  <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{item.body}</p>
+                </button>
+              ))}
             </div>
-            <button
-              onClick={() => setSection("data")}
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-semibold backdrop-blur transition hover:bg-white/30"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Изменить
-            </button>
-          </div>
 
-          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/85">
-            {profile.weight != null && <span><b className="font-bold">{profile.weight}</b> кг</span>}
-            {profile.age != null && <span><b className="font-bold">{profile.age}</b> лет</span>}
-            {profile.height != null && <span><b className="font-bold">{profile.height}</b> см</span>}
-          </div>
-        </div>
+            <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
+                  <Database className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-black text-[#F5F0ED]">Данные под твоим контролем</h2>
+                  <p className="mt-1 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+                    Локальные данные остаются на устройстве. Секс и личные заметки не включаются в отчёт по умолчанию.
+                  </p>
+                  {!syncEmail && (
+                    <Button className={`mt-4 h-12 w-full rounded-[18px] ${limeButtonClass}`} onClick={() => setSection("sync")}>
+                      <Cloud className="h-4 w-4" /> Включить резервную копию
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </Card>
 
-        <div className="grid grid-cols-2 gap-2 p-4">
-          {(() => {
-            const steps = latestEntry(data.walkingLog);
-            const water = latestEntry(data.waterLog);
-            const weight = latestEntry(data.weightLog);
-            const checkInDates = Object.keys(data.checkIns ?? {}).sort();
-            const lastCheckInDate = checkInDates[checkInDates.length - 1];
-            const lastSleep = lastCheckInDate ? data.checkIns[lastCheckInDate]?.sleep : undefined;
-
-            return (
-              <>
-                <MetricTile
-                  icon={Footprints}
-                  label="Шаги"
-                  value={steps ? steps.steps.toLocaleString("ru-RU") : "—"}
-                  caption={steps ? daysAgoLabel(steps.date) : "нет данных"}
-                  tone="bg-mira-lavender-light text-mira-primary"
-                />
-                <MetricTile
-                  icon={BedDouble}
-                  label="Сон"
-                  value={lastSleep?.hours ? `${lastSleep.hours} ч` : "—"}
-                  caption={lastCheckInDate ? daysAgoLabel(lastCheckInDate) : "нет данных"}
-                  tone="bg-[#E8E4F5] text-[#5B4FA0]"
-                />
-                <MetricTile
-                  icon={Droplets}
-                  label="Вода"
-                  value={water ? `${water.glasses}/${water.goal}` : "—"}
-                  caption={water ? daysAgoLabel(water.date) : "нет данных"}
-                  tone="bg-[#E0F0F5] text-[#3A7A94]"
-                />
-                <MetricTile
-                  icon={Scale}
-                  label="Вес"
-                  value={weight ? `${weight.weight} кг` : "—"}
-                  caption={weight ? daysAgoLabel(weight.date) : "нет данных"}
-                  tone="bg-[#F8E8EE] text-mira-cycle"
-                />
-              </>
-            );
-          })()}
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <div className="mb-5 rounded-3xl border border-mira-primary/10 bg-mira-lavender-light/25 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <Database className="h-4 w-4 text-mira-primary" />
-            <p className="text-sm font-bold text-mira-text">Где хранятся данные</p>
-          </div>
-          <p className="text-xs leading-relaxed text-mira-muted">
-            Сейчас данные хранятся только на этом устройстве. Если очистить браузер или удалить данные сайта, записи могут пропасть.
-          </p>
-          {!syncEmail && (
-            <Button className="mt-3 w-full" onClick={() => setSection("sync")}>
-              <Cloud className="h-4 w-4" /> Включить резервную копию
-            </Button>
-          )}
-        </div>
-
-        <div className="mb-5 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-2xl bg-mira-bg px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Данные</p>
-            <p className="mt-1 text-xs font-semibold text-mira-text">на устройстве</p>
-          </div>
-          <div className="rounded-2xl bg-mira-bg px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Синхронизация</p>
-            <p className="mt-1 text-xs font-semibold text-mira-text">{syncEmail ? "включена" : "локально"}</p>
-          </div>
-          <div className="rounded-2xl bg-mira-bg px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-mira-muted">Защита</p>
-            <p className="mt-1 text-xs font-semibold text-mira-text">{profile.pinEnabled ? "PIN включён" : "PIN выключен"}</p>
-          </div>
-        </div>
-
-        <div className="space-y-5">
+            <Card className={`rounded-[20px] p-5 ${darkCardClass}`}>
+              <div className="space-y-5">
           {menuGroups.map(group => (
             <div key={group.title}>
-              <p className="px-1 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-mira-muted">{group.title}</p>
+              <p className="px-1 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-[#8D817B]">{group.title}</p>
               <div className="space-y-1">
                 {group.items.map(item => (
                   <button
                     key={item.id}
                     onClick={() => setSection(item.id)}
-                    className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-mira-bg"
+                    className="flex w-full items-center gap-3 rounded-[18px] p-3 text-left transition hover:bg-[#2A2523]"
                   >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mira-lavender-light text-mira-primary">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#302927] text-[#F9359E]">
                       <item.icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-mira-text">{item.label}</p>
-                      <p className="text-xs text-mira-muted">{item.desc}</p>
+                      <p className="text-sm font-black text-[#F5F0ED]">{item.label}</p>
+                      <p className="text-xs font-semibold text-[#B7AAA4]">{item.desc}</p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-mira-lavender" />
+                    <ChevronRight className="h-4 w-4 text-[#8D817B]" />
                   </button>
                 ))}
               </div>
@@ -900,19 +769,22 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
 
           <button
             onClick={confirmAndClearAllData}
-            className="flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-red-50"
+            className="flex w-full items-center gap-3 rounded-[18px] p-3 text-left transition hover:bg-[#33201F]"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-400">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#33201F] text-red-400">
               <Trash2 className="h-5 w-5" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-red-500">Удалить данные</p>
-              <p className="text-xs text-mira-muted">Безвозвратно удалить всё</p>
+              <p className="text-xs text-[#B7AAA4]">Безвозвратно удалить всё</p>
             </div>
-            <ChevronRight className="h-4 w-4 text-mira-lavender" />
+            <ChevronRight className="h-4 w-4 text-[#8D817B]" />
           </button>
-        </div>
-      </Card>
+              </div>
+            </Card>
+          </>
+        );
+      })()}
     </div>
   );
 }

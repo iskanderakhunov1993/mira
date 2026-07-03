@@ -1,23 +1,26 @@
 "use client";
 
 import React, { memo, useMemo, useState } from "react";
-import { Check, Droplets, Minus, Plus } from "lucide-react";
+import {
+  Activity,
+  Apple,
+  Check,
+  ChevronRight,
+  Droplets,
+  Footprints,
+  Minus,
+  Plus,
+  Scale,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useMiraStore, type DailyLog } from "@/store";
 
-type VitaminStatus = "has" | "buy";
 type WalkingValue = "почти нет" | "немного" | "нормально" | "много";
 type WorkoutValue = "нет" | "лёгкая" | "средняя" | "тяжёлая";
-type LibidoValue = "нет желания" | "слабое" | "среднее" | "сильное";
-
-type Vitamin = {
-  id: string;
-  name: string;
-  dose: string;
-  description: string;
-  time: string;
-  has: boolean;
-};
+type FoodContext = "обычно" | "мало еды" | "сладкое" | "тяжёлая еда";
+type SkinContext = "акне" | "сухость" | "жирность" | "волосы" | "отеки";
 
 type CareData = {
   date: string;
@@ -31,7 +34,6 @@ type CareData = {
     fats: number;
     carbs: number;
   };
-  vitamins: Vitamin[];
   water: {
     current: number;
     target: number;
@@ -40,15 +42,6 @@ type CareData = {
     walking: WalkingValue;
     workout: WorkoutValue;
   };
-  skin: {
-    acne: boolean;
-    acneCount: number;
-    dryness: boolean;
-    oiliness: boolean;
-    hairLoss: boolean;
-    allGood: boolean;
-  };
-  libido: LibidoValue;
   weight?: number;
 };
 
@@ -60,287 +53,374 @@ type CarePageProps = {
 const mockCareData: CareData = {
   date: "30 июня",
   cycleDay: 15,
-  calories: {
-    current: 1200,
-    target: 2150,
-  },
-  nutrients: {
-    protein: 30,
-    fats: 30,
-    carbs: 40,
-  },
-  vitamins: [
-    {
-      id: "magnesium",
-      name: "Магний + В6",
-      dose: "300 мг + 25 мг",
-      description: "Снижает спазмы и раздражительность",
-      time: "Вечером, с водой",
-      has: true,
-    },
-    {
-      id: "omega3",
-      name: "Омега-3",
-      dose: "1000 мг",
-      description: "Снижает воспаление и боль",
-      time: "Утром, с едой",
-      has: false,
-    },
-    {
-      id: "zinc",
-      name: "Цинк",
-      dose: "15 мг",
-      description: "Помогает при акне и воспалениях",
-      time: "Утром, с едой",
-      has: false,
-    },
-  ],
-  water: {
-    current: 1.5,
-    target: 2.0,
-  },
-  activity: {
-    walking: "немного",
-    workout: "лёгкая",
-  },
-  skin: {
-    acne: true,
-    acneCount: 2,
-    dryness: false,
-    oiliness: false,
-    hairLoss: false,
-    allGood: false,
-  },
-  libido: "среднее",
+  calories: { current: 0, target: 2150 },
+  nutrients: { protein: 0, fats: 0, carbs: 0 },
+  water: { current: 1.5, target: 2.0 },
+  activity: { walking: "немного", workout: "лёгкая" },
   weight: 65.9,
 };
 
-function SectionCard({ title, children, delay = 0 }: { title?: string; children: React.ReactNode; delay?: number }) {
+const walkingValues: WalkingValue[] = ["почти нет", "немного", "нормально", "много"];
+const workoutValues: WorkoutValue[] = ["нет", "лёгкая", "средняя", "тяжёлая"];
+const foodValues: FoodContext[] = ["обычно", "мало еды", "сладкое", "тяжёлая еда"];
+const skinValues: SkinContext[] = ["акне", "сухость", "жирность", "волосы", "отеки"];
+const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,0,0,0.28)]";
+const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
+const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createEmptyLog(date: string, cycleDay: number): DailyLog {
+  return {
+    date,
+    cycleDay,
+    symptoms: {
+      bleeding: { amount: 0, pads: 0, color: null, clots: null },
+      pain: {
+        level: 0,
+        type: null,
+        location: [],
+        radiation: [],
+        affectedLife: "none",
+        tookPainkiller: false,
+        painkillerHelped: null,
+      },
+      mood: null,
+      energy: null,
+      sleep: { quality: null, hours: null, wokeUp: null, wokeUpReason: null },
+      skin: { acne: false, acneCount: null, dryness: false, oiliness: false, hairLoss: false },
+      libido: null,
+      context: [],
+      note: "",
+    },
+    selfCare: {
+      water: 0,
+      calories: null,
+      protein: null,
+      fats: null,
+      carbs: null,
+      walking: null,
+      workout: null,
+      weight: null,
+      vitamins: { magnesium: false, omega3: false, zinc: false },
+    },
+  };
+}
+
+function mapWalking(value: WalkingValue): DailyLog["selfCare"]["walking"] {
+  const map: Record<WalkingValue, DailyLog["selfCare"]["walking"]> = {
+    "почти нет": "none",
+    немного: "little",
+    нормально: "normal",
+    много: "much",
+  };
+  return map[value];
+}
+
+function mapWorkout(value: WorkoutValue): DailyLog["selfCare"]["workout"] {
+  const map: Record<WorkoutValue, DailyLog["selfCare"]["workout"]> = {
+    нет: "none",
+    лёгкая: "light",
+    средняя: "medium",
+    тяжёлая: "heavy",
+  };
+  return map[value];
+}
+
+function ToggleChip<T extends string>({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <Card
-      className="mira-card rounded-[30px] border-0 p-5 transition hover:-translate-y-0.5 hover:shadow-[0_26px_70px_rgba(76,66,126,0.14)] sm:p-6"
-      style={{ animation: `miraCareIn 420ms ease ${delay}ms both` }}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-11 items-center justify-center rounded-2xl border px-4 py-2 text-sm font-black transition active:scale-[0.98] ${
+        active
+          ? "border-[#84E600]/35 bg-[#252318] text-[#84E600]"
+          : "border-[#342D2A] bg-[#251F1D] text-[#B7AAA4] hover:bg-[#2A2523]"
+      }`}
     >
-      {title && <h2 className="mb-5 text-lg font-black text-[#1A1A1A]">{title}</h2>}
+      {children}
+    </button>
+  );
+}
+
+function SegmentedChoice<T extends string>({
+  value,
+  values,
+  onChange,
+}: {
+  value: T;
+  values: T[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-4">
+      {values.map((item) => (
+        <ToggleChip key={item} active={value === item} onClick={() => onChange(item)}>
+          {item}
+        </ToggleChip>
+      ))}
+    </div>
+  );
+}
+
+function ProgressBar({ value, max = 100, tone = "lime" }: { value: number; max?: number; tone?: "lime" | "pink" | "muted" }) {
+  const width = Math.min(100, Math.max(0, (value / max) * 100));
+  const color = {
+    lime: "bg-[#84E600]",
+    pink: "bg-[#F9359E]",
+    muted: "bg-[#6A5D57]",
+  }[tone];
+
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-[#342D2A]">
+      <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${width}%` }} />
+    </div>
+  );
+}
+
+function MiniStatCard({
+  label,
+  value,
+  detail,
+  tone = "lime",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "lime" | "pink" | "muted";
+}) {
+  const dot = {
+    lime: "bg-[#84E600]",
+    pink: "bg-[#F9359E]",
+    muted: "bg-[#6A5D57]",
+  }[tone];
+
+  return (
+    <div className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#8D817B]">{label}</p>
+          <p className="mt-2 text-2xl font-black leading-none text-[#F5F0ED]">{value}</p>
+        </div>
+        <span className={`mt-1 h-2.5 w-2.5 rounded-full ${dot}`} />
+      </div>
+      <p className="mt-3 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{detail}</p>
+    </div>
+  );
+}
+
+function SettingRow({
+  icon: Icon,
+  title,
+  value,
+  children,
+}: {
+  icon: typeof Droplets;
+  title: string;
+  value: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
+            <Icon className="h-4 w-4" />
+          </span>
+          <p className="truncate text-sm font-black text-[#F5F0ED]">{title}</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#1D1816] px-3 py-1 text-xs font-black text-[#84E600]">{value}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function CareFactorCard({
+  icon: Icon,
+  title,
+  body,
+  children,
+}: {
+  icon: typeof Droplets;
+  title: string;
+  body: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className={`rounded-[20px] p-5 ${darkCardClass}`}>
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-black leading-tight text-[#F5F0ED]">{title}</h2>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-[#B7AAA4]">{body}</p>
+        </div>
+      </div>
       {children}
     </Card>
   );
 }
 
-function Eyebrow({ children, tone = "light" }: { children: React.ReactNode; tone?: "light" | "dark" }) {
-  return (
-    <p
-      className={`text-[11px] font-black uppercase tracking-[0.18em] ${
-        tone === "light" ? "text-white/75" : "text-[#8E8E93]"
-      }`}
-    >
-      {children}
-    </p>
-  );
-}
-
-/** Кольцевая диаграмма КБЖУ (Carb / Protein / Fat) */
-function MacroDonut({ protein, fats, carbs }: { protein: number; fats: number; carbs: number }) {
-  const size = 168;
-  const stroke = 18;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const total = protein + fats + carbs || 1;
-
-  const segments = [
-    { label: "Углеводы", value: carbs, color: "#E872A0" },
-    { label: "Белки", value: protein, color: "#FFB199" },
-    { label: "Жиры", value: fats, color: "#FFD9E6" },
+function ContextPreview({
+  water,
+  walking,
+  workout,
+  food,
+  skin,
+}: {
+  water: number;
+  walking: WalkingValue;
+  workout: WorkoutValue;
+  food: FoodContext;
+  skin: SkinContext[];
+}) {
+  const items = [
+    { label: "Вода", value: `${water.toFixed(1)} л`, detail: "гидратация", tone: "lime" as const },
+    { label: "Движение", value: walking, detail: "ходьба", tone: "muted" as const },
+    { label: "Тренировка", value: workout, detail: "нагрузка", tone: "muted" as const },
+    { label: "Еда", value: food, detail: "аппетит", tone: "pink" as const },
+    { label: "Кожа/тело", value: skin.length ? `${skin.length}` : "0", detail: skin.length ? "отметки" : "без отметок", tone: "pink" as const },
   ];
 
-  let offsetAcc = 0;
-
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8">
-      <div className="relative h-[168px] w-[168px] shrink-0">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#FAF1F5" strokeWidth={stroke} />
-          {segments.map((segment) => {
-            const fraction = segment.value / total;
-            const dash = fraction * circumference;
-            const dashArray = `${dash} ${circumference - dash}`;
-            const dashOffset = -offsetAcc * circumference;
-            offsetAcc += fraction;
-            return (
-              <circle
-                key={segment.label}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke={segment.color}
-                strokeWidth={stroke}
-                strokeDasharray={dashArray}
-                strokeDashoffset={dashOffset}
-                strokeLinecap="round"
-              />
-            );
-          })}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-black text-[#1A1A1A]">{carbs}%</span>
-          <span className="text-[11px] font-bold uppercase tracking-wide text-[#8E8E93]">углеводы</span>
+    <Card className={`rounded-[22px] p-5 ${darkCardClass}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Сегодняшний контекст</p>
+          <h2 className="mt-2 text-2xl font-black leading-tight text-[#F5F0ED]">Панель заботы</h2>
         </div>
+        <span className="rounded-full bg-[#84E600] px-3 py-1.5 text-xs font-black text-[#11100F]">live</span>
       </div>
-      <div className="flex w-full flex-col gap-3">
-        {segments.map((segment) => (
-          <div key={segment.label} className="flex items-center justify-between gap-3 rounded-2xl bg-[#FAF8F5] px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
-              <span className="text-sm font-bold text-[#1A1A1A]">{segment.label}</span>
-            </div>
-            <span className="text-sm font-black text-[#1A1A1A]">{segment.value}%</span>
-          </div>
+      <p className="mt-2 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+        Компактные факты для Анализа: Mira сравнит их с болью, ПМС, энергией, кожей и настроением.
+      </p>
+      <div className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-5">
+        {items.map((item) => (
+          <MiniStatCard key={item.label} label={item.label} value={item.value} detail={item.detail} tone={item.tone} />
         ))}
       </div>
-    </div>
-  );
-}
-
-const WATER_STAGES = ["Мало", "Хорошо", "Почти", "Идеально"] as const;
-
-/** Линейный slider-прогресс для воды в духе hydration-tracker референса */
-function WaterSlider({ value, max }: { value: number; max: number }) {
-  const ratio = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
-  const stageIndex = Math.min(WATER_STAGES.length - 1, Math.floor(ratio * WATER_STAGES.length));
-
-  return (
-    <div>
-      <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/25">
-        <div
-          className="h-full rounded-full bg-white transition-all duration-300"
-          style={{ width: `${ratio * 100}%` }}
-        />
-        <div
-          className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full border-4 border-[#E872A0] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.25)] transition-all duration-300"
-          style={{ left: `calc(${ratio * 100}% - 12px)` }}
-        />
-      </div>
-      <div className="mt-3 flex justify-between text-[11px] font-bold uppercase tracking-wide text-white/70">
-        {WATER_STAGES.map((stage, index) => (
-          <span key={stage} className={index === stageIndex ? "text-white" : ""}>
-            {stage}
-          </span>
-        ))}
-      </div>
-    </div>
+    </Card>
   );
 }
 
 function Toast({ message }: { message: string }) {
   return (
-    <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-[#1A1A1A] px-4 py-3 text-sm font-bold text-white shadow-[0_16px_40px_rgba(0,0,0,0.2)]">
+    <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-32px)] max-w-md -translate-x-1/2 rounded-2xl bg-[#111113] px-4 py-3 text-center text-sm font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.16)]">
       {message}
     </div>
   );
 }
 
-function RadioPills<T extends string>({ value, options, onChange }: { value: T; options: T[]; onChange: (value: T) => void }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const active = option === value;
-        return (
-          <button
-            key={option}
-            type="button"
-            className={`rounded-2xl border px-3 py-2 text-sm font-bold transition ${
-              active
-                ? "border-[#E872A0] bg-[#FFF0F5] text-[#E872A0]"
-                : "border-[#E8DDE3] bg-white text-[#8E8E93] hover:border-[#E872A0]/40"
-            }`}
-            onClick={() => onChange(option)}
-          >
-            {active ? "●" : "○"} {option}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function CheckboxRow({ checked, label, onChange }: { checked: boolean; label: string; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      className="flex w-full items-center gap-3 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-left text-sm font-bold text-[#1A1A1A]"
-      onClick={onChange}
-    >
-      <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${checked ? "border-[#E872A0] bg-[#E872A0] text-white" : "border-[#D8CBD2] bg-white"}`}>
-        {checked && <Check className="h-3.5 w-3.5" />}
-      </span>
-      {label}
-    </button>
-  );
-}
-
 function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
+  const logs = useMiraStore((state) => state.logs.dailyLogs);
+  const cycleDay = useMiraStore((state) => state.cycle.currentDay);
+  const setDailyLog = useMiraStore((state) => state.setDailyLog);
+  const setWaterStore = useMiraStore((state) => state.setWater);
+  const setActivity = useMiraStore((state) => state.setActivity);
+  const setWeightStore = useMiraStore((state) => state.setWeight);
   const [water, setWater] = useState(data.water.current);
-  const [vitaminStatus, setVitaminStatus] = useState<Record<string, VitaminStatus>>(() =>
-    Object.fromEntries(data.vitamins.map((vitamin) => [vitamin.id, vitamin.has ? "has" : "buy"]))
-  );
   const [walking, setWalking] = useState<WalkingValue>(data.activity.walking);
   const [workout, setWorkout] = useState<WorkoutValue>(data.activity.workout);
-  const [skin, setSkin] = useState(data.skin);
-  const [libido, setLibido] = useState<LibidoValue>(data.libido);
+  const [food, setFood] = useState<FoodContext>("обычно");
+  const [skin, setSkin] = useState<SkinContext[]>([]);
   const [weight, setWeight] = useState(data.weight?.toString() ?? "");
-  const [kit, setKit] = useState({
-    painkiller: true,
-    pads: true,
-    pregnancyTest: false,
-  });
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const waterProgress = Math.min(100, Math.round((water / data.water.target) * 100));
+  const analysisPreviewRows: Array<[string, number, "lime" | "pink" | "muted"]> = [
+    ["Вода и головная боль", water > 0 ? 64 : 12, "lime"],
+    ["Сон, энергия, движение", walking !== "почти нет" ? 52 : 18, "pink"],
+    ["Кожа и фаза цикла", skin.length ? 45 : 10, "muted"],
+  ];
 
   const completedCount = useMemo(() => {
     let count = 0;
     if (water > 0) count += 1;
-    if (Object.values(kit).some(Boolean)) count += 1;
-    if (walking) count += 1;
-    if (workout) count += 1;
-    if (Object.values(skin).some(Boolean)) count += 1;
-    if (libido) count += 1;
+    if (walking !== "почти нет") count += 1;
+    if (workout !== "нет") count += 1;
+    if (food !== "обычно") count += 1;
+    if (skin.length) count += 1;
     if (weight) count += 1;
-    if (data.calories.current > 0) count += 1;
     return count;
-  }, [data.calories.current, kit, libido, skin, walking, water, weight, workout]);
-  const shoppingList = useMemo(
-    () => data.vitamins.filter((vitamin) => vitaminStatus[vitamin.id] === "buy").map((vitamin) => vitamin.name),
-    [data.vitamins, vitaminStatus]
-  );
+  }, [food, skin.length, walking, water, weight, workout]);
 
   function showToast(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(""), 1800);
+    window.setTimeout(() => setToast(""), 2200);
   }
 
-  function toggleSkin(key: keyof typeof skin) {
-    setSkin((current) => ({ ...current, [key]: !current[key] }));
-  }
-
-  function toggleKit(key: keyof typeof kit) {
-    setKit((current) => ({ ...current, [key]: !current[key] }));
+  function toggleSkin(item: SkinContext) {
+    setSkin((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item]);
   }
 
   function saveAll() {
+    const date = todayIso();
+    const existingLog = logs.find((log) => log.date === date);
+    const baseLog = existingLog ?? createEmptyLog(date, cycleDay);
+    const numericWeight = Number.parseFloat(weight);
+    const context = Array.from(new Set([
+      ...baseLog.symptoms.context.filter((item) => !item.startsWith("care:")),
+      `care:food:${food}`,
+      walking !== "почти нет" ? `care:walking:${walking}` : null,
+      workout !== "нет" ? `care:workout:${workout}` : null,
+      ...skin.map((item) => `care:${item}`),
+    ].filter(Boolean) as string[]));
+
+    const updatedLog: DailyLog = {
+      ...baseLog,
+      symptoms: {
+        ...baseLog.symptoms,
+        context,
+        skin: {
+          ...baseLog.symptoms.skin,
+          acne: skin.includes("акне"),
+          acneCount: skin.includes("акне") ? Math.max(1, baseLog.symptoms.skin.acneCount ?? 1) : null,
+          dryness: skin.includes("сухость"),
+          oiliness: skin.includes("жирность"),
+          hairLoss: skin.includes("волосы"),
+        },
+      },
+      selfCare: {
+        ...baseLog.selfCare,
+        water,
+        calories: data.calories.current || null,
+        protein: data.nutrients.protein || null,
+        fats: data.nutrients.fats || null,
+        carbs: data.nutrients.carbs || null,
+        walking: mapWalking(walking),
+        workout: mapWorkout(workout),
+        weight: Number.isFinite(numericWeight) ? numericWeight : null,
+      },
+    };
+
+    setDailyLog(updatedLog);
+    setWaterStore(water);
+    setActivity("walking", mapWalking(walking));
+    setActivity("workout", mapWorkout(workout));
+    if (Number.isFinite(numericWeight)) setWeightStore(numericWeight);
     onSaveAll?.({
       ...data,
       water: { ...data.water, current: water },
       activity: { walking, workout },
-      skin,
-      libido,
       weight: Number.parseFloat(weight) || undefined,
-      vitamins: data.vitamins.map((vitamin) => ({ ...vitamin, has: vitaminStatus[vitamin.id] === "has" })),
     });
-    showToast("Готово. Эти данные появятся на главной как выжимка и в аналитике как возможные связи.");
+    showToast("Сохранено. Анализ сможет сравнить этот контекст с симптомами и самочувствием.");
   }
 
   return (
-    <main className="mira-screen px-5 py-6 text-[#202033]">
+    <main className="min-h-screen bg-[#050505] px-5 py-5 text-[#F5F0ED]">
       <style jsx global>{`
         @keyframes miraCareIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -348,274 +428,174 @@ function CarePageComponent({ data = mockCareData, onSaveAll }: CarePageProps) {
         }
       `}</style>
 
-      <div className="mx-auto max-w-5xl">
-        {/* Хедер */}
-        <header className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-[#1A1A1A]">💧 Забота</h1>
-            <p className="mt-2 text-sm font-semibold text-[#8E8E93]">
-              Сегодня достаточно 2 быстрых отметок. Начни с воды и активности, остальное можно добавить по желанию.
-            </p>
-          </div>
-          <div className="mira-card rounded-2xl px-4 py-3 text-right text-sm font-black text-[#202033]">
-            📅 {data.date}<br />
-            <span className="text-[#8E8E93]">День {data.cycleDay}</span>
+      <div className="mx-auto max-w-lg">
+        <header className="mb-6 border-b border-[#2E2826] pb-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg border border-[#404A35] bg-[#1D1816] px-2 py-1 text-xs font-black text-[#B3FF6A]">M</span>
+              <span className="mira-stitch-title text-2xl font-black text-[#B3FF6A]">Mira</span>
+            </div>
+            <span className="rounded-full border border-[#404A35] bg-[#1D1816] px-3 py-1.5 text-xs font-black text-[#BFCAAF]">
+              День {data.cycleDay}
+            </span>
           </div>
         </header>
 
-        {completedCount === 0 && (
-          <div className="mira-card mt-6 rounded-[24px] p-5 text-sm font-bold text-[#202033]">
-            Сегодня ещё ничего не отмечено. Начни с воды!
-          </div>
-        )}
+        <div className="mb-7">
+          <p className="text-[13px] font-black uppercase tracking-[0.2em] text-[#B3FF6A]">{data.date}</p>
+          <h1 className="mira-stitch-title mt-2 text-[30px] font-black leading-tight text-[#F5F0ED]">Лог: Контекст</h1>
+          <p className="mt-2 text-[15px] font-medium leading-relaxed text-[#BFCAAF]">
+            Вода, движение, еда, вес и кожа. Эти данные помогают Анализу сравнивать самочувствие без диагнозов.
+          </p>
+        </div>
 
-        <div className="mt-6 space-y-6">
-          <SectionCard delay={10}>
-            <Eyebrow tone="dark">Главный вопрос</Eyebrow>
-            <h2 className="mt-1 text-2xl font-black text-[#1A1A1A]">Что хочешь отметить сегодня?</h2>
-            <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">
-              Сценарий простой: вода + активность, при желании вес или аптечка, потом “Сохранить всё”.
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-              {["Вода", "Активность", "Вес", "Аптечка"].map((item) => (
-                <div key={item} className="rounded-2xl bg-[#FAF8F5] px-4 py-3 text-center text-sm font-black text-[#1A1A1A]">
-                  {item}
+        {detailsOpen && (
+          <Card className={`mb-4 rounded-[22px] p-5 ${darkCardClass}`}>
+            <div className="grid gap-3 md:grid-cols-3">
+              {[
+                ["Факт", "вода, ходьба, еда, кожа, вес"],
+                ["Сравнение", "рядом с болью, ПМС, энергией, настроением"],
+                ["Объяснение", "Mira покажет только повторения с выборкой"],
+              ].map(([title, body]) => (
+                <div key={title} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+                  <p className="text-sm font-black text-[#F5F0ED]">{title}</p>
+                  <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{body}</p>
                 </div>
               ))}
             </div>
-          </SectionCard>
+          </Card>
+        )}
 
-          <div>
-            <Eyebrow tone="dark">Быстро</Eyebrow>
-            <h2 className="mt-1 text-xl font-black text-[#1A1A1A]">Главные отметки на сегодня</h2>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Вода */}
-            <Card
-              className="mira-gradient-health overflow-hidden rounded-[32px] border-0 p-6 text-white shadow-[0_22px_56px_rgba(88,216,220,0.24)] transition hover:-translate-y-0.5"
-              style={{ animation: `miraCareIn 420ms ease 30ms both` }}
-            >
-              <div className="flex items-center justify-between">
-                <Eyebrow>Hydration</Eyebrow>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
-                  <Droplets className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="mt-2 text-xl font-black leading-snug">
-                Сегодня выпито {water.toFixed(1)} л воды
-              </p>
-              <p className="mt-1 text-sm font-bold text-white/75">
-                Цель — {data.water.target.toFixed(1)} л в день
-              </p>
-
-              <div className="mt-6">
-                <WaterSlider value={water} max={data.water.target} />
-              </div>
-
-              <div className="mt-6 flex items-center gap-3">
-                <button
-                  type="button"
-                  aria-label="Убавить воду"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 transition hover:bg-white/30"
-                  onClick={() => setWater((current) => Math.max(0, Math.round((current - 0.2) * 10) / 10))}
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <Button
-                  type="button"
-                  className="h-11 flex-1 rounded-2xl bg-white text-[#6C5CE7] hover:bg-white/90"
-                  onClick={() => setWater((current) => Math.min(3, Math.round((current + 0.2) * 10) / 10))}
-                >
-                  <Droplets className="h-4 w-4" />
-                  Добавить стакан
-                </Button>
-                <button
-                  type="button"
-                  aria-label="Добавить воду"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 transition hover:bg-white/30"
-                  onClick={() => setWater((current) => Math.min(3, Math.round((current + 0.2) * 10) / 10))}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </Card>
-
-            {/* Активность */}
-            <SectionCard delay={70}>
-              <Eyebrow tone="dark">Быстрая отметка</Eyebrow>
-              <h2 className="mt-1 mb-3 text-xl font-black text-[#1A1A1A]">Активность 🚶</h2>
-              <p className="mb-5 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#8E8E93]">
-                Отметь примерно. Mira использует это, чтобы понять связь движения с болью, энергией и сном.
-              </p>
-              <div className="space-y-5">
-                <div>
-                  <p className="mb-3 text-sm font-black text-[#1A1A1A]">Ходьба</p>
-                  <RadioPills value={walking} options={["почти нет", "немного", "нормально", "много"]} onChange={setWalking} />
-                </div>
-                <div>
-                  <p className="mb-3 text-sm font-black text-[#1A1A1A]">Тренировка</p>
-                  <RadioPills value={workout} options={["нет", "лёгкая", "средняя", "тяжёлая"]} onChange={setWorkout} />
-                </div>
-              </div>
-            </SectionCard>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Вес */}
-            <SectionCard title="⚖️ Вес" delay={100}>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <input
-                  value={weight}
-                  onChange={(event) => setWeight(event.target.value)}
-                  inputMode="decimal"
-                  placeholder="Введите вес"
-                  className="h-12 flex-1 rounded-2xl border border-[#E8DDE3] bg-white px-4 text-lg font-black text-[#1A1A1A] outline-none focus:border-[#E872A0]"
-                />
-                <span className="text-sm font-bold text-[#8E8E93]">кг</span>
-              </div>
-              {!weight && <p className="mt-3 text-sm font-semibold text-[#8E8E93]">Введите вес, чтобы увидеть динамику.</p>}
-              <p className="mt-3 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">
-                Вес сохранится вместе с остальными отметками по кнопке “Сохранить всё”.
-              </p>
-            </SectionCard>
-
-            {/* Аптечка */}
-            <SectionCard title="🧰 Аптечка" delay={120}>
-              <div className="space-y-3">
-                <CheckboxRow checked={kit.painkiller} label="Обезболивающее есть" onChange={() => toggleKit("painkiller")} />
-                <CheckboxRow checked={kit.pads} label="Прокладки/тампоны есть" onChange={() => toggleKit("pads")} />
-                <CheckboxRow checked={kit.pregnancyTest} label="Тест на беременность есть" onChange={() => toggleKit("pregnancyTest")} />
-              </div>
-              <p className="mt-4 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">
-                Аптечка помогает Mira заранее напомнить, что взять перед месячными или при задержке.
-              </p>
-            </SectionCard>
-          </div>
-
-          <div>
-            <Eyebrow tone="dark">Дополнительно</Eyebrow>
-            <h2 className="mt-1 text-xl font-black text-[#1A1A1A]">Можно заполнить позже</h2>
-          </div>
-
-          {/* Витамины */}
-          <SectionCard title="💊 Добавки (необязательно)" delay={150}>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {data.vitamins.map((vitamin, index) => {
-                const status = vitaminStatus[vitamin.id];
-                const marker = index === 0 ? "🔴" : index === 1 ? "🟡" : "🟣";
-                return (
-                  <div key={vitamin.id} className="rounded-2xl bg-[#FAF8F5] p-4">
-                    <p className="text-sm font-black text-[#1A1A1A]">{marker} {vitamin.name}</p>
-                    <p className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-black text-[#E872A0]">
-                      Доза: {vitamin.dose}
-                    </p>
-                    <p className="mt-2 rounded-2xl bg-[#FFF7DE] px-3 py-2 text-xs font-bold leading-relaxed text-[#8A6500]">
-                      Дозировку лучше подтвердить с врачом, особенно при беременности, хронических состояниях или лекарствах.
-                    </p>
-                    <p className="mt-3 text-sm leading-relaxed text-[#1A1A1A]">▸ {vitamin.description}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-[#8E8E93]">▸ {vitamin.time}</p>
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        className={`rounded-2xl ${status === "has" ? "bg-[#34C759] text-white hover:bg-[#2DA84A]" : "bg-white text-[#8E8E93] hover:bg-white"}`}
-                        onClick={() => setVitaminStatus((current) => ({ ...current, [vitamin.id]: "has" }))}
-                      >
-                        ✅ Есть дома
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className={`rounded-2xl ${status === "buy" ? "bg-[#EFEFF4] text-[#1A1A1A]" : "bg-white text-[#8E8E93]"}`}
-                        onClick={() => setVitaminStatus((current) => ({ ...current, [vitamin.id]: "buy" }))}
-                      >
-                        ❌ Нет, купить
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {shoppingList.length > 0 && (
-              <div className="mt-4 rounded-[22px] bg-[#FFF0F5] px-4 py-3">
-                <p className="text-sm font-black text-[#1A1A1A]">Список покупок</p>
-                <p className="mt-1 text-sm font-semibold text-[#8E8E93]">{shoppingList.join(", ")}</p>
-              </div>
-            )}
-            <p className="mt-4 text-sm font-semibold text-[#8E8E93]">
-              📖 “Цинк и ПМС” → <button className="font-black text-[#E872A0]" type="button">Читать</button>
-            </p>
-          </SectionCard>
-
-          {/* Питание */}
-          <SectionCard delay={170}>
-            <Eyebrow tone="dark">Если есть силы заполнить подробнее</Eyebrow>
-            <h2 className="mt-1 mb-5 text-xl font-black leading-snug text-[#1A1A1A]">Питание и БЖУ (необязательно)</h2>
-            <div className="space-y-6">
-              <div className="mira-gradient-health rounded-[28px] p-5 text-white shadow-[0_18px_44px_rgba(122,101,242,0.22)]">
-                <Eyebrow>Калории</Eyebrow>
-                <div className="mt-1 flex items-end justify-between gap-3">
-                  <p className="text-3xl font-black">
-                    {data.calories.current.toLocaleString("ru-RU")}
-                    <span className="ml-1 text-base font-bold text-white/70">
-                      / {data.calories.target.toLocaleString("ru-RU")} ккал
-                    </span>
-                  </p>
-                </div>
-                <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/25">
-                  <div
-                    className="h-full rounded-full bg-white transition-all duration-300"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, (data.calories.current / data.calories.target) * 100))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
+        <div className="space-y-4">
+          <Card className={`rounded-[20px] p-5 ${darkCardClass}`}>
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="mb-3 text-sm font-black text-[#1A1A1A]">🍽️ Баланс нутриентов</p>
-                <MacroDonut protein={data.nutrients.protein} fats={data.nutrients.fats} carbs={data.nutrients.carbs} />
+                <p className="text-[13px] font-black uppercase tracking-[0.18em] text-[#BFCAAF]">Hydration</p>
+                <h2 className="mt-3 text-4xl font-black leading-none text-[#B3FF6A]">{water.toFixed(1)} л</h2>
+              </div>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2A2523] text-[#B3FF6A]">
+                <Droplets className="h-5 w-5" />
+              </span>
+            </div>
+            <div className="mt-5 rounded-[18px] bg-[#2A2523] p-4">
+              <input
+                type="range"
+                min={0}
+                max={3}
+                step={0.2}
+                value={water}
+                onChange={(event) => setWater(Number(event.target.value))}
+                className="w-full accent-[#B3FF6A]"
+                aria-label="Количество воды"
+              />
+              <div className="mt-3 flex justify-between text-xs font-black text-[#BFCAAF]">
+                <span>0 л</span>
+                <span>{data.water.target.toFixed(1)} л</span>
+                <span>3 л</span>
               </div>
             </div>
-          </SectionCard>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Кожа и волосы */}
-            <SectionCard title="🧴 Кожа и волосы (необязательно)" delay={230}>
-              <div className="space-y-3">
-                <CheckboxRow checked={skin.acne} label={`Акне / прыщи (${skin.acneCount} шт.)`} onChange={() => toggleSkin("acne")} />
-                <CheckboxRow checked={skin.dryness} label="Сухость / шелушение" onChange={() => toggleSkin("dryness")} />
-                <CheckboxRow checked={skin.oiliness} label="Жирность / блеск" onChange={() => toggleSkin("oiliness")} />
-                <CheckboxRow checked={skin.hairLoss} label="Выпадение волос" onChange={() => toggleSkin("hairLoss")} />
-                <CheckboxRow checked={skin.allGood} label="Всё как обычно" onChange={() => toggleSkin("allGood")} />
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                aria-label="Убавить воду"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#342D2A] bg-[#1D1816] text-[#84E600]"
+                onClick={() => setWater((current) => Math.max(0, Math.round((current - 0.2) * 10) / 10))}
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <div className={`min-w-0 flex-1 rounded-[18px] border px-4 py-3 text-center ${darkInsetClass}`}>
+                <p className="text-xs font-black text-[#8D817B]">Цель</p>
+                <p className="mt-1 text-sm font-black text-[#F5F0ED]">{waterProgress}% · {Math.round(water / 0.2)} стаканов</p>
               </div>
-              <p className="mt-4 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">
-                💡 Акне часто связано с лютеиновой фазой. Мы покажем график в Аналитике, когда отметок станет больше.
-              </p>
-            </SectionCard>
+              <button
+                type="button"
+                aria-label="Добавить стакан воды"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#84E600] text-[#11100F] shadow-[0_10px_24px_rgba(132,230,0,0.18)]"
+                onClick={() => setWater((current) => Math.min(3, Math.round((current + 0.2) * 10) / 10))}
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+          </Card>
 
-            {/* Желание */}
-            <SectionCard title="❤️ Желание (необязательно)" delay={280}>
-              <p className="mb-3 text-sm font-black text-[#1A1A1A]">Как сегодня?</p>
-              <RadioPills value={libido} options={["нет желания", "слабое", "среднее", "сильное"]} onChange={setLibido} />
-              <p className="mt-4 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold text-[#8E8E93]">
-                📖 Желание растёт в середине цикла и падает перед месячными.
-              </p>
-            </SectionCard>
-          </div>
+          <Card className={`rounded-[20px] p-5 ${darkCardClass}`}>
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[13px] font-black uppercase tracking-[0.18em] text-[#BFCAAF]">Movement</p>
+                <h2 className="mt-2 text-xl font-black text-[#F5F0ED]">Движение и нагрузка</h2>
+              </div>
+              <span className="rounded-full bg-[#B3FF6A] px-3 py-1.5 text-xs font-black text-[#11100F]">{completedCount}/6</span>
+            </div>
+            <div className="space-y-3">
+              <SettingRow icon={Footprints} title="Ходьба" value={walking}>
+                <SegmentedChoice value={walking} values={walkingValues} onChange={setWalking} />
+              </SettingRow>
+              <SettingRow icon={Activity} title="Тренировка" value={workout}>
+                <SegmentedChoice value={workout} values={workoutValues} onChange={setWorkout} />
+              </SettingRow>
+              <SettingRow icon={Apple} title="Еда и аппетит" value={food}>
+                <SegmentedChoice value={food} values={foodValues} onChange={setFood} />
+              </SettingRow>
+            </div>
+          </Card>
 
-          {/* Сохранить всё */}
-          <SectionCard delay={380}>
-            <Button type="button" className="h-14 w-full rounded-2xl bg-[#E872A0] text-base font-black text-white hover:bg-[#D95F8E]" onClick={saveAll}>
-              💾 Сохранить всё
-            </Button>
-            <p className="mt-4 rounded-2xl bg-[#FAF8F5] px-4 py-3 text-sm font-semibold leading-relaxed text-[#8E8E93]">
-              После сохранения Mira покажет выжимку на главной и использует данные как возможные связи в аналитике.
-            </p>
-          </SectionCard>
+          <CareFactorCard
+            icon={Sparkles}
+            title="Кожа, волосы и тело"
+            body="Акне, сухость, жирность, волосы и отёки могут повторяться рядом с фазой цикла."
+          >
+            <div className="flex flex-wrap gap-2">
+              {skinValues.map((item) => (
+                <ToggleChip key={item} active={skin.includes(item)} onClick={() => toggleSkin(item)}>
+                  {skin.includes(item) && <Check className="mr-1 h-3.5 w-3.5" />}
+                  {item}
+                </ToggleChip>
+              ))}
+            </div>
+          </CareFactorCard>
         </div>
+
+        <div className="mt-4 space-y-4">
+          <Card className={`rounded-[20px] p-5 ${darkCardClass}`}>
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Weight</p>
+                <h2 className="mt-2 text-xl font-black text-[#F5F0ED]">Вес</h2>
+              </div>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
+                <Scale className="h-5 w-5" />
+              </span>
+            </div>
+            <div className={`flex items-end gap-2 rounded-[18px] border p-4 ${darkInsetClass}`}>
+              <input
+                value={weight}
+                onChange={(event) => setWeight(event.target.value)}
+                inputMode="decimal"
+                placeholder="не указан"
+                className="min-w-0 flex-1 bg-transparent text-3xl font-black tracking-tight text-[#F5F0ED] outline-none placeholder:text-[#6A5D57]"
+              />
+              <span className="pb-1 text-base font-black text-[#8D817B]">кг</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <MiniStatCard label="Статус" value={weight ? "есть" : "нет"} detail="необязательно" tone={weight ? "lime" : "muted"} />
+              <MiniStatCard label="Контекст" value="отеки" detail="для сравнения" tone="pink" />
+            </div>
+          </Card>
+
+          <button
+            type="button"
+            onClick={() => setDetailsOpen((open) => !open)}
+            className="flex min-h-12 w-full items-center justify-between rounded-[18px] border border-[#2E2826] bg-[#1D1816] px-4 py-3 text-left text-sm font-black text-[#F5F0ED] active:scale-[0.99]"
+          >
+            Что попадёт в Анализ
+            <ChevronRight className={`h-4 w-4 transition ${detailsOpen ? "rotate-90" : ""}`} />
+          </button>
+        </div>
+
+        <Button type="button" className={`mt-5 h-16 w-full rounded-[18px] text-lg ${limeButtonClass}`} onClick={saveAll}>
+          <Check className="h-5 w-5" />
+          Save Daily Log
+        </Button>
       </div>
 
       {toast && <Toast message={toast} />}

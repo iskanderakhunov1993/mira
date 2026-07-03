@@ -1,0 +1,59 @@
+{
+  "provider": "stitch.withgoogle.com",
+  "project": {
+    "title": "Mira Health Diary",
+    "id": "14123755652071843167"
+  },
+  "screens": [
+    {
+      "name": "Log: Track Details",
+      "id": "666dbcc9cd5546c49dcda9f094bced3d",
+      "slug": "log-track-details"
+    },
+    {
+      "name": "Onboarding: Privacy",
+      "id": "1fec994bf084456bab0c29b8f18c3142",
+      "slug": "onboarding-privacy"
+    },
+    {
+      "name": "Onboarding: Name",
+      "id": "217d7b755aa447158c40082b6e1ecc0a",
+      "slug": "onboarding-name"
+    },
+    {
+      "name": "Onboarding: Symptoms",
+      "id": "41b2c2a8e52d418db3e4151f8b395f61",
+      "slug": "onboarding-symptoms"
+    },
+    {
+      "name": "Onboarding: Period Duration",
+      "id": "8617925a185d45a9bd6d55abb26c47fe",
+      "slug": "onboarding-period-duration"
+    },
+    {
+      "name": "Log: Care Details",
+      "id": "9aa7f14ece1245529ab24f90bb8b8b80",
+      "slug": "log-care-details"
+    },
+    {
+      "name": "Onboarding: Cycle Start",
+      "id": "dc331803eb244cf495529f70d8ee8791",
+      "slug": "onboarding-cycle-start"
+    },
+    {
+      "name": "Onboarding: Cycle Length",
+      "id": "dfda375a42b84a3f8a1ee67dfc58208c",
+      "slug": "onboarding-cycle-length"
+    },
+    {
+      "name": "Onboarding: Ready",
+      "id": "fb5aa89db59b48e2bee504da46a97969",
+      "slug": "onboarding-ready"
+    },
+    {
+      "name": "Onboarding: Goals",
+      "id": "fc4fb1fb31bd4098a859069af3359dad",
+      "slug": "onboarding-goals"
+    }
+  ]
+}

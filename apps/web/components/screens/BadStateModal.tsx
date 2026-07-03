@@ -143,7 +143,7 @@ export function BadStateModal({ open, onClose, data, persist }: Props) {
               className={`min-h-14 rounded-2xl border px-3 py-2 text-left text-sm font-bold transition active:scale-[0.98] ${
                 active
                   ? symptom.alert
-                    ? "border-mira-cycle bg-[#F8E8EE] text-mira-cycle"
+                    ? "border-mira-cycle bg-[#F1ECF8] text-mira-cycle"
                     : "border-mira-primary bg-mira-lavender-light text-mira-primary"
                   : "border-mira-lavender/25 bg-white text-mira-text hover:border-mira-primary/25"
               }`}
@@ -246,7 +246,7 @@ function ModalHeader({ title, subtitle, onClose }: { title: string; subtitle: st
 
 function ImportantBlock() {
   return (
-    <div className="mt-4 rounded-2xl border border-mira-cycle/20 bg-[#F8E8EE]/45 p-4">
+    <div className="mt-4 rounded-2xl border border-mira-cycle/20 bg-[#F1ECF8]/45 p-4">
       <div className="mb-2 flex items-center gap-2 text-mira-cycle">
         <AlertTriangle className="h-5 w-5" />
         <p className="text-sm font-black text-mira-text">Важно</p>

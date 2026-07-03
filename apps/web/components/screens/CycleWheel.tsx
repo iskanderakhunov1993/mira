@@ -41,7 +41,7 @@ export function CycleWheel({ size = 240, cycleDay, phase, cycleLength, periodLen
       <svg viewBox="0 0 100 100" className="h-full w-full">
         <circle cx="50" cy="50" r={r} fill="none" stroke="#EDE8F5" strokeWidth="7" />
         {/* Menstruation */}
-        <circle cx="50" cy="50" r={r} fill="none" stroke="#E8A0B8" strokeWidth="7"
+        <circle cx="50" cy="50" r={r} fill="none" stroke="#B9A7D7" strokeWidth="7"
           strokeDasharray={`${mensLen} ${c - mensLen}`} strokeDashoffset={mensOff} strokeLinecap="round" />
         {/* Follicular */}
         <circle cx="50" cy="50" r={r} fill="none" stroke="#B8A5D8" strokeWidth="7"

@@ -1,0 +1,33 @@
+{
+  "projectId": "14123755652071843167",
+  "screens": {
+    "37bd6d5ebd7845efa30880beecf514a6": {
+      "imageUrl": "https://example.com/stitch/ru-report.png",
+      "codeUrl": "https://example.com/stitch/ru-report.html"
+    },
+    "82983e40d28d4223b8b1b4ce904ffc69": {
+      "imageUrl": "https://example.com/stitch/ru-analysis.png",
+      "codeUrl": "https://example.com/stitch/ru-analysis.html"
+    },
+    "4de0a371cd9d4dffa70187af53e86659": {
+      "imageUrl": "https://example.com/stitch/ru-health-details.png",
+      "codeUrl": "https://example.com/stitch/ru-health-details.html"
+    },
+    "c8ff4577d0644785a5e82fd250157d5c": {
+      "imageUrl": "https://example.com/stitch/ru-context.png",
+      "codeUrl": "https://example.com/stitch/ru-context.html"
+    },
+    "af51b68dd22745abbc19a9903aea8b83": {
+      "imageUrl": "https://example.com/stitch/ru-profile.png",
+      "codeUrl": "https://example.com/stitch/ru-profile.html"
+    },
+    "ffdb5b5ccd2e438691c4621006523124": {
+      "imageUrl": "https://example.com/stitch/ru-diary.png",
+      "codeUrl": "https://example.com/stitch/ru-diary.html"
+    },
+    "127c21dc9e744436b2caffd9ced3adca": {
+      "imageUrl": "https://example.com/stitch/ru-today.png",
+      "codeUrl": "https://example.com/stitch/ru-today.html"
+    }
+  }
+}

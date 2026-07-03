@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira Analysis - Pattern Insights</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #050505;
+            color: #ebe0dc;
+            -webkit-font-smoothing: antialiased;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .glass-card {
+            background: #1D1816;
+            border: 1px solid #2E2826;
+        }
+        .inset-surface {
+            background: #2A2523;
+        }
+        .chart-path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 2s ease-in-out forwards;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#8c0054",
+                        "surface-variant": "#3a3331",
+                        "on-primary-fixed-variant": "#2a5000",
+                        "on-secondary-fixed": "#3e0022",
+                        "primary": "#b3ff6a",
+                        "inverse-primary": "#3a6a00",
+                        "outline-variant": "#404a35",
+                        "on-primary": "#1c3700",
+                        "on-secondary": "#64003a",
+                        "on-tertiary": "#412d00",
+                        "primary-fixed": "#98fc2a",
+                        "surface-container-highest": "#3a3331",
+                        "on-background": "#ebe0dc",
+                        "tertiary-fixed-dim": "#ffba20",
+                        "outline": "#8a947b",
+                        "on-secondary-container": "#ffebf0",
+                        "on-surface-variant": "#bfcaaf",
+                        "surface-bright": "#3e3835",
+                        "secondary-fixed-dim": "#ffb0ce",
+                        "tertiary-container": "#ffc451",
+                        "tertiary-fixed": "#ffdea8",
+                        "primary-fixed-dim": "#7fde00",
+                        "surface-container-high": "#2e2927",
+                        "surface-container-low": "#201a18",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "error": "#ffb4ab",
+                        "secondary-fixed": "#ffd9e5",
+                        "inverse-surface": "#ebe0dc",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "background": "#171210",
+                        "secondary-container": "#d20080",
+                        "on-primary-container": "#356200",
+                        "inverse-on-surface": "#352f2d",
+                        "surface-dim": "#171210",
+                        "surface": "#171210",
+                        "on-surface": "#ebe0dc",
+                        "on-primary-fixed": "#0e2000",
+                        "tertiary": "#ffe7c1",
+                        "on-tertiary-container": "#735100",
+                        "secondary": "#ffb0ce",
+                        "surface-container": "#241e1c",
+                        "surface-container-lowest": "#120d0b",
+                        "surface-tint": "#7fde00",
+                        "primary-container": "#84e600",
+                        "on-tertiary-fixed": "#271900"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "container-padding": "20px",
+                        "sm": "8px",
+                        "xl": "32px",
+                        "card-gap": "12px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Manrope"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Manrope"],
+                        "display": ["Manrope"],
+                        "label-sm": ["Inter"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "display": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["13px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-outline-variant flex justify-between items-center px-container-padding h-14">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="clinical_notes">clinical_notes</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-tight">Mira</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant transition-transform active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="security">security</span>
+</button>
+</header>
+<main class="pt-20 px-container-padding max-w-2xl mx-auto space-y-6">
+<!-- Header & Range Selector -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h2 class="font-headline-md text-headline-md text-on-surface">Анализ</h2>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Обновлено: Сегодня</span>
+</div>
+<div class="inset-surface p-1 rounded-xl flex items-center gap-1">
+<button class="flex-1 py-2 rounded-lg font-label-md text-label-md transition-all bg-surface border border-outline-variant text-primary">1 цикл</button>
+<button class="flex-1 py-2 rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:bg-surface-variant">3 цикла</button>
+<button class="flex-1 py-2 rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:bg-surface-variant">6 циклов</button>
+<button class="flex-1 py-2 rounded-lg font-label-md text-label-md transition-all text-on-surface-variant hover:bg-surface-variant">12 циклов</button>
+</div>
+</section>
+<!-- Main Health Insight Chart (Muted) -->
+<section class="glass-card rounded-xl p-md">
+<div class="flex justify-between items-center mb-4">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Интенсивность симптомов</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Тренды за последний цикл</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-label-sm text-label-sm text-on-surface">Кол-во записей</span>
+</div>
+</div>
+<div class="h-40 w-full relative flex items-end justify-between px-2 gap-1">
+<svg class="absolute inset-0 w-full h-full opacity-40 px-2 overflow-visible" preserveaspectratio="none">
+<path class="chart-path" d="M0,80 Q50,40 100,100 T200,60 T300,90 T400,20 T500,70" fill="none" stroke="#b3ff6a" stroke-width="2"></path>
+</svg>
+<div class="w-full flex justify-between absolute bottom-0 left-0 px-2 translate-y-6">
+<span class="text-[10px] text-on-surface-variant">День 1</span>
+<span class="text-[10px] text-on-surface-variant">День 14</span>
+<span class="text-[10px] text-on-surface-variant">День 28</span>
+</div>
+</div>
+</section>
+<!-- Red Flag Urgent Section -->
+<section class="bg-error-container border border-outline-variant p-md rounded-xl space-y-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-on-error-container" data-icon="report_problem">report_problem</span>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-error-container">Уведомление</h3>
+<p class="font-body-md text-body-md text-on-error-container opacity-90 mt-1">
+                    Замечены частые мажущие выделения вне обычного окна. Эти первые признаки могут быть связаны с гормональными колебаниями.
+                </p>
+</div>
+</div>
+<button class="w-full bg-on-error-container text-error-container py-3 rounded-xl font-label-md text-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
+            Посмотреть отчет
+        </button>
+</section>
+<!-- Insight Cards Grid -->
+<section class="space-y-card-gap">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest px-1">ИНСАЙТЫ</h2>
+<!-- Insight 1 -->
+<div class="glass-card rounded-xl p-md space-y-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary-container/20 text-primary font-label-sm text-label-sm border border-primary/20">
+                        Надёжность: Высокая
+                    </span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Слабость в начале цикла</h3>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant italic">На основе 12 записей</span>
+</div>
+<div class="space-y-3">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Что заметила Mira</p>
+<p class="font-body-md text-body-md text-on-surface">Постоянные жалобы на низкую энергию в дни 1–3 в течение последних 3 циклов.</p>
+</div>
+<div class="inset-surface p-sm rounded-lg">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Почему это важно</p>
+<p class="font-body-md text-body-md text-on-surface italic">Может быть связано с пиковыми воспалительными реакциями во время фазы отслойки эндометрия.</p>
+</div>
+<button class="text-primary font-label-md text-label-md flex items-center gap-1 hover:underline">
+                    Что делать: Отмечайте прием железа <span class="material-symbols-outlined text-[14px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Insight 2 -->
+<div class="glass-card rounded-xl p-md space-y-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant font-label-sm text-label-sm border border-outline">
+                        Надёжность: Средняя
+                    </span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Фаза нарушения сна</h3>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant italic">На основе 5 записей</span>
+</div>
+<div class="space-y-3">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Что заметила Mira</p>
+<p class="font-body-md text-body-md text-on-surface">Первые признаки беспокойного сна зафиксированы ровно за 2 дня до начала цикла.</p>
+</div>
+<div class="inset-surface p-sm rounded-lg">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Почему это важно</p>
+<p class="font-body-md text-body-md text-on-surface italic">Падение уровня прогестерона может влиять на циклы глубокого сна у некоторых пользователей.</p>
+</div>
+<button class="text-primary font-label-md text-label-md flex items-center gap-1 hover:underline">
+                    Что делать: Вечерние ритуалы <span class="material-symbols-outlined text-[14px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Cycle History Section -->
+<section class="space-y-4 pb-8">
+<div class="flex justify-between items-center px-1">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">История циклов</h2>
+<button class="text-primary font-label-sm text-label-sm">Все</button>
+</div>
+<div class="space-y-2">
+<div class="glass-card p-md rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full inset-surface flex items-center justify-center border border-outline-variant">
+<span class="font-headline-md text-headline-md text-primary">28</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">12 янв - 08 фев</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Регулярный • 5 дней</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="glass-card p-md rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full inset-surface flex items-center justify-center border border-outline-variant">
+<span class="font-headline-md text-headline-md text-primary">29</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">14 дек - 11 янв</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Регулярный • 4 дня</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container border-t border-outline-variant flex justify-around items-center h-16 px-xs">
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-all duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-sm text-label-sm mt-1">Сегодня</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-all duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span>
+<span class="font-label-sm text-label-sm mt-1">Трекер</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-all duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" data-icon="self_care">self_care</span>
+<span class="font-label-sm text-label-sm mt-1">Забота</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary font-bold active:scale-90 transition-all duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" data-icon="insights" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-label-sm text-label-sm mt-1">Анализ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-all duration-200 hover:opacity-80">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-sm text-label-sm mt-1">Отчет</span>
+</button>
+</nav>
+<script>
+    // Simple Micro-interactions
+    document.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', function() {
+            console.log('Interaction recorded: ' + this.innerText);
+        });
+    });
+
+    // Dynamic Chart entry effect simulation
+    setTimeout(() => {
+        document.querySelectorAll('.chart-path').forEach(path => {
+            path.style.opacity = '1';
+        });
+    }, 100);
+</script>
+</body></html>

@@ -28,7 +28,7 @@ type SymptomsModalProps = {
 const toneClass: Record<Tone, { chip: string; selected: string; icon: string }> = {
   pink: {
     chip: "bg-[#FBEAF3] text-[#1A1A1A]",
-    selected: "bg-[#F64F86] text-white shadow-[0_12px_28px_rgba(246,79,134,0.24)]",
+    selected: "bg-[#7C5FA8] text-white shadow-[0_12px_28px_rgba(124,95,168,0.24)]",
     icon: "bg-[#F6D2E4]",
   },
   orange: {
@@ -186,6 +186,17 @@ const symptomCategories: SymptomCategory[] = [
 ];
 
 const optionById = new Map(symptomCategories.flatMap((category) => category.items.map((item) => [item.id, item])));
+
+const categoryWhy: Record<string, string> = {
+  "Настроение": "Зачем: Mira проверит связь настроения с фазой цикла, сном и ПМС.",
+  "Симптомы": "Зачем: Mira увидит, что повторяется, и что стоит показать врачу.",
+  "Вагинальные выделения": "Зачем: помогает заметить изменения и включить важные факты в отчёт врачу.",
+  "Пищеварение и стул": "Зачем: Mira проверит связь вздутия, аппетита и стула с фазой цикла.",
+  "Секс и сексуальное желание": "Зачем: поможет понять задержку, боль и что включить в отчёт врачу.",
+  "Физическая активность": "Зачем: Mira проверит связь движения с болью, энергией и сном.",
+  "Тесты и лекарства": "Зачем: помогает объяснить задержку, симптомы и подготовить факты для врача.",
+  "Другое": "Зачем: контекст помогает Mira отличать случайность от повторения.",
+};
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -465,6 +476,7 @@ function SymptomsModalComponent({ open, onClose, initialCategoryTitle }: Symptom
           {visibleCategories.map((category) => (
             <section key={category.title} className="rounded-[30px] bg-white px-5 py-6 shadow-[0_12px_34px_rgba(39,34,52,0.04)]">
               <h3 className="text-2xl font-black text-[#1A1A1A]">{category.title}</h3>
+              <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">{categoryWhy[category.title]}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 {category.items.map((item) => (
                   <SymptomChip key={item.id} item={item} selected={selectedIds.includes(item.id)} onToggle={() => toggle(item.id)} />
@@ -495,7 +507,7 @@ function SymptomsModalComponent({ open, onClose, initialCategoryTitle }: Symptom
               <Button
                 type="button"
                 disabled={selectedIds.length === 0}
-                className="h-13 rounded-full bg-[#F64F86] px-6 font-black text-white hover:bg-[#E43F76] disabled:bg-[#E8E8E8] disabled:text-[#9D9D9D]"
+                className="h-13 rounded-full bg-[#7C5FA8] px-6 font-black text-white hover:bg-[#694E91] disabled:bg-[#E8E8E8] disabled:text-[#9D9D9D]"
                 onClick={save}
               >
                 Сохранить

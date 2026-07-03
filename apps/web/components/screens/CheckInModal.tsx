@@ -24,13 +24,13 @@ type Category =
   | "sex" | "discharge" | "stress" | "pms" | "symptomLog" | "note";
 
 const categories: { id: Category; label: string; icon: typeof Droplets; color: string }[] = [
-  { id: "period", label: "Месячные", icon: Droplets, color: "text-[#C47E9B] bg-[#F5E0EA]" },
+  { id: "period", label: "Месячные", icon: Droplets, color: "text-[#7F6AAD] bg-[#F4F0FA]" },
   { id: "bleeding", label: "Кровотечение", icon: CircleDot, color: "text-[#C47E7E] bg-[#F5E0E0]" },
   { id: "pain", label: "Боль", icon: Activity, color: "text-[#C4A07E] bg-[#F5ECE0]" },
   { id: "mood", label: "Настроение", icon: Brain, color: "text-[#9B8EC4] bg-[#EDE8F5]" },
   { id: "sleep", label: "Сон", icon: BedDouble, color: "text-[#7E8EC4] bg-[#E0E8F5]" },
   { id: "energy", label: "Энергия", icon: Flame, color: "text-[#C4B07E] bg-[#F5F0E0]" },
-  { id: "sex", label: "Секс", icon: Heart, color: "text-[#C47E9B] bg-[#F5E0EA]" },
+  { id: "sex", label: "Секс", icon: Heart, color: "text-[#7F6AAD] bg-[#F4F0FA]" },
   { id: "discharge", label: "Выделения", icon: ThermometerSun, color: "text-[#7BAF8D] bg-[#E0F5E8]" },
   { id: "stress", label: "Стресс", icon: AlertCircle, color: "text-[#C4887E] bg-[#F5E8E0]" },
   { id: "pms", label: "ПМС", icon: Sparkles, color: "text-[#A07EC4] bg-[#EDE0F5]" },
@@ -56,6 +56,14 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
     <button onClick={onToggle} className={`relative h-7 w-12 rounded-full transition ${on ? "bg-mira-primary" : "bg-mira-lavender"}`}>
       <div className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
     </button>
+  );
+}
+
+function WhyText({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-4 text-xs font-semibold leading-relaxed text-mira-muted">
+      <span className="text-mira-text">Зачем:</span> {children}
+    </p>
   );
 }
 
@@ -244,7 +252,7 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
   if (insightData) {
     const insightIcons: Record<string, string> = {
-      pain: "text-[#C47E9B] bg-[#F5E0EA]",
+      pain: "text-[#7F6AAD] bg-[#F4F0FA]",
       sleep: "text-[#7E8EC4] bg-[#E0E8F5]",
       mood: "text-[#9B8EC4] bg-[#EDE8F5]",
       energy: "text-[#C4B07E] bg-[#F5F0E0]",
@@ -327,6 +335,7 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
       {activeCategory === "period" && (
         <>
           <h3 className="mb-1 text-lg font-bold text-mira-text">Месячные</h3>
+          <WhyText>Mira рассчитает день цикла, задержку и прогноз следующих месячных.</WhyText>
           <p className="mb-4 text-xs text-mira-muted">Начались или закончились?</p>
           <div className="mb-4 grid grid-cols-2 gap-2">
             <button onClick={() => setPeriodIntensity("moderate")} className={`rounded-2xl border p-3 text-sm font-semibold transition ${periodIntensity ? "border-mira-primary bg-mira-lavender-light text-mira-primary" : "border-mira-lavender/30 text-mira-muted"}`}>
@@ -351,7 +360,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "bleeding" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Кровотечение</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Кровотечение</h3>
+          <WhyText>Mira заметит обильность, сгустки и сигналы для отчёта врачу.</WhyText>
           <div className="mb-4 grid grid-cols-2 gap-2">
             {["Нет", "Мало", "Средне", "Сильно"].map(v => (
               <button key={v} onClick={() => setBleedingLevel(v)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${
@@ -364,7 +374,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "pain" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Боль</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Боль</h3>
+          <WhyText>Mira проверит, когда боль повторяется и мешает обычным делам.</WhyText>
           <p className="mb-2 text-sm font-semibold text-mira-text">Интенсивность</p>
           <div className="mb-4 flex items-center gap-1">
             {[1, 2, 3, 4, 5].map(n => (
@@ -396,7 +407,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "mood" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Настроение</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Настроение</h3>
+          <WhyText>Mira проверит связь настроения с фазой цикла, сном и ПМС.</WhyText>
           <div className="mb-4 grid grid-cols-2 gap-2">
             {(["normal", "joy", "sadness", "anger", "anxiety", "swings"] as MoodValue[]).map(v => (
               <button key={v} onClick={() => setMood(v)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${
@@ -409,7 +421,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "energy" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Энергия</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Энергия</h3>
+          <WhyText>Mira увидит, что снижает силы: сон, боль, вода или нагрузка.</WhyText>
           <div className="mb-4 grid grid-cols-2 gap-2">
             {(["exhausted", "low", "normal", "high"] as EnergyValue[]).map(v => (
               <button key={v} onClick={() => setEnergy(v)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${
@@ -422,7 +435,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "sleep" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Сон</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Сон</h3>
+          <WhyText>Mira проверит связь сна с энергией, болью и настроением.</WhyText>
           <div className="mb-4 grid grid-cols-3 gap-2">
             {(["good", "normal", "bad"] as SleepQuality[]).map(v => (
               <button key={v} onClick={() => setSleepQuality(v)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${
@@ -444,6 +458,7 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
       {activeCategory === "sex" && (
         <>
           <h3 className="mb-1 text-lg font-bold text-mira-text">Секс</h3>
+          <WhyText>Поможет понять задержку, боль и что включить в отчёт врачу.</WhyText>
           <p className="mb-4 text-xs text-mira-muted">Данные приватны и скрыты по умолчанию</p>
           <p className="mb-2 text-sm font-semibold text-mira-text">Был секс?</p>
           <div className="mb-4 grid grid-cols-2 gap-2">
@@ -525,7 +540,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "discharge" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Выделения</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Выделения</h3>
+          <WhyText>Mira поможет заметить изменения и подготовить факты для врача.</WhyText>
           <div className="mb-4 grid grid-cols-2 gap-2">
             {["Обычные", "Необычные"].map(v => (
               <button key={v} onClick={() => setDischarge(v)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${
@@ -543,7 +559,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "stress" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Стресс</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Стресс</h3>
+          <WhyText>Mira проверит связь стресса с задержкой, сном и ПМС.</WhyText>
           <div className="mb-4 grid grid-cols-3 gap-2">
             {["Низкий", "Средний", "Высокий"].map(v => (
               <button key={v} onClick={() => setStressLevel(v)} className={`rounded-2xl border p-3 text-sm font-semibold transition ${
@@ -556,7 +573,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "pms" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">ПМС</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">ПМС</h3>
+          <WhyText>Mira поймёт, какие симптомы повторяются перед месячными.</WhyText>
           <p className="mb-3 text-xs text-mira-muted">Выбери симптомы</p>
           <div className="mb-4 flex flex-wrap gap-2">
             {pmsSymptoms.map(s => (
@@ -569,7 +587,7 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
       {activeCategory === "symptomLog" && (
         <>
           <h3 className="mb-1 text-lg font-bold text-mira-text">Лог симптомов</h3>
-          <p className="mb-4 text-xs text-mira-muted">Короткие отметки, чтобы через несколько циклов увидеть повтор.</p>
+          <WhyText>Mira свяжет аппетит, тревогу, либидо и лекарства с циклом.</WhyText>
 
           <p className="mb-2 text-sm font-semibold text-mira-text">Аппетит</p>
           <div className="mb-4 grid grid-cols-3 gap-2">
@@ -613,7 +631,8 @@ export function CheckInModal({ open, onClose, data, persist, targetDate }: Props
 
       {activeCategory === "note" && (
         <>
-          <h3 className="mb-4 text-lg font-bold text-mira-text">Заметка</h3>
+          <h3 className="mb-1 text-lg font-bold text-mira-text">Заметка</h3>
+          <WhyText>Личная заметка останется приватной, пока ты сама не включишь её в отчёт.</WhyText>
           <textarea value={noteText} onChange={e => setNoteText(e.target.value)}
             placeholder="Запиши что-нибудь..."
             className="mb-4 w-full rounded-2xl border border-mira-lavender/30 bg-mira-bg p-3 text-sm text-mira-text placeholder:text-mira-muted focus:border-mira-primary focus:outline-none"

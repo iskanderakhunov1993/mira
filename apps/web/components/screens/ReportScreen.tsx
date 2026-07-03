@@ -42,7 +42,8 @@ const periods = [
 type ReportSectionId =
   | "periodDates"
   | "delays"
-  | "painSymptoms"
+  | "pain"
+  | "symptoms"
   | "moodEnergy"
   | "sleep"
   | "labs"
@@ -53,7 +54,8 @@ type ReportSectionId =
 const reportSectionLabels: Array<{ id: ReportSectionId; label: string; sensitive?: boolean }> = [
   { id: "periodDates", label: "Даты месячных" },
   { id: "delays", label: "Задержки" },
-  { id: "painSymptoms", label: "Боль и симптомы" },
+  { id: "pain", label: "Боль" },
+  { id: "symptoms", label: "Симптомы" },
   { id: "moodEnergy", label: "Настроение и энергия" },
   { id: "sleep", label: "Сон" },
   { id: "labs", label: "Анализы" },
@@ -65,7 +67,8 @@ const reportSectionLabels: Array<{ id: ReportSectionId; label: string; sensitive
 const defaultReportSections: Record<ReportSectionId, boolean> = {
   periodDates: true,
   delays: true,
-  painSymptoms: true,
+  pain: true,
+  symptoms: true,
   moodEnergy: true,
   sleep: true,
   labs: true,
@@ -333,8 +336,8 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       "КРАТКО",
       `Цикл по профилю: ${report.cycleLength} дней, месячные: ${report.periodLength} дней`,
       includedSections.periodDates ? `Даты месячных с отметками: ${report.periodEntries.map(entry => entry.date).join(", ") || "нет данных"}` : null,
-      includedSections.painSymptoms ? `Боль: ${report.painEntries.length} дней, сильная боль: ${report.strongPainEntries.length} дней` : null,
-      includedSections.painSymptoms ? `Обильность: ${report.heavyFlowEntries.length} дней с обильными/очень обильными отметками` : null,
+      includedSections.pain ? `Боль: ${report.painEntries.length} дней, сильная боль: ${report.strongPainEntries.length} дней` : null,
+      includedSections.symptoms ? `Обильность: ${report.heavyFlowEntries.length} дней с обильными/очень обильными отметками` : null,
       includedSections.delays ? `Задержки: ${report.delayChecks.length ? report.delayChecks.map(item => `${item.date}: ${item.delay.delayDays} дн.`).join("; ") : "нет отметок"}` : null,
       includedSections.moodEnergy ? `Настроение отмечено: ${report.moodEntries.length} дней` : null,
       includedSections.sleep ? `Сон ухудшался: ${report.badSleepEntries.length} дней` : null,
@@ -357,7 +360,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       ...(getVisiblePersonalItems(report.focusItems).length ? getVisiblePersonalItems(report.focusItems).map(item => `— ${item}`) : ["— Явных повторяющихся сигналов в выбранном периоде мало"]),
       "",
       "ЧАСТЫЕ СИМПТОМЫ",
-      ...(includedSections.painSymptoms
+      ...(includedSections.symptoms
         ? (report.symptomCounts.length ? report.symptomCounts.map(([symptom, count]) => `— ${symptom}: ${count}`) : ["— нет частых симптомов"])
         : ["— скрыто пользователем"]),
       "",
@@ -380,12 +383,12 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       ...(report.tableRows.length ? report.tableRows.map(row => {
         const parts = [
           includedSections.periodDates && row.period ? `месячные: ${flowLabels[row.period.intensity] ?? row.period.intensity}` : null,
-          includedSections.painSymptoms && hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
+          includedSections.pain && hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
           includedSections.moodEnergy && row.mood ? `настроение: ${moodLabels[row.mood.value] ?? row.mood.value}` : null,
           includedSections.moodEnergy && row.energy ? `энергия: ${energyLabels[row.energy.value] ?? row.energy.value}` : null,
           includedSections.sleep && row.sleep ? `сон: ${sleepLabels[row.sleep.quality] ?? row.sleep.quality}` : null,
           row.symptomLog?.medications?.length ? `лекарства: ${row.symptomLog.medications.join(", ")}` : null,
-          includedSections.painSymptoms && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
+          includedSections.pain && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
           includedSections.delays && row.delayChecks?.length ? `задержка: ${row.delayChecks.map(delay => `${delay.delayDays} дн.`).join(", ")}` : null,
           includedSections.privateNotes && row.note?.text ? `личная заметка: ${row.note.text}` : null,
         ].filter(Boolean);
@@ -411,7 +414,8 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
     return items.filter(item => {
       const text = item.toLowerCase();
       if (!includedSections.sex && (text.includes("секс") || text.includes("контрацеп") || text.includes("кровь после"))) return false;
-      if (!includedSections.painSymptoms && (text.includes("боль") || text.includes("обильн") || text.includes("кровотеч"))) return false;
+      if (!includedSections.pain && text.includes("боль")) return false;
+      if (!includedSections.symptoms && (text.includes("обильн") || text.includes("кровотеч"))) return false;
       if (!includedSections.delays && text.includes("задерж")) return false;
       if (!includedSections.sleep && text.includes("сон")) return false;
       if (!includedSections.moodEnergy && (text.includes("энерг") || text.includes("слаб"))) return false;
@@ -444,14 +448,12 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
   const visibleFocusItems = getVisiblePersonalItems(report.focusItems);
   const hasCycleData = Boolean(data.profile?.cycleConfig.periodStart);
   const reportIsAlmostEmpty = report.entries.length < 2 && labs.length === 0;
+  const selectedSectionsCount = reportSectionLabels.filter(section => includedSections[section.id]).length;
 
   if (!hasCycleData) {
     return (
       <div>
-        <div className="mb-6 print:hidden">
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Отчёт врачу</h1>
-          <p className="mt-1 text-sm text-[#8E8E93]">Симптомы, даты и закономерности, чтобы не вспоминать всё на приёме</p>
-        </div>
+        <ReportTopHeader entriesCount={0} />
         <ReportEmptyState
           title="Mira пока не знает твой цикл"
           body="Добавь дату последних месячных, чтобы получить прогноз и основу для отчёта врачу."
@@ -464,10 +466,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
   if (reportIsAlmostEmpty) {
     return (
       <div>
-        <div className="mb-6 print:hidden">
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Отчёт врачу</h1>
-          <p className="mt-1 text-sm text-[#8E8E93]">Симптомы, даты и закономерности, чтобы не вспоминать всё на приёме</p>
-        </div>
+        <ReportTopHeader entriesCount={report.entries.length} />
         <ReportEmptyState
           title="Пока отчёт почти пустой"
           body="Добавь месячные, симптомы, боль или заметки — и Mira соберёт факты для приёма."
@@ -480,32 +479,21 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
 
   return (
     <div>
-      <div className="mb-6 print:hidden">
-        <h1 className="text-2xl font-bold text-[#1A1A1A]">Отчёт врачу</h1>
-        <p className="mt-1 text-sm text-[#8E8E93]">Симптомы, даты и закономерности, чтобы не вспоминать всё на приёме</p>
-      </div>
+      <ReportTopHeader entriesCount={report.entries.length} />
 
-      <Card className="mb-5 border-[#E872A0]/15 bg-white p-5 print:hidden">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <Card className="mb-5 rounded-[24px] border-[#2E2826] bg-[#1D1816] p-5 print:hidden">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">Краткое резюме</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#8B6FB3]">Перед экспортом</p>
             <h2 className="mt-1 text-lg font-bold text-[#1A1A1A]">
-              {visibleFocusItems.length > 0 ? "Есть факты для обсуждения" : "Собрана история наблюдений"}
+              Выбери данные для отчёта врачу
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-[#8E8E93]">
-              Даты, симптомы, повторы, анализы и вопросы врачу. Без диагнозов и лишнего объяснения.
+              Ты сама контролируешь, что попадёт в PDF/TXT. Личные заметки и секс выключены по умолчанию.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={handlePrintPdf}>
-              <Printer className="h-4 w-4" /> Скачать PDF
-            </Button>
-            <Button variant="outline" onClick={handleExportText}>
-              <Download className="h-4 w-4" /> Скачать TXT
-            </Button>
-            <Button variant="outline" onClick={handleCopyQuestions}>
-              <Copy className="h-4 w-4" /> Вопросы
-            </Button>
+          <div className="rounded-2xl bg-[#F4F0FA] px-4 py-3 text-sm font-black text-[#8B6FB3]">
+            {selectedSectionsCount} из {reportSectionLabels.length} разделов
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -515,7 +503,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           <MiniStat tone="yellow" icon={<MessageSquare className="h-4 w-4" />} label="Вопросы" value={`${report.questions.length}`} note="для приёма" />
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr]">
-          <div className="rounded-2xl border border-[#F3D9E4]/20 bg-[#FAF8F5] p-3">
+          <div className="rounded-2xl border border-[#DDD2EA]/20 bg-[#FAF8F5] p-3">
             <p className="text-sm font-medium text-[#1A1A1A]">Период отчёта</p>
             <div className="mt-3 grid grid-cols-4 gap-2">
               {periods.map(period => (
@@ -523,7 +511,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
                   key={period.months}
                   onClick={() => setSelectedPeriod(period.months)}
                   className={`rounded-xl px-2 py-2.5 text-xs font-semibold transition ${
-                    selectedPeriod === period.months ? "bg-[#E872A0] text-white shadow-glow" : "bg-white text-[#8E8E93]"
+                    selectedPeriod === period.months ? "bg-[#8B6FB3] text-white shadow-glow" : "bg-white text-[#8E8E93]"
                   }`}
                 >
                   {period.label}
@@ -532,10 +520,10 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#F3D9E4]/20 bg-[#FAF8F5] p-3">
-            <p className="text-sm font-medium text-[#1A1A1A]">Что включить в отчёт?</p>
+          <div className="rounded-2xl border border-[#DDD2EA]/20 bg-[#FAF8F5] p-3">
+            <p className="text-sm font-medium text-[#1A1A1A]">Данные в отчёте</p>
             <p className="mt-1 text-[11px] leading-relaxed text-[#8E8E93]">
-              Ты сама выбираешь, какие данные попадут в отчёт. Личные заметки не включаются по умолчанию.
+              Секс и личные заметки считаются чувствительными и включаются только вручную.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {reportSectionLabels.map(section => (
@@ -547,6 +535,27 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
                   onClick={() => toggleSection(section.id)}
                 />
               ))}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-[24px] border border-[#8B6FB3]/15 bg-[#F4F0FA] p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#8B6FB3]">Экспорт выбранных данных</p>
+              <p className="mt-1 text-xs font-semibold leading-relaxed text-[#8E8E93]">
+                Проверь приватность, затем скачай файл или скопируй вопросы врачу.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handlePrintPdf}>
+                <Printer className="h-4 w-4" /> Скачать PDF
+              </Button>
+              <Button variant="outline" onClick={handleExportText}>
+                <Download className="h-4 w-4" /> Скачать TXT
+              </Button>
+              <Button variant="outline" onClick={handleCopyQuestions}>
+                <Copy className="h-4 w-4" /> Вопросы
+              </Button>
             </div>
           </div>
         </div>
@@ -584,7 +593,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </div>
       </Card>
 
-      <Card className="mb-5 border-[#E872A0]/15 p-5 print:hidden">
+      <Card className="mb-5 border-[#8B6FB3]/15 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-[#FF6B6B]" />
           <p className="text-sm font-semibold text-[#1A1A1A]">Главное для врача</p>
@@ -598,12 +607,13 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
 
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-[#E872A0]" />
+          <ClipboardList className="h-4 w-4 text-[#8B6FB3]" />
           <p className="text-sm font-semibold text-[#1A1A1A]">Что попадёт в отчёт</p>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          <InfoRow label="Цикл" value={`${report.periodEntries.length} дней месячных, цикл ${report.cycleLength} дн.`} />
-          {includedSections.painSymptoms && <InfoRow label="Симптомы" value={`${report.painEntries.length} дней с болью, ${report.unusualEntries.length} необычных сигналов`} />}
+          {includedSections.periodDates && <InfoRow label="Цикл" value={`${report.periodEntries.length} дней месячных, цикл ${report.cycleLength} дн.`} />}
+          {includedSections.pain && <InfoRow label="Боль" value={`${report.painEntries.length} дней с болью, сильная: ${report.strongPainEntries.length}`} />}
+          {includedSections.symptoms && <InfoRow label="Симптомы" value={`${report.unusualEntries.length} необычных сигналов, обильные дни: ${report.heavyFlowEntries.length}`} />}
           {includedSections.moodEnergy && <InfoRow label="Состояние" value={`${report.moodEntries.length} настроений, ${report.lowEnergyEntries.length} дней низкой энергии`} />}
           {includedSections.delays && <InfoRow label="Лекарства и задержки" value={`${report.medicationEntries.length} лекарств, ${report.delayChecks.length} разборов задержки`} />}
           <InfoRow label="Забота" value={`${report.care.waterEntries.length} воды, ${report.care.walkingEntries.length} ходьбы, ${report.care.weightEntries.length} веса`} />
@@ -619,24 +629,23 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </div>
       </Card>
 
-      <Card className="mb-5 border-[#E872A0]/15 p-5 print:hidden">
+      <Card className="mb-5 border-[#8B6FB3]/15 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-[#E872A0]" />
+          <MessageSquare className="h-4 w-4 text-[#8B6FB3]" />
           <p className="text-sm font-semibold text-[#1A1A1A]">На приёме сказать главное</p>
         </div>
-        <p className="rounded-2xl bg-[#FFF0F5]/25 p-3 text-sm italic leading-relaxed text-[#1A1A1A]">"{doctorScript.intro}"</p>
+        <p className="rounded-2xl bg-[#F4F0FA]/25 p-3 text-sm italic leading-relaxed text-[#1A1A1A]">"{doctorScript.intro}"</p>
         {visibleFocusItems.length > 0 && (
-          <div className="mt-3 rounded-2xl border border-[#FF6B6B]/15 bg-[#FFF0F5]/20 p-3">
+          <div className="mt-3 rounded-2xl border border-[#FF6B6B]/15 bg-[#F4F0FA]/20 p-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">Не забыть обсудить</p>
             <p className="mt-1 text-sm leading-relaxed text-[#1A1A1A]">{visibleFocusItems.join(" · ")}</p>
           </div>
         )}
       </Card>
 
-      {includedSections.labs && (
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-[#E872A0]" />
+          <Sparkles className="h-4 w-4 text-[#8B6FB3]" />
           <p className="text-sm font-semibold text-[#1A1A1A]">Закономерности из аналитики</p>
         </div>
         <div className="space-y-2">
@@ -645,11 +654,10 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           ))}
         </div>
       </Card>
-      )}
 
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
-          <Activity className="h-4 w-4 text-[#E872A0]" />
+          <Activity className="h-4 w-4 text-[#8B6FB3]" />
           <p className="text-sm font-semibold text-[#1A1A1A]">Что может влиять на самочувствие</p>
         </div>
         <div className="grid gap-3 md:grid-cols-5">
@@ -664,9 +672,10 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </p>
       </Card>
 
+      {includedSections.labs && (
       <Card className="mb-5 p-5 print:hidden">
         <div className="mb-4 flex items-center gap-2">
-          <FlaskConical className="h-4 w-4 text-[#E872A0]" />
+          <FlaskConical className="h-4 w-4 text-[#8B6FB3]" />
           <p className="text-sm font-semibold text-[#1A1A1A]">Анализы в отчёте</p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -674,7 +683,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           <MiniStat tone="red" icon={<AlertTriangle className="h-4 w-4" />} label="Вне референса" value={`${abnormalLabs.length}`} note="обсудить с врачом" />
           <MiniStat tone="green" icon={<Shield className="h-4 w-4" />} label="Для врача" value={labs.length > 0 ? "есть" : "нет"} note="факты без диагноза" />
         </div>
-        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[#F3D9E4]/20 bg-[#FAF8F5] p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-[#DDD2EA]/20 bg-[#FAF8F5] p-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-relaxed text-[#8E8E93]">
             Добавлять и смотреть все результаты удобнее на отдельной странице. Врач увидит их в полном отчёте.
           </p>
@@ -683,11 +692,12 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           </Button>
         </div>
       </Card>
+      )}
 
       <div className="space-y-5 print:space-y-3">
         {showFullReport && (
           <>
-        <Card className="border-[#E872A0]/15 bg-white p-5 print:border-none print:shadow-none">
+        <Card className="border-[#8B6FB3]/15 bg-white p-5 print:border-none print:shadow-none">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">Mira</p>
@@ -699,7 +709,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
             <Badge>{report.entries.length} дней данных</Badge>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-[#F3D9E4]/20 bg-[#FAF8F5] p-4">
+          <div className="mt-4 rounded-2xl border border-[#DDD2EA]/20 bg-[#FAF8F5] p-4">
             <p className="text-sm font-semibold text-[#1A1A1A]">
               {visibleFocusItems.length > 0 ? "Есть темы, которые стоит обсудить на приёме" : "В выбранном периоде мало повторяющихся тревожных сигналов"}
             </p>
@@ -711,7 +721,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
 
         <Card className="p-5 print:hidden">
           <div className="mb-4 flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-[#E872A0]" />
+            <ClipboardList className="h-4 w-4 text-[#8B6FB3]" />
             <p className="text-sm font-semibold text-[#1A1A1A]">Краткое резюме</p>
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -721,7 +731,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
             <MiniStat tone="yellow" icon={<AlertTriangle className="h-4 w-4" />} label="Задержки" value={`${report.delayChecks.length}`} note="разборов" />
           </div>
           {visibleFocusItems.length > 0 && (
-            <div className="mt-3 rounded-2xl border border-[#FF6B6B]/15 bg-[#FFF0F5]/20 p-3">
+            <div className="mt-3 rounded-2xl border border-[#FF6B6B]/15 bg-[#F4F0FA]/20 p-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">Вынести в разговор</p>
               <p className="mt-1 text-sm text-[#1A1A1A]">{visibleFocusItems.join(" · ")}</p>
             </div>
@@ -741,10 +751,10 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </Card>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          {includedSections.periodDates && (
+          {report.analyticsFindings.length > 0 && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#E872A0]" />
+              <Sparkles className="h-4 w-4 text-[#8B6FB3]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Закономерности из аналитики</p>
             </div>
             <div className="space-y-2">
@@ -755,10 +765,9 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           </Card>
           )}
 
-          {includedSections.painSymptoms && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-[#E872A0]" />
+              <Activity className="h-4 w-4 text-[#8B6FB3]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Что может влиять на самочувствие</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -768,14 +777,13 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
               <MiniStat tone="neutral" icon={<Scale className="h-4 w-4" />} label="Вес" value={`${report.care.weightEntries.length}`} note={report.care.latestWeight ? `${report.care.latestWeight.weight.toFixed(1)} кг` : "нет"} />
             </div>
           </Card>
-          )}
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
-          {(includedSections.moodEnergy || includedSections.sleep) && (
+          {includedSections.periodDates && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-[#E872A0]" />
+              <Calendar className="h-4 w-4 text-[#8B6FB3]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Цикл и месячные</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -788,20 +796,20 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           </Card>
           )}
 
-          {includedSections.delays && (
+          {(includedSections.pain || includedSections.symptoms) && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-[#FF6B6B]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Боль и необычные симптомы</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <MiniStat tone="yellow" icon={<Activity className="h-4 w-4" />} label="Дней с болью" value={`${report.painEntries.length}`} note="любая боль" />
-              <MiniStat tone="red" icon={<AlertTriangle className="h-4 w-4" />} label="Сильная боль" value={`${report.strongPainEntries.length}`} note="отмечено strong" />
-              <MiniStat tone="red" icon={<AlertTriangle className="h-4 w-4" />} label="Необычные" value={`${report.unusualEntries.length}`} note="красные сигналы" />
-              <MiniStat tone="neutral" icon={<Moon className="h-4 w-4" />} label="Нет сил" value={`${report.lowEnergyEntries.length}`} note="низкая энергия" />
+              {includedSections.pain && <MiniStat tone="yellow" icon={<Activity className="h-4 w-4" />} label="Дней с болью" value={`${report.painEntries.length}`} note="любая боль" />}
+              {includedSections.pain && <MiniStat tone="red" icon={<AlertTriangle className="h-4 w-4" />} label="Сильная боль" value={`${report.strongPainEntries.length}`} note="отмечено strong" />}
+              {includedSections.symptoms && <MiniStat tone="red" icon={<AlertTriangle className="h-4 w-4" />} label="Необычные" value={`${report.unusualEntries.length}`} note="красные сигналы" />}
+              {includedSections.moodEnergy && <MiniStat tone="neutral" icon={<Moon className="h-4 w-4" />} label="Нет сил" value={`${report.lowEnergyEntries.length}`} note="низкая энергия" />}
             </div>
-            {report.unusualEntries.length > 0 && (
-              <div className="mt-3 flex items-start gap-2 rounded-2xl border border-[#FF6B6B]/15 bg-[#FFF0F5]/20 p-3">
+            {includedSections.symptoms && report.unusualEntries.length > 0 && (
+              <div className="mt-3 flex items-start gap-2 rounded-2xl border border-[#FF6B6B]/15 bg-[#F4F0FA]/20 p-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#FF6B6B]" />
                 <p className="text-xs leading-relaxed text-[#1A1A1A]">
                   В отчёте есть дни с сильной болью, очень обильными месячными, задержкой, кровью после секса или сильной слабостью.
@@ -813,17 +821,18 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-2">
+          {(includedSections.moodEnergy || includedSections.sleep || includedSections.symptoms) && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-[#A07EC4]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Настроение, энергия, сон</p>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <MiniStat tone="pink" icon={<Sparkles className="h-4 w-4" />} label="Настроение" value={`${report.moodEntries.length}`} note="дней" />
-              <MiniStat tone="neutral" icon={<Moon className="h-4 w-4" />} label="Сон хуже" value={`${report.badSleepEntries.length}`} note="дней" />
-              <MiniStat tone="yellow" icon={<Activity className="h-4 w-4" />} label="Энергия ниже" value={`${report.lowEnergyEntries.length}`} note="дней" />
+              {includedSections.moodEnergy && <MiniStat tone="pink" icon={<Sparkles className="h-4 w-4" />} label="Настроение" value={`${report.moodEntries.length}`} note="дней" />}
+              {includedSections.sleep && <MiniStat tone="neutral" icon={<Moon className="h-4 w-4" />} label="Сон хуже" value={`${report.badSleepEntries.length}`} note="дней" />}
+              {includedSections.moodEnergy && <MiniStat tone="yellow" icon={<Activity className="h-4 w-4" />} label="Энергия ниже" value={`${report.lowEnergyEntries.length}`} note="дней" />}
             </div>
-            {report.symptomCounts.length > 0 && (
+            {includedSections.symptoms && report.symptomCounts.length > 0 && (
               <div className="mt-3 space-y-2">
                 {report.symptomCounts.map(([symptom, count]) => (
                   <div key={symptom} className="flex items-center justify-between rounded-xl bg-[#FAF8F5] px-3 py-2">
@@ -834,10 +843,12 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
               </div>
             )}
           </Card>
+          )}
 
+          {includedSections.delays && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <Pill className="h-4 w-4 text-[#E872A0]" />
+              <Pill className="h-4 w-4 text-[#8B6FB3]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Лекарства и задержки</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -856,12 +867,13 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
               )}
             </div>
           </Card>
+          )}
         </div>
 
         {includedSections.sex && (
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <HeartHandshake className="h-4 w-4 text-[#E872A0]" />
+              <HeartHandshake className="h-4 w-4 text-[#8B6FB3]" />
               <p className="text-sm font-semibold text-[#1A1A1A]">Секс и связанные симптомы</p>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -914,17 +926,17 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
 
         <Card className="p-5">
           <div className="mb-4 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-[#E872A0]" />
+            <FileText className="h-4 w-4 text-[#8B6FB3]" />
             <p className="text-sm font-semibold text-[#1A1A1A]">Детали по дням</p>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-[#F3D9E4]/20">
-            <div className="grid grid-cols-[72px_54px_1fr] bg-[#FFF0F5]/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">
+          <div className="overflow-hidden rounded-2xl border border-[#DDD2EA]/20">
+            <div className="grid grid-cols-[72px_54px_1fr] bg-[#F4F0FA]/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-[#8E8E93]">
               <span>Дата</span>
               <span>ДЦ</span>
               <span>Наблюдения</span>
             </div>
             {report.tableRows.length > 0 ? report.tableRows.map(row => (
-              <div key={row.date} className="grid grid-cols-[72px_54px_1fr] border-t border-[#F3D9E4]/15 px-3 py-3 text-xs">
+              <div key={row.date} className="grid grid-cols-[72px_54px_1fr] border-t border-[#DDD2EA]/15 px-3 py-3 text-xs">
                 <span className="font-semibold text-[#1A1A1A]">{formatDate(row.date)}</span>
                 <span className="text-[#8E8E93]">{cycleDayFor(row.date, report.profile) ?? "—"}</span>
                 <span className="leading-relaxed text-[#1A1A1A]">{describeRow(row, includedSections)}</span>
@@ -936,15 +948,15 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </Card>
 
         {includedSections.doctorQuestions && (
-        <Card className="border-[#E872A0]/15 p-5">
+        <Card className="border-[#8B6FB3]/15 p-5">
           <div className="mb-4 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-[#E872A0]" />
+            <MessageSquare className="h-4 w-4 text-[#8B6FB3]" />
             <p className="text-sm font-semibold text-[#1A1A1A]">Вопросы врачу</p>
           </div>
           <ol className="space-y-2">
             {report.questions.map((question, index) => (
               <li key={question} className="flex items-start gap-2 text-sm text-[#1A1A1A]">
-                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFF0F5] text-[10px] font-bold text-[#E872A0]">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F4F0FA] text-[10px] font-bold text-[#8B6FB3]">
                   {index + 1}
                 </span>
                 {question}
@@ -954,9 +966,9 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         </Card>
         )}
 
-        <Card className="border-[#E872A0]/15 bg-[#FFF0F5]/20 p-5">
+        <Card className="border-[#8B6FB3]/15 bg-[#F4F0FA]/20 p-5">
           <div className="mb-3 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-[#E872A0]" />
+            <MessageSquare className="h-4 w-4 text-[#8B6FB3]" />
             <p className="text-sm font-semibold text-[#1A1A1A]">Как начать разговор</p>
           </div>
           <p className="mb-3 text-xs italic leading-relaxed text-[#8E8E93]">"{doctorScript.intro}"</p>
@@ -997,7 +1009,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
 }
 
 const tileTones = {
-  pink: { bg: "#FFF0F5", text: "#E872A0", icon: "#E872A0" },
+  pink: { bg: "#F4F0FA", text: "#8B6FB3", icon: "#8B6FB3" },
   green: { bg: "#EAFBF0", text: "#1A1A1A", icon: "#34C759" },
   red: { bg: "#FFF0F0", text: "#1A1A1A", icon: "#FF6B6B" },
   yellow: { bg: "#FFF7E5", text: "#1A1A1A", icon: "#B97900" },
@@ -1005,6 +1017,26 @@ const tileTones = {
 } as const;
 
 type TileTone = keyof typeof tileTones;
+
+function ReportTopHeader({ entriesCount }: { entriesCount: number }) {
+  return (
+    <div className="mb-6 print:hidden">
+      <div className="mb-5 flex items-center justify-between border-b border-[#2E2826] pb-4">
+        <h1 className="mira-stitch-title text-[34px] font-black leading-none tracking-tight text-[#B3FF6A]">Mira</h1>
+        <span className="rounded-full border border-[#404A35] bg-[#1D1816] px-3 py-1.5 text-xs font-black text-[#B3FF6A]">
+          {entriesCount} дней
+        </span>
+      </div>
+      <section className="rounded-[24px] border border-[#2E2826] bg-[#1D1816] p-5">
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#8D817B]">Отчёт для врача</p>
+        <h2 className="mt-2 text-[30px] font-black leading-tight text-[#F5F0ED]">Выбери, что показать врачу</h2>
+        <p className="mt-2 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+          Факты, даты и повторения без лишнего. Секс и личные заметки выключены по умолчанию.
+        </p>
+      </section>
+    </div>
+  );
+}
 
 function MiniStat({
   label,
@@ -1057,9 +1089,9 @@ function ReportEmptyState({
   onProfile?: () => void;
 }) {
   return (
-    <Card className="border-[#E872A0]/10 bg-white p-6 shadow-[0_12px_32px_rgba(45,38,64,0.05)]">
+    <Card className="border-[#8B6FB3]/10 bg-white p-6 shadow-[0_12px_32px_rgba(45,38,64,0.05)]">
       <div className="flex items-start gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#FFF0F5] text-[#E872A0]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F4F0FA] text-[#8B6FB3]">
           <FileText className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -1082,11 +1114,11 @@ function ReportCheckbox({ checked, label, sensitive, onClick }: { checked: boole
       type="button"
       onClick={onClick}
       className={`flex min-h-11 items-center gap-2 rounded-2xl border px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98] ${
-        checked ? "border-[#E872A0]/35 bg-white text-[#1A1A1A]" : "border-[#F3D9E4]/20 bg-white/60 text-[#8E8E93]"
+        checked ? "border-[#8B6FB3]/35 bg-white text-[#1A1A1A]" : "border-[#DDD2EA]/20 bg-white/60 text-[#8E8E93]"
       }`}
     >
       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-        checked ? "border-[#E872A0] bg-[#E872A0] text-white" : "border-[#F3D9E4]/40 bg-white"
+        checked ? "border-[#8B6FB3] bg-[#8B6FB3] text-white" : "border-[#DDD2EA]/40 bg-white"
       }`}>
         {checked && <CheckMark />}
       </span>
@@ -1156,7 +1188,7 @@ function DatePills({ dates, empty }: { dates: string[]; empty: string }) {
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {dates.slice(-10).map(date => (
-        <span key={date} className="rounded-full bg-[#FFF0F5] px-3 py-1 text-xs font-semibold text-[#E872A0]">
+        <span key={date} className="rounded-full bg-[#F4F0FA] px-3 py-1 text-xs font-semibold text-[#8B6FB3]">
           {formatDate(date)}
         </span>
       ))}
@@ -1176,16 +1208,16 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function describeRow(row: DailyCheckIn, includedSections: Record<ReportSectionId, boolean>) {
   const parts = [
     includedSections.periodDates && row.period ? `месячные: ${flowLabels[row.period.intensity] ?? row.period.intensity}` : null,
-    includedSections.painSymptoms && hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
+    includedSections.pain && hasPain(row) ? `боль: ${row.pain?.level ?? "есть"} (${row.pain?.kinds.map(kind => painLabels[kind] ?? kind).join(", ")})` : null,
     includedSections.moodEnergy && row.mood ? `настроение: ${moodLabels[row.mood.value] ?? row.mood.value}` : null,
     includedSections.moodEnergy && row.energy ? `энергия: ${energyLabels[row.energy.value] ?? row.energy.value}` : null,
     includedSections.sleep && row.sleep ? `сон: ${sleepLabels[row.sleep.quality] ?? row.sleep.quality}` : null,
-    includedSections.painSymptoms && row.symptomLog?.appetite ? `аппетит: ${row.symptomLog.appetite}` : null,
-    includedSections.painSymptoms && row.symptomLog?.sweetCraving ? "тяга к сладкому" : null,
+    includedSections.symptoms && row.symptomLog?.appetite ? `аппетит: ${row.symptomLog.appetite}` : null,
+    includedSections.symptoms && row.symptomLog?.sweetCraving ? "тяга к сладкому" : null,
     includedSections.moodEnergy && row.symptomLog?.anxiety ? "тревога" : null,
     row.symptomLog?.medications?.length ? `лекарства: ${row.symptomLog.medications.join(", ")}` : null,
     includedSections.delays && row.delayChecks?.length ? `задержка: ${row.delayChecks.map(delay => `${delay.delayDays} дн.`).join(", ")}` : null,
-    includedSections.painSymptoms && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
+    includedSections.pain && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
     includedSections.privateNotes && row.note?.text ? `личная заметка: ${row.note.text}` : null,
     includedSections.sex && row.intimacy?.happened ? `секс: ${[
       row.intimacy.protection ? protectionLabels[row.intimacy.protection] : null,

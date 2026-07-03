@@ -108,7 +108,7 @@ export function DelayCheckModal({ open, onClose, data, persist, delayDays }: Pro
         </button>
       </div>
 
-      <div className="mb-5 rounded-lg border border-mira-cycle/15 bg-[#F8E8EE]/45 p-3">
+      <div className="mb-5 rounded-lg border border-mira-cycle/15 bg-[#F1ECF8]/45 p-3">
         <div className="flex items-center gap-2 text-mira-cycle">
           <CalendarClock className="h-4 w-4" />
           <p className="text-xs font-bold uppercase tracking-widest">Сейчас задержка {Math.max(1, delayDays)} дн.</p>
@@ -127,7 +127,7 @@ export function DelayCheckModal({ open, onClose, data, persist, delayDays }: Pro
               className={`rounded-lg border p-3 text-left transition active:scale-[0.98] ${
                 active
                   ? reason.tone === "watch"
-                    ? "border-mira-cycle bg-[#F8E8EE] text-mira-cycle"
+                    ? "border-mira-cycle bg-[#F1ECF8] text-mira-cycle"
                     : "border-mira-primary bg-mira-lavender-light text-mira-primary"
                   : "border-mira-lavender/30 bg-white text-mira-muted"
               }`}

@@ -22,74 +22,40 @@ npm run dev
 npm run build && npm start
 ```
 
-## Тестовые аккаунты
-
-Страница демо-входа: `/demo`
-
-| Пользователь | Email | Пароль | Описание |
-|---|---|---|---|
-| Амина | `amina@mira.app` | `mira-test-1` | 27 лет, ислам, полный трекинг |
-| Диана | `diana@mira.app` | `mira-test-2` | 22 года, базовый трекинг |
-| София | `sofia@mira.app` | `mira-test-3` | 34 года, полный трекинг + питание |
-
-## Dev/debug сценарии
-
-В пользовательском интерфейсе не должно быть слов “тест”, “демо-пользователи” или предупреждений о замене данных. Для проверки сценариев аналитики используй только скрытый debug-режим:
-
-1. Открой локально `http://localhost:4173/?debug=true`.
-2. Перейди на страницу `Аналитика`.
-3. Вверху появится внутренний блок `Dev-сценарии аналитики`.
-4. Выбери сценарий. Он заменит текущий локальный профиль в `localStorage`.
-
-Debug-сценарии аналитики:
-
-| Сценарий | Профиль | Что проверяет |
-|---|---|---|
-| Мало данных | Ника | Пустое/обучающее состояние, когда Mira честно говорит, что данных мало |
-| Стабильный цикл | Лина | Спокойная аналитика без тревожных сигналов |
-| ПМС-паттерн | Камилла | Повторы тревоги, тяги к сладкому и низкой энергии перед месячными |
-| Для врача | София | Сильная боль, обильность и красные флаги для отчёта врачу |
-| Забота влияет | Фатима | Связь воды, ходьбы, тренировок и веса с аналитикой |
-| 45+ и анализы | Елена | Перименопауза, сон, энергия и сохранённые анализы |
-
-Для проверки через демо-вход используй аккаунты выше на странице `/demo`. Для проверки локальных сценариев аналитики авторизация не обязательна, достаточно `?debug=true`.
-
----
-
 ## Архитектура
 
 ```
 mira/
 ├── apps/web/              # Next.js 15 web app
 │   ├── app/               # Next.js App Router
-│   │   ├── page.tsx       # Entry → AppShell
-│   │   ├── design/        # Design system reference
-│   │   ├── demo/          # Demo login page
-│   │   └── api/           # API routes (AI stubs)
+│   │   ├── page.tsx       # Entry → /today
+│   │   ├── today/         # Daily summary route
+│   │   ├── track/         # Manual medical diary route
+│   │   ├── care/          # Lifestyle tracking route
+│   │   ├── analysis/      # Cautious pattern insights
+│   │   ├── report/        # Doctor-ready report
+│   │   ├── profile/       # Profile, privacy, sync
+│   │   └── api/           # Health/API routes
 │   ├── components/
-│   │   ├── layout/        # AppShell, Sidebar, BottomNav
+│   │   ├── layout/        # RouterShell and tab navigation
 │   │   ├── screens/       # All screen components
 │   │   └── ui/            # Button, Card, Badge, MiraLogo
 │   ├── lib/
-│   │   ├── types.ts       # Data types (9 tracking categories)
+│   │   ├── types.ts       # Local-first health data types
 │   │   ├── store.ts       # localStorage CRUD + cycle calculations
-│   │   ├── nutrition.ts   # KBJU calculation (Mifflin-St Jeor)
-│   │   └── tips.ts        # Dynamic tips by phase/symptoms
+│   │   └── routeData.ts   # Route data adapters
 │   └── public/
 │       ├── icons/         # PWA icons (192, 512, maskable)
 │       └── sw.js          # Service worker (offline support)
-├── shared/                # Shared AI contracts
+├── shared/                # Future shared AI contracts
 ├── docs/                  # Product & architecture docs
-└── supabase/              # Supabase config (migrations, functions)
+└── supabase/              # Future Supabase config (migrations, functions)
 ```
 
 ## Навигация
 
-**Desktop** (sidebar):
-Сегодня → Дневник → Аналитика → Забота → Отчёт врачу → Профиль
-
-**Mobile** (bottom nav):
-Сегодня → Дневник → Аналитика → Отчёт
+**MVP routes**:
+Сегодня → Забота → Отслеживать → Анализ → Отчёт → Профиль
 
 ## Функции
 
@@ -99,14 +65,8 @@ mira/
 ### Дневник и личная норма
 История дней · Паттерны по симптомам · Норма-скан · Подготовка вопросов врачу
 
-### Питание
-КБЖУ по профилю (Mifflin-St Jeor + коррекция по фазе) · Приёмы пищи · Калории отключаемые
-
-### Тренировка
-Генерация по фазе/самочувствию · Таймер выполнения · Защитная логика
-
-### Исламский режим
-Хайд · Нифас · Гусль · Пост · Каза-счётчик
+### Забота
+Вода · движение · нагрузка · еда как контекст · вес
 
 ### Приватность
 PIN · Скрытые уведомления · Экспорт/удаление данных
@@ -147,6 +107,12 @@ PIN · Скрытые уведомления · Экспорт/удаление 
 - [ ] Подписка Stripe / App Store
 
 ### Улучшения
+- [ ] Контент/статьи
+- [ ] Режим партнёра
+- [ ] Исламский режим
+- [ ] Анализы как отдельный экран
+- [ ] Генерация тренировок
+- [ ] КБЖУ и полноценный дневник питания
 - [ ] Тёмная тема
 - [ ] Мультиязычность (en, ar)
 - [ ] Импорт данных

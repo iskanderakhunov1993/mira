@@ -51,3 +51,19 @@ xcuserdata/
 apps/web/.next/
 apps/web/vite.config.js
 apps/web/vite.config.d.ts
+
+# Stitch handoff downloads
+stitch/sources.json
+stitch/sources.ru.json
+stitch/assets/*
+stitch/code/*
+stitch/meta/*
+stitch/ru/assets/*
+stitch/ru/code/*
+stitch/ru/meta/*
+!stitch/assets/.gitkeep
+!stitch/code/.gitkeep
+!stitch/meta/.gitkeep
+!stitch/ru/assets/.gitkeep
+!stitch/ru/code/.gitkeep
+!stitch/ru/meta/.gitkeep

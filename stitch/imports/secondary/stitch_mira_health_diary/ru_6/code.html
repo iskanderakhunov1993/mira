@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira - Health Tracking</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#8c0054",
+                    "surface-variant": "#3a3331",
+                    "on-primary-fixed-variant": "#2a5000",
+                    "on-secondary-fixed": "#3e0022",
+                    "primary": "#b3ff6a",
+                    "inverse-primary": "#3a6a00",
+                    "outline-variant": "#404a35",
+                    "on-primary": "#1c3700",
+                    "on-secondary": "#64003a",
+                    "on-tertiary": "#412d00",
+                    "primary-fixed": "#98fc2a",
+                    "surface-container-highest": "#3a3331",
+                    "on-background": "#ebe0dc",
+                    "tertiary-fixed-dim": "#ffba20",
+                    "outline": "#8a947b",
+                    "on-secondary-container": "#ffebf0",
+                    "on-surface-variant": "#bfcaaf",
+                    "surface-bright": "#3e3835",
+                    "secondary-fixed-dim": "#ffb0ce",
+                    "tertiary-container": "#ffc451",
+                    "tertiary-fixed": "#ffdea8",
+                    "primary-fixed-dim": "#7fde00",
+                    "surface-container-high": "#2e2927",
+                    "surface-container-low": "#201a18",
+                    "on-error": "#690005",
+                    "on-tertiary-fixed-variant": "#5e4200",
+                    "error": "#ffb4ab",
+                    "secondary-fixed": "#ffd9e5",
+                    "inverse-surface": "#ebe0dc",
+                    "on-error-container": "#ffdad6",
+                    "error-container": "#93000a",
+                    "background": "#171210",
+                    "secondary-container": "#d20080",
+                    "on-primary-container": "#356200",
+                    "inverse-on-surface": "#352f2d",
+                    "surface-dim": "#171210",
+                    "surface": "#171210",
+                    "on-surface": "#ebe0dc",
+                    "on-primary-fixed": "#0e2000",
+                    "tertiary": "#ffe7c1",
+                    "on-tertiary-container": "#735100",
+                    "secondary": "#ffb0ce",
+                    "surface-container": "#241e1c",
+                    "surface-container-lowest": "#120d0b",
+                    "surface-tint": "#7fde00",
+                    "primary-container": "#84e600",
+                    "on-tertiary-fixed": "#271900"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "container-padding": "20px",
+                    "sm": "8px",
+                    "xl": "32px",
+                    "card-gap": "12px",
+                    "lg": "24px",
+                    "md": "16px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Manrope"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Manrope"],
+                    "display": ["Manrope"],
+                    "label-sm": ["Inter"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["15px", {"lineHeight": "22px", "fontWeight": "400"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "display": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["17px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #050505;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .active-day-glow {
+            box-shadow: 0 0 15px rgba(179, 255, 106, 0.2);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface border-b border-outline-variant flex justify-between items-center px-container-padding h-14 w-full">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary dark:text-primary">clinical_notes</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-primary tracking-tight">Mira</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-variant p-2 rounded-full transition-colors active:scale-95">security</button>
+</div>
+</header>
+<main class="pt-14 pb-32 px-container-padding max-w-md mx-auto">
+<!-- Day Selector -->
+<section class="mt-lg">
+<div class="flex justify-between items-end mb-md">
+<h2 class="font-headline-md text-headline-md-mobile text-on-surface">Август 2024</h2>
+<span class="font-label-md text-label-md text-on-surface-variant">Сегодня</span>
+</div>
+<div class="flex overflow-x-auto gap-sm py-xs custom-scrollbar">
+<!-- Day Items -->
+<button class="flex flex-col items-center justify-center min-w-[56px] h-20 rounded-xl bg-surface-container border border-outline-variant transition-all active:scale-90">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1">ПН</span>
+<span class="font-headline-md text-headline-md text-on-surface">19</span>
+<div class="w-1 h-1 bg-primary rounded-full mt-1"></div>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[56px] h-20 rounded-xl bg-surface-container border border-outline-variant transition-all active:scale-90">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1">ВТ</span>
+<span class="font-headline-md text-headline-md text-on-surface">20</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[56px] h-20 rounded-xl bg-primary active-day-glow transition-all active:scale-90">
+<span class="font-label-sm text-label-sm text-on-primary mb-1">СР</span>
+<span class="font-headline-md text-headline-md text-on-primary">21</span>
+<div class="w-1 h-1 bg-on-primary rounded-full mt-1"></div>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[56px] h-20 rounded-xl bg-surface-container border border-outline-variant transition-all active:scale-90">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1">ЧТ</span>
+<span class="font-headline-md text-headline-md text-on-surface">22</span>
+<div class="w-1 h-1 bg-primary rounded-full mt-1"></div>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[56px] h-20 rounded-xl bg-surface-container border border-outline-variant transition-all active:scale-90">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1">ПТ</span>
+<span class="font-headline-md text-headline-md text-on-surface">23</span>
+</button>
+<button class="flex flex-col items-center justify-center min-w-[56px] h-20 rounded-xl bg-surface-container border border-outline-variant transition-all active:scale-90">
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1">СБ</span>
+<span class="font-headline-md text-headline-md text-on-surface">24</span>
+</button>
+</div>
+</section>
+<!-- Summary Section -->
+<section class="mt-xl">
+<div class="p-md bg-surface-container rounded-xl border border-outline-variant">
+<div class="flex justify-between items-start mb-md">
+<div>
+<p class="font-label-md text-label-md text-primary uppercase tracking-wider">Фаза: Лютеиновая</p>
+<h3 class="font-headline-md text-headline-md-mobile text-on-surface">День цикла: 21</h3>
+</div>
+<span class="material-symbols-outlined text-secondary-container" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div class="flex flex-wrap gap-sm">
+<div class="px-sm py-1 bg-surface-container-high rounded-full border border-outline-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-primary">water_drop</span>
+<span class="font-label-sm text-label-sm text-on-surface">Скудные</span>
+</div>
+<div class="px-sm py-1 bg-surface-container-high rounded-full border border-outline-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">mood</span>
+<span class="font-label-sm text-label-sm text-on-surface">Спокойствие</span>
+</div>
+<div class="px-sm py-1 bg-surface-container-high rounded-full border border-outline-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-error">bolt</span>
+<span class="font-label-sm text-label-sm text-on-surface">Усталость</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Tracking Categories Grid -->
+<section class="mt-xl">
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-headline-md text-headline-md-mobile text-on-surface">Симптомы</h2>
+<button class="text-primary font-label-md text-label-md">Изм. сетку</button>
+</div>
+<div class="bento-grid">
+<!-- Period -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">water_full</span>
+<span class="font-label-md text-label-md text-on-surface">Месячные</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Интенсивность</span>
+</button>
+<!-- Pain -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-error">personal_injury</span>
+<span class="font-label-md text-label-md text-on-surface">Боль</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Спазмы, мигрень</span>
+</button>
+<!-- Symptoms -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-primary">healing</span>
+<span class="font-label-md text-label-md text-on-surface">Симптомы</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Акне, вздутие...</span>
+</button>
+<!-- Mood -->
+<button class="flex flex-col p-md bg-secondary-container/10 border border-secondary-container rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">sentiment_satisfied</span>
+<span class="font-label-md text-label-md text-on-surface">Настроение</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">1 запись сегодня</span>
+</button>
+<!-- Energy -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-tertiary-fixed-dim">bolt</span>
+<span class="font-label-md text-label-md text-on-surface">Энергия</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Уровень: Низкий</span>
+</button>
+<!-- Sleep -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-primary">bedtime</span>
+<span class="font-label-md text-label-md text-on-surface">Сон</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Время и качество</span>
+</button>
+<!-- Medications -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left">
+<span class="material-symbols-outlined text-primary">medication</span>
+<span class="font-label-md text-label-md text-on-surface">Лекарства</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Витамины, таблетки</span>
+</button>
+<!-- Personal Note -->
+<button class="flex flex-col p-md bg-surface-container border border-outline-variant rounded-xl items-start gap-sm transition-all active:scale-95 text-left col-span-1">
+<span class="material-symbols-outlined text-on-surface-variant">edit_note</span>
+<span class="font-label-md text-label-md text-on-surface">Заметки</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Приватная запись</span>
+</button>
+</div>
+</section>
+<!-- Personal Note & Privacy Hint -->
+<section class="mt-xl mb-xl">
+<div class="relative">
+<textarea class="w-full bg-surface-container-low border border-outline-variant rounded-xl p-md font-body-md text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary focus:outline-none min-h-[120px]" placeholder="Как вы себя чувствуете в целом?"></textarea>
+<div class="absolute bottom-3 right-3 flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+<span class="font-label-sm text-label-sm">Зашифровано</span>
+</div>
+</div>
+<div class="mt-sm flex items-start gap-sm px-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">info</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Личные заметки приватны и не попадают в отчёт врачу по умолчанию.</p>
+</div>
+</section>
+<!-- Action Area -->
+<div class="flex flex-col gap-md">
+<button class="w-full py-md bg-primary text-on-primary font-headline-md rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
+                Сохранить
+            </button>
+<button class="w-full py-md border border-outline-variant text-on-surface-variant font-label-md rounded-xl transition-all active:bg-surface-variant">
+                Сбросить всё
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container dark:bg-surface-container border-t border-outline-variant flex justify-around items-center h-16 w-full px-xs">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-label-sm text-label-sm">Сегодня</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary font-bold hover:opacity-80 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit_note</span>
+<span class="font-label-sm text-label-sm">Дневник</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">self_care</span>
+<span class="font-label-sm text-label-sm">Уход</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-sm text-label-sm">Анализ</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined">description</span>
+<span class="font-label-sm text-label-sm">Отчёт</span>
+</button>
+</nav>
+<script>
+        // Simple micro-interaction for tapping cards
+        document.querySelectorAll('.bento-grid button').forEach(button => {
+            button.addEventListener('click', function() {
+                this.classList.toggle('bg-primary-container');
+                this.classList.toggle('text-on-primary-container');
+                const icon = this.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    const isFilled = icon.style.fontVariationSettings.includes("'FILL' 1");
+                    icon.style.fontVariationSettings = isFilled ? "'FILL' 0" : "'FILL' 1";
+                }
+            });
+        });
+
+        // Horizontal scroll animation for date picker
+        const daySelector = document.querySelector('.custom-scrollbar');
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        daySelector.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - daySelector.offsetLeft;
+            scrollLeft = daySelector.scrollLeft;
+        });
+        daySelector.addEventListener('mouseleave', () => { isDown = false; });
+        daySelector.addEventListener('mouseup', () => { isDown = false; });
+        daySelector.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - daySelector.offsetLeft;
+            const walk = (x - startX) * 2;
+            daySelector.scrollLeft = scrollLeft - walk;
+        });
+    </script>
+</body></html>

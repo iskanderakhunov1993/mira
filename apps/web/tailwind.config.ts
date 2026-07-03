@@ -11,24 +11,28 @@ const config: Config = {
     extend: {
       colors: {
         mira: {
-          bg: "#FBF6F3",
-          card: "#FFFFFF",
-          text: "#31283E",
-          muted: "#92889D",
-          primary: "#9273B6",
-          "primary-deep": "#765997",
-          cycle: "#D97996",
-          success: "#78A887",
-          warm: "#F1C7A7",
-          lavender: "#DCCFEA",
-          "lavender-light": "#F5EFFA",
-          rose: "#ECA8BC",
-          "rose-light": "#FFF0F5",
-          ink: "#31283E"
+          bg: "#050505",
+          card: "#1D1816",
+          text: "#F5F0ED",
+          muted: "#B7AAA4",
+          primary: "#B3FF6A",
+          "primary-deep": "#84E600",
+          cycle: "#F9359E",
+          success: "#84E600",
+          warm: "#FFC451",
+          lavender: "#404A35",
+          "lavender-light": "#2A2523",
+          rose: "#FFB0CE",
+          "rose-light": "#302027",
+          ink: "#F5F0ED",
+          surface: "#1D1816",
+          inset: "#2A2523",
+          border: "#2E2826"
         }
       },
       fontFamily: {
-        sans: ["var(--font-jakarta)", "Inter", "system-ui", "sans-serif"]
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-manrope)", "var(--font-inter)", "system-ui", "sans-serif"]
       },
       boxShadow: {
         soft: "0 10px 36px rgba(61, 43, 72, 0.07), 0 0 0 1px rgba(220, 207, 234, 0.14)",

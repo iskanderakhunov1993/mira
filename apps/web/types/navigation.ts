@@ -1,4 +1,4 @@
-export type TabType = "today" | "care" | "track" | "analytics" | "content" | "profile";
+export type TabType = "today" | "care" | "track" | "analytics" | "report" | "profile";
 
 export interface TabConfig {
   id: TabType;
@@ -8,9 +8,9 @@ export interface TabConfig {
 
 export const TABS: TabConfig[] = [
   { id: "today", label: "Сегодня", path: "/today" },
-  { id: "care", label: "Забота", path: "/care" },
-  { id: "track", label: "Отслеживать", path: "/care" },
-  { id: "analytics", label: "Анализ", path: "/" },
-  { id: "content", label: "Контент", path: "/content" },
+  { id: "care", label: "Контекст", path: "/care" },
+  { id: "track", label: "Отслеживать", path: "/track" },
+  { id: "analytics", label: "Анализ", path: "/analysis" },
+  { id: "report", label: "Отчёт", path: "/report" },
   { id: "profile", label: "Профиль", path: "/profile" },
 ];

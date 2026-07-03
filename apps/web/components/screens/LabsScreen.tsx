@@ -48,7 +48,7 @@ export function LabsScreen({ data, persist, navigate }: ScreenProps) {
         </Card>
 
         <Card className="p-4">
-          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8E8EE] text-mira-cycle">
+          <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[#F1ECF8] text-mira-cycle">
             <AlertTriangle className="h-4 w-4" />
           </div>
           <p className="text-2xl font-bold text-mira-text">{abnormalLabs.length}</p>

@@ -117,7 +117,7 @@ function MiraWidgetComponent({
             cy="60"
             r={circle.radius}
             fill="none"
-            stroke="#E872A0"
+            stroke="#8B6FB3"
             strokeWidth="8"
             strokeDasharray={`${circle.dash} ${circle.gap}`}
             strokeLinecap="round"
@@ -151,7 +151,7 @@ function MiraWidgetComponent({
           из {totalDays} дней отмечено {config.statEmoji}
         </p>
         {typeof streakDays === "number" && streakDays > 0 && (
-          <p className="mt-1 text-xs font-black text-[#E872A0]">серия {streakDays} дня</p>
+          <p className="mt-1 text-xs font-black text-[#8B6FB3]">серия {streakDays} дня</p>
         )}
         <p className="mt-3 text-base font-black text-[#1A1A1A]">{config.title}</p>
         <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">{config.description}</p>

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira | Track Health</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#404a35",
+                    "on-secondary-fixed": "#3e0022",
+                    "primary": "#b3ff6a",
+                    "outline": "#8a947b",
+                    "surface-container": "#241e1c",
+                    "surface-container-lowest": "#120d0b",
+                    "secondary-fixed-dim": "#ffb0ce",
+                    "on-error-container": "#ffdad6",
+                    "error-container": "#93000a",
+                    "on-error": "#690005",
+                    "primary-container": "#84e600",
+                    "on-primary-container": "#356200",
+                    "surface-container-low": "#201a18",
+                    "surface": "#171210",
+                    "inverse-on-surface": "#352f2d",
+                    "inverse-surface": "#ebe0dc",
+                    "on-primary-fixed": "#0e2000",
+                    "on-background": "#ebe0dc",
+                    "tertiary-fixed": "#ffdea8",
+                    "on-primary-fixed-variant": "#2a5000",
+                    "surface-container-highest": "#3a3331",
+                    "on-tertiary-container": "#735100",
+                    "on-tertiary": "#412d00",
+                    "surface-bright": "#3e3835",
+                    "on-tertiary-fixed-variant": "#5e4200",
+                    "background": "#171210",
+                    "surface-container-high": "#2e2927",
+                    "tertiary": "#ffe7c1",
+                    "inverse-primary": "#3a6a00",
+                    "secondary-fixed": "#ffd9e5",
+                    "tertiary-container": "#ffc451",
+                    "secondary": "#ffb0ce",
+                    "on-secondary-fixed-variant": "#8c0054",
+                    "on-tertiary-fixed": "#271900",
+                    "primary-fixed-dim": "#7fde00",
+                    "surface-dim": "#171210",
+                    "surface-variant": "#3a3331",
+                    "tertiary-fixed-dim": "#ffba20",
+                    "secondary-container": "#d20080",
+                    "on-secondary-container": "#ffebf0",
+                    "on-primary": "#1c3700",
+                    "error": "#ffb4ab",
+                    "surface-tint": "#7fde00",
+                    "primary-fixed": "#98fc2a",
+                    "on-secondary": "#64003a",
+                    "on-surface-variant": "#bfcaaf",
+                    "on-surface": "#ebe0dc"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "card-gap": "12px",
+                    "container-padding": "20px",
+                    "xs": "4px",
+                    "unit": "4px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "display": ["Manrope"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Manrope"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "display": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["17px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-sm": ["11px", {"lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "500"}],
+                    "body-md": ["15px", {"lineHeight": "22px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #050505;
+            color: #ebe0dc;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .tonal-layer-1 { background-color: #1D1816; border: 1px solid #2E2826; }
+        .tonal-layer-2 { background-color: #2A2523; }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-chip {
+            background-color: #b3ff6a;
+            color: #1c3700;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface border-b border-outline-variant flex justify-between items-center px-container-padding h-14 w-full">
+<div class="flex items-center gap-sm active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="clinical_notes">clinical_notes</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-primary tracking-tight">Mira</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="hover:bg-surface-variant p-sm rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="security">security</span>
+</button>
+</div>
+</header>
+<main class="pt-20 pb-32 px-container-padding max-w-2xl mx-auto space-y-card-gap">
+<!-- Header Info -->
+<div class="mb-lg">
+<p class="font-label-md text-label-md text-primary mb-xs">TUESDAY, OCTOBER 24</p>
+<h2 class="font-headline-md text-headline-md">Daily Log: Track</h2>
+</div>
+<!-- Section 1: Period -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-secondary" data-icon="calendar_today">calendar_today</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Period</h3>
+</div>
+<div class="grid grid-cols-5 gap-sm mb-lg">
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="block">block</span>
+<span class="text-[10px] font-medium">None</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm active-chip rounded-lg border border-transparent transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="water_drop" data-weight="fill">water_drop</span>
+<span class="text-[10px] font-bold">Started</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="cycle">cycle</span>
+<span class="text-[10px] font-medium">Ongoing</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="event_busy">event_busy</span>
+<span class="text-[10px] font-medium">Ended</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="grain">grain</span>
+<span class="text-[10px] font-medium">Spotting</span>
+</button>
+</div>
+<div class="space-y-md border-t border-outline-variant/30 pt-md">
+<p class="font-label-md text-label-md text-on-surface-variant">Flow Intensity</p>
+<div class="tonal-layer-2 p-xs rounded-full flex gap-xs">
+<button class="flex-1 py-xs text-[11px] font-bold rounded-full transition-all">Light</button>
+<button class="flex-1 py-xs text-[11px] font-bold bg-surface-container-highest rounded-full shadow-sm transition-all">Medium</button>
+<button class="flex-1 py-xs text-[11px] font-bold rounded-full transition-all">Heavy</button>
+<button class="flex-1 py-xs text-[11px] font-bold rounded-full transition-all">V. Heavy</button>
+</div>
+<div class="flex gap-md">
+<div class="flex-1">
+<label class="block text-[11px] text-on-surface-variant mb-xs ml-1">Clots</label>
+<select class="w-full bg-surface-container-highest border-none rounded-lg text-body-md focus:ring-1 focus:ring-primary h-10 px-sm">
+<option>None</option>
+<option>Small</option>
+<option>Large</option>
+</select>
+</div>
+<div class="flex-1">
+<label class="block text-[11px] text-on-surface-variant mb-xs ml-1">Color</label>
+<select class="w-full bg-surface-container-highest border-none rounded-lg text-body-md focus:ring-1 focus:ring-primary h-10 px-sm">
+<option>Bright Red</option>
+<option>Dark Red</option>
+<option>Brown</option>
+<option>Pinkish</option>
+</select>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: Pain -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex justify-between items-center mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="personal_injury">personal_injury</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Pain Analysis</h3>
+</div>
+<span class="text-xs bg-error/20 text-error px-sm py-xs rounded-full border border-error/30 font-medium">Scale: Moderate</span>
+</div>
+<div class="mb-lg px-xs">
+<input class="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" max="10" min="0" type="range" value="4"/>
+<div class="flex justify-between mt-xs text-[10px] text-on-surface-variant font-medium">
+<span>NONE</span>
+<span>VERY SEVERE</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-sm mb-lg">
+<button class="flex items-center gap-sm p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline">
+<span class="material-symbols-outlined text-sm" data-icon="person_apron">person_apron</span>
+<span class="text-[11px]">Lower Belly</span>
+</button>
+<button class="flex items-center gap-sm p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline active-chip">
+<span class="material-symbols-outlined text-sm" data-icon="back_hand">back_hand</span>
+<span class="text-[11px]">Back</span>
+</button>
+<button class="flex items-center gap-sm p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline">
+<span class="material-symbols-outlined text-sm" data-icon="face">face</span>
+<span class="text-[11px]">Head</span>
+</button>
+<button class="flex items-center gap-sm p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline">
+<span class="material-symbols-outlined text-sm" data-icon="opacity">opacity</span>
+<span class="text-[11px]">Breasts</span>
+</button>
+<button class="flex items-center gap-sm p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline">
+<span class="material-symbols-outlined text-sm" data-icon="target">target</span>
+<span class="text-[11px]">Ovulation</span>
+</button>
+<button class="flex items-center gap-sm p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline">
+<span class="material-symbols-outlined text-sm" data-icon="more_horiz">more_horiz</span>
+<span class="text-[11px]">Other</span>
+</button>
+</div>
+<div class="tonal-layer-2 p-md rounded-xl space-y-md">
+<p class="font-label-md text-label-md text-on-surface-variant">Daily Impact</p>
+<div class="flex flex-wrap gap-sm">
+<span class="px-md py-sm bg-surface-container-highest border border-outline-variant rounded-full text-[11px] cursor-pointer hover:bg-surface-variant transition-colors">None</span>
+<span class="px-md py-sm bg-surface-container-highest border border-outline-variant rounded-full text-[11px] cursor-pointer hover:bg-surface-variant transition-colors active-chip border-primary">Minor</span>
+<span class="px-md py-sm bg-surface-container-highest border border-outline-variant rounded-full text-[11px] cursor-pointer hover:bg-surface-variant transition-colors">Interferes with Work</span>
+<span class="px-md py-sm bg-surface-container-highest border border-outline-variant rounded-full text-[11px] cursor-pointer hover:bg-surface-variant transition-colors">Cancelled Plans</span>
+</div>
+</div>
+<!-- Safety Alerts -->
+<div class="mt-md space-y-xs">
+<div class="flex items-center gap-sm p-sm bg-error-container/10 border border-error/20 rounded-lg">
+<span class="material-symbols-outlined text-error text-[18px]" data-icon="warning">warning</span>
+<p class="text-[10px] text-error font-medium">Log sharp pain, fainting, or severe nausea as urgent alerts.</p>
+</div>
+</div>
+</section>
+<!-- Section 3: Symptoms -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex items-center justify-between mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="list_alt">list_alt</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Symptoms</h3>
+</div>
+<button class="text-primary text-[11px] font-bold flex items-center">EDIT ALL <span class="material-symbols-outlined text-[14px]" data-icon="chevron_right">chevron_right</span></button>
+</div>
+<div class="grid grid-cols-4 gap-sm">
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-primary bg-primary/10">
+<span class="material-symbols-outlined text-primary" data-icon="bubbles">bubbles</span>
+<span class="text-[10px] font-medium text-center">Bloating</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="sick">sick</span>
+<span class="text-[10px] font-medium text-center">Nausea</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="neurology">neurology</span>
+<span class="text-[10px] font-medium text-center">Headache</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="face_retouching_natural">face_retouching_natural</span>
+<span class="text-[10px] font-medium text-center">Acne</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="expand">expand</span>
+<span class="text-[10px] font-medium text-center">Swelling</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="water">water</span>
+<span class="text-[10px] font-medium text-center">Discharge</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="restaurant">restaurant</span>
+<span class="text-[10px] font-medium text-center">Cravings</span>
+</div>
+<div class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="waves">waves</span>
+<span class="text-[10px] font-medium text-center">Hot Flash</span>
+</div>
+</div>
+</section>
+<!-- Section 4: Mood & Energy -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-secondary" data-icon="sentiment_satisfied">sentiment_satisfied</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Mood &amp; Energy</h3>
+</div>
+<div class="overflow-x-auto custom-scrollbar flex gap-sm mb-lg">
+<button class="min-w-[70px] flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="mood">mood</span>
+<span class="text-[10px]">Calm</span>
+</button>
+<button class="min-w-[70px] flex flex-col items-center gap-xs p-sm active-chip rounded-lg">
+<span class="material-symbols-outlined" data-icon="sentiment_very_satisfied">sentiment_very_satisfied</span>
+<span class="text-[10px]">Good</span>
+</button>
+<button class="min-w-[70px] flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="sentiment_dissatisfied">sentiment_dissatisfied</span>
+<span class="text-[10px]">Sad</span>
+</button>
+<button class="min-w-[70px] flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="text-[10px]">Anxious</span>
+</button>
+<button class="min-w-[70px] flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="mood_bad">mood_bad</span>
+<span class="text-[10px]">Irritated</span>
+</button>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-label-md text-label-md text-on-surface-variant w-14">Energy</span>
+<div class="flex-1 flex gap-xs">
+<button class="flex-1 py-xs text-[10px] font-bold border border-outline-variant rounded-lg">None</button>
+<button class="flex-1 py-xs text-[10px] font-bold border border-outline-variant rounded-lg">Low</button>
+<button class="flex-1 py-xs text-[10px] font-bold bg-primary text-on-primary rounded-lg">Normal</button>
+<button class="flex-1 py-xs text-[10px] font-bold border border-outline-variant rounded-lg">High</button>
+</div>
+</div>
+</section>
+<!-- Section 5: Sleep -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex justify-between items-center mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="bedtime">bedtime</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Sleep Quality</h3>
+</div>
+<div class="flex items-center gap-xs text-primary font-bold text-headline-md">
+<span>7.5</span>
+<span class="text-xs font-medium opacity-60">hrs</span>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-sm mb-lg">
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="sentiment_very_dissatisfied">sentiment_very_dissatisfied</span>
+<span class="text-[10px]">&lt;5h</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="sentiment_dissatisfied">sentiment_dissatisfied</span>
+<span class="text-[10px]">5-6h</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm active-chip rounded-lg">
+<span class="material-symbols-outlined" data-icon="sentiment_satisfied">sentiment_satisfied</span>
+<span class="text-[10px]">7-8h</span>
+</button>
+<button class="flex flex-col items-center gap-xs p-sm tonal-layer-2 rounded-lg border border-transparent">
+<span class="material-symbols-outlined" data-icon="sentiment_very_satisfied">sentiment_very_satisfied</span>
+<span class="text-[10px]">9+h</span>
+</button>
+</div>
+</section>
+<!-- Section 6: Intimacy & Tests -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex justify-between items-center mb-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="lock">lock</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Intimacy &amp; Tests</h3>
+</div>
+<span class="text-[10px] text-on-surface-variant italic">Private by default</span>
+</div>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline-variant cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="favorite">favorite</span>
+<span class="text-body-md">Sexual Activity</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="add">add</span>
+</div>
+<div class="flex items-center justify-between p-sm tonal-layer-2 rounded-lg border border-transparent hover:border-outline-variant cursor-pointer">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="biotech">biotech</span>
+<span class="text-body-md">Tests (LH, HCG)</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="add">add</span>
+</div>
+</div>
+</section>
+<!-- Section 7: Personal Note -->
+<section class="tonal-layer-1 rounded-xl p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="sticky_note_2">sticky_note_2</span>
+<h3 class="font-label-md text-label-md uppercase tracking-wider opacity-80">Personal Notes</h3>
+</div>
+<textarea class="w-full bg-surface-container-highest border-none rounded-xl text-body-md focus:ring-1 focus:ring-primary p-md min-h-[100px] placeholder:text-on-surface-variant/40 resize-none" placeholder="How was your day? Log specific details for your doctor..."></textarea>
+<div class="mt-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant" data-icon="shield">shield</span>
+<p class="text-[10px] text-on-surface-variant">Your health notes are encrypted and never shared with third parties.</p>
+</div>
+</section>
+<!-- Save Button -->
+<button class="w-full py-lg bg-primary text-on-primary font-headline-md rounded-2xl shadow-xl shadow-primary/10 active:scale-[0.98] transition-transform">
+            Complete Today's Log
+        </button>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container dark:bg-surface-container border-t border-outline-variant flex justify-around items-center h-16 px-xs">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+<span class="font-label-sm text-label-sm">Today</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary font-bold hover:opacity-80 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="edit_note" data-weight="fill">edit_note</span>
+<span class="font-label-sm text-label-sm">Track</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="self_care">self_care</span>
+<span class="font-label-sm text-label-sm">Care</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-sm text-label-sm">Analysis</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:opacity-80 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-sm text-label-sm">Report</span>
+</a>
+</nav>
+</body></html>
