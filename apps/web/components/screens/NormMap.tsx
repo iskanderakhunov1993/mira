@@ -14,7 +14,7 @@ const statusColors: Record<string, string> = {
 
 const categoryColors: Record<string, string> = {
   cycle: "from-mira-cycle to-mira-primary",
-  pain: "from-[#C47E9B] to-[#C4A07E]",
+  pain: "from-[#7F6AAD] to-[#C4A07E]",
   sleep: "from-[#7E8EC4] to-[#9B8EC4]",
   mood: "from-[#9B8EC4] to-[#B8A5D8]",
   energy: "from-[#C4B07E] to-[#C4A07E]",

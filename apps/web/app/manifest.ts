@@ -4,11 +4,11 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "MIRA — женское здоровье",
     short_name: "MIRA",
-    description: "Твой персональный помощник в мире женского здоровья",
+    description: "Приватный дневник цикла, симптомов и отчёт врачу",
     start_url: "/",
     display: "standalone",
     background_color: "#FAF8F5",
-    theme_color: "#E872A0",
+    theme_color: "#8B6FB3",
     lang: "ru",
     orientation: "portrait",
     categories: ["health", "lifestyle"],

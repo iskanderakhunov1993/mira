@@ -1,5 +1,5 @@
-import { ProfilePage } from "@/components/screens/ProfilePage";
+import { ProfileRoute } from "./ProfileRoute";
 
 export default function Page() {
-  return <ProfilePage />;
+  return <ProfileRoute />;
 }

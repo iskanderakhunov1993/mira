@@ -17,7 +17,7 @@ export default function NotFound() {
         </p>
         <Button
           type="button"
-          className="mt-6 w-full rounded-2xl bg-[#E872A0] text-white hover:bg-[#D95F8E]"
+          className="mt-6 w-full rounded-2xl bg-[#8B6FB3] text-white hover:bg-[#74599A]"
           onClick={() => router.push("/today")}
         >
           🌸 На главную

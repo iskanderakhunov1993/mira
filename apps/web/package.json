@@ -6,6 +6,7 @@
     "dev": "next dev -p 4173",
     "build": "next build",
     "lint": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
     "start": "next start"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

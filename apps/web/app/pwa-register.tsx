@@ -7,6 +7,18 @@ export function PwaRegister() {
     let interval: number | undefined;
 
     if ("serviceWorker" in navigator) {
+      if (process.env.NODE_ENV === "development") {
+        navigator.serviceWorker.getRegistrations()
+          .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+          .catch(() => undefined);
+        if ("caches" in window) {
+          caches.keys()
+            .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+            .catch(() => undefined);
+        }
+        return undefined;
+      }
+
       navigator.serviceWorker.register("/sw.js").then((registration) => {
         const notifyUpdate = () => {
           window.dispatchEvent(new CustomEvent("mira-sw-update", { detail: registration }));

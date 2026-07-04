@@ -1,5 +1,5 @@
-import { TodayPage } from "@/components/screens/TodayPage";
+import { TodayRoute } from "./TodayRoute";
 
 export default function Page() {
-  return <TodayPage />;
+  return <TodayRoute />;
 }

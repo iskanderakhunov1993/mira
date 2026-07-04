@@ -54,8 +54,8 @@ export function DayPrediction({ data }: { data: MiraLocalData }) {
             </div>
           )}
           {prediction.pain && (
-            <div className="flex items-center gap-1.5 rounded-full bg-[#F5E0EA] px-2.5 py-1">
-              <AlertCircle className="h-3 w-3 text-[#C47E9B]" />
+            <div className="flex items-center gap-1.5 rounded-full bg-[#F4F0FA] px-2.5 py-1">
+              <AlertCircle className="h-3 w-3 text-[#7F6AAD]" />
               <span className="text-[11px] font-semibold text-[#A45E7B]">возможна боль</span>
             </div>
           )}
