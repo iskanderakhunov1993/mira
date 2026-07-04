@@ -45,7 +45,7 @@ export function RouterShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mira-stitch-page min-h-screen bg-transparent pb-24">
+    <div className="mira-app-page min-h-screen bg-transparent pb-24">
       {children}
 
       <AppTabBar />

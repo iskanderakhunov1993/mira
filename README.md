@@ -39,7 +39,7 @@ mira/
 │   ├── components/
 │   │   ├── layout/        # RouterShell and tab navigation
 │   │   ├── screens/       # All screen components
-│   │   └── ui/            # Button, Card, Badge, MiraLogo
+│   │   └── ui/            # Button, Card, Badge, Tabs
 │   ├── lib/
 │   │   ├── types.ts       # Local-first health data types
 │   │   ├── store.ts       # localStorage CRUD + cycle calculations

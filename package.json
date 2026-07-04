@@ -9,14 +9,6 @@
     "dev": "npm run dev --workspace=@mira/web",
     "build": "npm run build --workspace=@mira/web",
     "lint": "npm run lint --workspace=@mira/web",
-    "start": "npm run start --workspace=@mira/web",
-    "stitch:fetch": "node scripts/fetch-stitch-assets.mjs",
-    "stitch:fetch:sources": "node scripts/fetch-stitch-assets.mjs --sources",
-    "stitch:fetch:ru": "node scripts/fetch-stitch-assets.mjs --project stitch/project.ru.json --out stitch/ru",
-    "stitch:fetch:ru:sources": "node scripts/fetch-stitch-assets.mjs --sources --project stitch/project.ru.json --out stitch/ru stitch/sources.ru.json",
-    "stitch:mcp": "node scripts/stitch-mcp-server.mjs"
-  },
-  "devDependencies": {
-    "@google/stitch-sdk": "^0.3.5"
+    "start": "npm run start --workspace=@mira/web"
   }
 }

@@ -1128,7 +1128,7 @@ function ReportTopHeader({ entriesCount }: { entriesCount: number }) {
   return (
     <div className="mb-6 print:hidden">
       <div className="mb-5 flex items-center justify-between border-b border-[#2E2826] pb-4">
-        <h1 className="mira-stitch-title text-[34px] font-black leading-none tracking-tight text-[#B3FF6A]">Mira</h1>
+        <h1 className="mira-app-title text-[34px] font-black leading-none tracking-tight text-[#B3FF6A]">Mira</h1>
         <span className="rounded-full border border-[#404A35] bg-[#1D1816] px-3 py-1.5 text-xs font-black text-[#B3FF6A]">
           {entriesCount} дней
         </span>

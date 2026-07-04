@@ -203,109 +203,109 @@ body {
   box-shadow: none;
 }
 
-.mira-stitch-card {
+.mira-app-card {
   border: 1px solid #2E2826;
   background: #1D1816;
 }
 
-.mira-stitch-inset {
+.mira-app-inset {
   border: 1px solid #342D2A;
   background: #2A2523;
 }
 
-.mira-stitch-title {
+.mira-app-title {
   font-family: var(--font-manrope), var(--font-inter), system-ui, sans-serif;
 }
 
-.mira-stitch-page {
+.mira-app-page {
   min-height: 100%;
   color: #F5F0ED;
 }
 
-.mira-stitch-page .mira-card,
-.mira-stitch-page .mira-card-strong,
-.mira-stitch-page .card,
-.mira-stitch-page [class*="bg-white"],
-.mira-stitch-page [class*="bg-\[\#FFFFFF\]"],
-.mira-stitch-page [class*="bg-\[\#FAF8F5\]"],
-.mira-stitch-page [class*="bg-\[\#F4F0FA\]"],
-.mira-stitch-page [class*="bg-\[\#F3F3F3\]"],
-.mira-stitch-page [class*="bg-\[\#FAFBFC\]"] {
+.mira-app-page .mira-card,
+.mira-app-page .mira-card-strong,
+.mira-app-page .card,
+.mira-app-page [class*="bg-white"],
+.mira-app-page [class*="bg-\[\#FFFFFF\]"],
+.mira-app-page [class*="bg-\[\#FAF8F5\]"],
+.mira-app-page [class*="bg-\[\#F4F0FA\]"],
+.mira-app-page [class*="bg-\[\#F3F3F3\]"],
+.mira-app-page [class*="bg-\[\#FAFBFC\]"] {
   border-color: #2E2826 !important;
   background: #1D1816 !important;
   color: #F5F0ED !important;
   box-shadow: none !important;
 }
 
-.mira-stitch-page [class*="bg-\[\#2A2523\]"],
-.mira-stitch-page [class*="bg-mira-bg"],
-.mira-stitch-page [class*="bg-mira-lavender-light"],
-.mira-stitch-page [class*="bg-\[\#F1E9FF\]"],
-.mira-stitch-page [class*="bg-\[\#F1ECF8\]"],
-.mira-stitch-page [class*="bg-\[\#E5E5E5\]"],
-.mira-stitch-page [class*="bg-\[\#ECEEF2\]"] {
+.mira-app-page [class*="bg-\[\#2A2523\]"],
+.mira-app-page [class*="bg-mira-bg"],
+.mira-app-page [class*="bg-mira-lavender-light"],
+.mira-app-page [class*="bg-\[\#F1E9FF\]"],
+.mira-app-page [class*="bg-\[\#F1ECF8\]"],
+.mira-app-page [class*="bg-\[\#E5E5E5\]"],
+.mira-app-page [class*="bg-\[\#ECEEF2\]"] {
   border-color: #342D2A !important;
   background: #2A2523 !important;
   color: #F5F0ED !important;
 }
 
-.mira-stitch-page [class*="text-\[\#1A1A1A\]"],
-.mira-stitch-page [class*="text-mira-text"],
-.mira-stitch-page [class*="text-\[\#262235\]"] {
+.mira-app-page [class*="text-\[\#1A1A1A\]"],
+.mira-app-page [class*="text-mira-text"],
+.mira-app-page [class*="text-\[\#262235\]"] {
   color: #F5F0ED !important;
 }
 
-.mira-stitch-page [class*="text-\[\#8E8E93\]"],
-.mira-stitch-page [class*="text-mira-muted"],
-.mira-stitch-page [class*="text-\[\#A8A8A8\]"],
-.mira-stitch-page [class*="text-\[\#B8B8B8\]"] {
+.mira-app-page [class*="text-\[\#8E8E93\]"],
+.mira-app-page [class*="text-mira-muted"],
+.mira-app-page [class*="text-\[\#A8A8A8\]"],
+.mira-app-page [class*="text-\[\#B8B8B8\]"] {
   color: #B7AAA4 !important;
 }
 
-.mira-stitch-page [class*="border-\[\#EFEFEF\]"],
-.mira-stitch-page [class*="border-\[\#DDD2EA\]"],
-.mira-stitch-page [class*="border-mira-lavender"] {
+.mira-app-page [class*="border-\[\#EFEFEF\]"],
+.mira-app-page [class*="border-\[\#DDD2EA\]"],
+.mira-app-page [class*="border-mira-lavender"] {
   border-color: #342D2A !important;
 }
 
-.mira-stitch-page [class~="bg-[#84E600]"],
-.mira-stitch-page [class~="bg-mira-primary"] {
+.mira-app-page [class~="bg-[#84E600]"],
+.mira-app-page [class~="bg-mira-primary"] {
   background: #84E600 !important;
   color: #11100F !important;
 }
 
-.mira-stitch-page [class~="bg-[#8B6FB3]"],
-.mira-stitch-page [class~="bg-[#7C5FA8]"] {
+.mira-app-page [class~="bg-[#8B6FB3]"],
+.mira-app-page [class~="bg-[#7C5FA8]"] {
   background: #F9359E !important;
   color: #FFFFFF !important;
 }
 
-.mira-stitch-page [class*="bg-\[\#FFF0F0\]"],
-.mira-stitch-page [class*="bg-red-50"] {
+.mira-app-page [class*="bg-\[\#FFF0F0\]"],
+.mira-app-page [class*="bg-red-50"] {
   border-color: rgba(255, 107, 107, 0.32) !important;
   background: #33201F !important;
   color: #F5F0ED !important;
 }
 
-.mira-stitch-page [class*="bg-\[\#FFF7DE\]"],
-.mira-stitch-page [class*="bg-\[\#EDFAF1\]"],
-.mira-stitch-page [class*="bg-\[\#E0F5E8\]"],
-.mira-stitch-page [class*="bg-\[\#E0F7F9\]"] {
+.mira-app-page [class*="bg-\[\#FFF7DE\]"],
+.mira-app-page [class*="bg-\[\#EDFAF1\]"],
+.mira-app-page [class*="bg-\[\#E0F5E8\]"],
+.mira-app-page [class*="bg-\[\#E0F7F9\]"] {
   border-color: #342D2A !important;
   background: #252318 !important;
   color: #F5F0ED !important;
 }
 
-.mira-stitch-page input,
-.mira-stitch-page textarea,
-.mira-stitch-page select {
+.mira-app-page input,
+.mira-app-page textarea,
+.mira-app-page select {
   border-color: #342D2A !important;
   background: #2A2523 !important;
   color: #F5F0ED !important;
 }
 
-.mira-stitch-page input::placeholder,
-.mira-stitch-page textarea::placeholder {
+.mira-app-page input::placeholder,
+.mira-app-page textarea::placeholder {
   color: #8D817B !important;
 }
 
