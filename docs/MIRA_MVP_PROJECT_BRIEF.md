@@ -122,6 +122,7 @@ These features belong in backlog until the core tracking, analysis, report, priv
 - Islamic mode.
 - Labs as a dedicated workflow.
 - AI symptom Q&A.
+- Pain support flow / "Мне больно": redesign as a post-MVP safety feature before exposing it again. Requirements: save pain facts into Track/Report, avoid medication recommendations, reduce activity intensity when pain is reported, show red flags clearly, and use escalation copy such as "consider discussing this with a qualified clinician."
 - AI food/workout assistance.
 - Cloud sync and auth hardening.
 - Native mobile app.

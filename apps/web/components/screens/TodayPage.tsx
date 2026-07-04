@@ -2,15 +2,20 @@
 
 import React, { memo, useMemo, useState } from "react";
 import {
+  Apple,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Droplets,
   Edit3,
+  Heart,
   Info,
+  Minus,
   Plus,
-  Siren,
+  Scale,
   Sparkles,
   TriangleAlert,
+  UserRound,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +54,7 @@ export type TodayData = {
 };
 
 type TodayStatus = ReturnType<typeof getTodayStatus>;
+type PeriodFlow = "none" | "spotting" | "moderate" | "heavy";
 
 type FirstPattern = {
   isReady: boolean;
@@ -61,10 +67,10 @@ type FirstPattern = {
 
 type TodayPageProps = {
   data?: TodayData;
-  onPain?: () => void;
   onPeriod?: () => void;
   onCheckIn?: () => void;
   onAnalyticsCycles?: () => void;
+  onProfile?: () => void;
 };
 
 type CycleHistoryItem = {
@@ -127,6 +133,53 @@ const calendarTone: Record<CalendarDayType, string> = {
 const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,0,0,0.28)]";
 const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
 const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
+const periodFlowOptions: Array<{ value: PeriodFlow; label: string }> = [
+  { value: "none", label: "Нет" },
+  { value: "spotting", label: "Скудные" },
+  { value: "moderate", label: "Умеренные" },
+  { value: "heavy", label: "Обильные" },
+];
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function createEmptyLog(date: string, cycleDay: number): DailyLog {
+  return {
+    date,
+    cycleDay,
+    symptoms: {
+      bleeding: { amount: 0, pads: 0, color: null, clots: null },
+      pain: {
+        level: 0,
+        type: null,
+        location: [],
+        radiation: [],
+        affectedLife: "none",
+        tookPainkiller: false,
+        painkillerHelped: null,
+      },
+      mood: null,
+      energy: null,
+      sleep: { quality: null, hours: null, wokeUp: null, wokeUpReason: null },
+      skin: { acne: false, acneCount: null, dryness: false, oiliness: false, hairLoss: false },
+      libido: null,
+      context: [],
+      note: "",
+    },
+    selfCare: {
+      water: 0,
+      calories: null,
+      protein: null,
+      fats: null,
+      carbs: null,
+      walking: null,
+      workout: null,
+      weight: null,
+      vitamins: { magnesium: false, omega3: false, zinc: false },
+    },
+  };
+}
 
 function SectionCard({ title, children, delay = 0 }: { title?: string; children: React.ReactNode; delay?: number }) {
   return (
@@ -221,14 +274,17 @@ function getTodayStatus(data: TodayData) {
 }
 
 function getWeekStripDays(data: TodayData) {
-  const today = Number.parseInt(data.date, 10) || 1;
+  const now = new Date();
+  const today = now.getDate();
   const weekdays = ["П", "В", "С", "Ч", "П", "С", "В"];
   return Array.from({ length: 7 }, (_, index) => {
     const offset = index - 2;
-    const date = today + offset;
+    const date = new Date(now);
+    date.setDate(now.getDate() + offset);
+    const dayNumber = date.getDate();
     return {
       weekday: index === 2 ? "Сегодня" : weekdays[index],
-      date,
+      date: dayNumber,
       isToday: index === 2,
       isPeriod: index <= 2,
     };
@@ -313,10 +369,10 @@ function CycleDots({ length, periodLength, isCurrent = false, isIrregular = fals
         key={day}
         className={`h-3 w-3 shrink-0 rounded-full ${
           isToday || isPeriod
-            ? "bg-[#7C5FA8]"
+            ? "bg-[#F9359E]"
             : isFertile
-              ? "bg-[#56C9C3]"
-              : "bg-[#E5E5E5]"
+              ? "bg-[#18A7A7]"
+              : "bg-[#3A3431]"
         }`}
       />
     );
@@ -757,22 +813,122 @@ function CircleAction({
 }
 
 function CompactCyclesLink({ summary, onOpenAnalytics }: { summary: CycleSummary; onOpenAnalytics: () => void }) {
+  const rows = [summary.current, ...summary.history.slice(0, 2)];
+
   return (
-    <button
-      type="button"
-      onClick={onOpenAnalytics}
-      className={`mt-4 flex w-full items-center justify-between gap-4 rounded-[22px] border px-5 py-4 text-left transition hover:-translate-y-0.5 active:scale-[0.99] ${darkCardClass}`}
-    >
-      <div className="min-w-0">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8D817B]">Мои циклы</p>
-        <p className="mt-1 truncate text-lg font-black text-[#F5F0ED]">{summary.current.title}</p>
-        <p className="mt-1 truncate text-sm font-bold text-[#8D817B]">История и динамика в аналитике</p>
+    <Card className={`mt-4 overflow-hidden rounded-[22px] p-0 ${darkCardClass}`}>
+      <div className="flex items-center justify-between gap-4 border-b border-[#342D2A] px-5 py-4">
+        <h2 className="text-lg font-black text-[#F5F0ED]">История циклов</h2>
+        <button type="button" className="flex shrink-0 items-center gap-1 text-sm font-bold text-[#B7AAA4]" onClick={onOpenAnalytics}>
+          Смотреть все
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
-      <div className="flex shrink-0 items-center gap-2 rounded-full bg-[#84E600] px-3 py-2 text-sm font-black text-[#11100F]">
-        Открыть
-        <ChevronRight className="h-4 w-4" />
+      <div>
+        {rows.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="w-full border-b border-[#342D2A] px-5 py-4 text-left last:border-b-0 active:bg-[#251F1D]"
+            onClick={onOpenAnalytics}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-base font-black text-[#F5F0ED]">{item.title}</p>
+                <p className="mt-1 text-sm font-semibold text-[#8D817B]">{item.range}</p>
+              </div>
+              <ChevronRight className="h-6 w-6 shrink-0 text-[#8D817B]" />
+            </div>
+            <CycleDots length={item.length} periodLength={item.periodLength} isCurrent={item.isCurrent} isIrregular={item.isIrregular} />
+          </button>
+        ))}
+        {rows.length === 1 && (
+          <div className="px-5 pb-4">
+            <p className="rounded-[16px] bg-[#251F1D] px-4 py-3 text-sm font-semibold text-[#8D817B]">
+              Следующие месячные добавят завершённый цикл в историю.
+            </p>
+          </div>
+        )}
       </div>
-    </button>
+    </Card>
+  );
+}
+
+function CompactCycleDynamics({ summary, onOpenAnalytics }: { summary: CycleSummary; onOpenAnalytics: () => void }) {
+  const pointsSource = [...summary.history].reverse().concat(summary.current).slice(-6);
+  const points = pointsSource.length ? pointsSource : [summary.current];
+  const minValue = 18;
+  const maxValue = 40;
+  const normalMin = 21;
+  const normalMax = 35;
+  const chartLeft = 8;
+  const chartRight = 92;
+  const chartTop = 12;
+  const chartBottom = 78;
+  const toY = (value: number) => chartBottom - ((Math.min(maxValue, Math.max(minValue, value)) - minValue) / (maxValue - minValue)) * (chartBottom - chartTop);
+  const plotted = points.map((item, index) => ({
+    x: chartLeft + (points.length === 1 ? 0 : (index / (points.length - 1)) * (chartRight - chartLeft)),
+    y: toY(item.length),
+    value: item.length,
+    isOutlier: !item.isCurrent && (item.length < normalMin || item.length > normalMax),
+  }));
+  const path = plotted
+    .map((point, index) => {
+      if (index === 0) return `M ${point.x} ${point.y}`;
+      const prev = plotted[index - 1];
+      const midX = (prev.x + point.x) / 2;
+      return `C ${midX} ${prev.y}, ${midX} ${point.y}, ${point.x} ${point.y}`;
+    })
+    .join(" ");
+  const hasOutlier = plotted.some((point) => point.isOutlier);
+
+  return (
+    <Card className={`mt-4 overflow-hidden rounded-[22px] p-0 ${darkCardClass}`}>
+      <div className="flex items-center justify-between border-b border-[#342D2A] px-5 py-4">
+        <h2 className="text-lg font-black text-[#F5F0ED]">Динамика цикла</h2>
+        <button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2A2523] text-[#8D817B]" onClick={onOpenAnalytics} aria-label="Открыть аналитику">
+          <Info className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="px-4 pt-4">
+        <div className="relative h-[260px] overflow-hidden rounded-[20px] bg-[#F7F7F7]">
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="График динамики цикла">
+            <rect x="7" y={toY(normalMax)} width="86" height={toY(normalMin) - toY(normalMax)} fill="#E6E8EB" />
+            {[15, 30, 45, 60, 75, 90].map((x) => (
+              <line key={`v-${x}`} x1={x} x2={x} y1="12" y2="82" stroke="#E1E1E1" strokeWidth="0.35" />
+            ))}
+            {[18, 34, 50, 66, 82].map((y) => (
+              <line key={`h-${y}`} x1="7" x2="93" y1={y} y2={y} stroke="#E1E1E1" strokeWidth="0.35" />
+            ))}
+            <path d={path} fill="none" stroke="#B8BEC8" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+            {plotted.map((point, index) => (
+              <g key={`${point.x}-${point.y}-${index}`}>
+                {point.isOutlier && <circle cx={point.x} cy={point.y} r="7.5" fill="#FFB800" opacity="0.28" />}
+                <circle cx={point.x} cy={point.y} r={point.isOutlier ? "3.4" : "2.8"} fill={point.isOutlier ? "#FFB800" : "#4B5C78"} stroke="white" strokeWidth="1.3" />
+              </g>
+            ))}
+            {hasOutlier && (
+              <>
+                <text x="13" y="25" className="fill-[#4B5C78] text-[5px] font-black">НЕ НОРМА</text>
+                <text x="62" y="71" className="fill-[#4B5C78] text-[5px] font-black">НЕ НОРМА</text>
+              </>
+            )}
+          </svg>
+          <div className="absolute bottom-4 left-6 right-6 flex justify-between">
+            {plotted.map((point) => (
+              <span key={`${point.x}-tick`} className="h-3 w-8 rounded-full bg-[#E0E0E0]" />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 py-5">
+        <p className="text-xl font-semibold leading-snug text-[#F5F0ED]">
+          На графике видно динамику циклов. {hasOutlier ? <strong>Есть отклонения, которые стоит сохранить для врача.</strong> : <strong>Пока сильных отклонений не видно.</strong>}
+        </p>
+      </div>
+    </Card>
   );
 }
 
@@ -838,15 +994,23 @@ function TodayDashboardStrip({ data, status }: { data: TodayData; status: TodayS
 function FloStyleHero({
   data,
   status,
-  onPain,
+  userName,
   onPeriod,
   onCheckIn,
+  onSex,
+  onAnalyticsCycles,
+  onOpenCalendar,
+  onProfile,
 }: {
   data: TodayData;
   status: TodayStatus;
-  onPain: () => void;
+  userName: string;
   onPeriod?: () => void;
   onCheckIn?: () => void;
+  onSex?: () => void;
+  onAnalyticsCycles?: () => void;
+  onOpenCalendar?: () => void;
+  onProfile?: () => void;
 }) {
   const weekDays = getWeekStripDays(data);
 
@@ -854,13 +1018,27 @@ function FloStyleHero({
     <section className="space-y-4">
       <Card className={`rounded-[22px] p-4 ${darkCardClass}`}>
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Сегодня</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight text-[#F5F0ED]">{data.date}</h1>
+          <div className="flex min-w-0 items-start gap-3">
+            <button
+              type="button"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-[#F5F0ED] ${darkInsetClass}`}
+              onClick={onProfile}
+              aria-label="Профиль"
+            >
+              <UserRound className="h-5 w-5" />
+            </button>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Профиль</p>
+              <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-[#F5F0ED]">{userName}</h1>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[#84E600] px-3 py-1.5 text-xs font-black text-[#11100F]">онлайн</span>
-            <button type="button" className={`flex h-10 w-10 items-center justify-center rounded-2xl border text-[#F5F0ED] ${darkInsetClass}`}>
+            <button
+              type="button"
+              className={`flex h-10 w-10 items-center justify-center rounded-2xl border text-[#F5F0ED] ${darkInsetClass}`}
+              onClick={onOpenCalendar}
+              aria-label="Открыть календарь месяца"
+            >
               <CalendarDays className="h-5 w-5" />
             </button>
           </div>
@@ -878,7 +1056,7 @@ function FloStyleHero({
                 {day.weekday}
               </p>
               <div
-                className={`mt-1 flex h-9 w-9 items-center justify-center rounded-full text-base font-black ${
+                className={`mt-1 flex h-10 min-w-10 flex-col items-center justify-center rounded-full px-2 text-base font-black ${
                   day.isToday
                     ? "bg-[#11100F] text-[#84E600]"
                     : day.isPeriod
@@ -886,7 +1064,8 @@ function FloStyleHero({
                       : "text-[#F5F0ED]"
                 }`}
               >
-                {day.date}
+                <span className="leading-none">{day.date}</span>
+                {day.isToday && <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-[#84E600]" />}
               </div>
             </div>
           ))}
@@ -914,7 +1093,7 @@ function FloStyleHero({
         <div className="mt-4 grid grid-cols-3 gap-2">
           <CircleAction label="Месячные" active icon={<Edit3 className="h-5 w-5" />} onClick={onPeriod} />
           <CircleAction label="Симптомы" icon={<Plus className="h-5 w-5" />} onClick={onCheckIn} />
-          <CircleAction label="Мне плохо" icon={<Siren className="h-5 w-5" />} onClick={onPain} />
+          <CircleAction label="Секс" icon={<Heart className="h-5 w-5" />} onClick={onSex} />
         </div>
       </Card>
     </section>
@@ -957,22 +1136,494 @@ function CalendarSection({ data, delay = 0 }: { data: TodayData["calendar"]; del
   );
 }
 
-function TodayPageComponent({ data = mockTodayData, onPain, onPeriod, onCheckIn, onAnalyticsCycles }: TodayPageProps) {
-  const [painOpen, setPainOpen] = useState(false);
+function MonthCalendarModal({
+  open,
+  data,
+  mode = "view",
+  onClose,
+  onOpenTrack,
+}: {
+  open: boolean;
+  data: TodayData["calendar"];
+  mode?: "view" | "period";
+  onClose: () => void;
+  onOpenTrack?: () => void;
+}) {
+  const logs = useMiraStore((state) => state.logs.dailyLogs);
+  const cycle = useMiraStore((state) => state.cycle);
+  const setDailyLog = useMiraStore((state) => state.setDailyLog);
+  const today = new Date();
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
+
+  if (!open) return null;
+
+  const selectedDate = new Date(today.getFullYear(), today.getMonth(), selectedDay);
+  const selectedIso = selectedDate.toISOString().slice(0, 10);
+  const selectedLog = logs.find((log) => log.date === selectedIso);
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dayDiff = Math.round((selectedDate.getTime() - todayStart.getTime()) / 86_400_000);
+  const selectedCycleDay = Math.max(1, cycle.currentDay + dayDiff);
+  const monthLabel = selectedDate.toLocaleDateString("ru-RU", { month: "long" });
+  const selectedTitle = `${monthLabel[0].toUpperCase()}${monthLabel.slice(1)} ${selectedDay} • ${selectedCycleDay}-й день цикла`;
+
+  function saveQuick(kind: "period" | "pain" | "mood" | "sleep") {
+    const baseLog = selectedLog ?? createEmptyLog(selectedIso, selectedCycleDay);
+    const nextLog: DailyLog = {
+      ...baseLog,
+      cycleDay: selectedCycleDay,
+      symptoms: {
+        ...baseLog.symptoms,
+        bleeding: { ...baseLog.symptoms.bleeding },
+        pain: { ...baseLog.symptoms.pain, location: [...baseLog.symptoms.pain.location], radiation: [...baseLog.symptoms.pain.radiation] },
+        sleep: { ...baseLog.symptoms.sleep, wokeUpReason: baseLog.symptoms.sleep.wokeUpReason ? [...baseLog.symptoms.sleep.wokeUpReason] : null },
+        skin: { ...baseLog.symptoms.skin },
+        context: [...baseLog.symptoms.context],
+      },
+      selfCare: { ...baseLog.selfCare, vitamins: { ...baseLog.selfCare.vitamins } },
+    };
+
+    if (kind === "period") {
+      nextLog.symptoms.bleeding.amount = Math.max(nextLog.symptoms.bleeding.amount, 2) as DailyLog["symptoms"]["bleeding"]["amount"];
+      nextLog.symptoms.bleeding.pads = Math.max(nextLog.symptoms.bleeding.pads, 4);
+    }
+    if (kind === "pain") {
+      nextLog.symptoms.pain.level = Math.max(nextLog.symptoms.pain.level, 2) as DailyLog["symptoms"]["pain"]["level"];
+      nextLog.symptoms.pain.type = nextLog.symptoms.pain.type ?? "cramping";
+      nextLog.symptoms.pain.location = Array.from(new Set([...nextLog.symptoms.pain.location, "low_abdomen"]));
+    }
+    if (kind === "mood") nextLog.symptoms.mood = nextLog.symptoms.mood ?? "neutral";
+    if (kind === "sleep") nextLog.symptoms.sleep.quality = nextLog.symptoms.sleep.quality ?? "normal";
+
+    setDailyLog(nextLog);
+  }
+
+  function togglePeriod(dayNumber: number) {
+    const date = new Date(today.getFullYear(), today.getMonth(), dayNumber);
+    const iso = date.toISOString().slice(0, 10);
+    const existingLog = logs.find((log) => log.date === iso);
+    const cycleDay = Math.max(1, cycle.currentDay + Math.round((date.getTime() - todayStart.getTime()) / 86_400_000));
+    const baseLog = existingLog ?? createEmptyLog(iso, cycleDay);
+    const hasPeriod = baseLog.symptoms.bleeding.amount > 0;
+
+    setDailyLog({
+      ...baseLog,
+      cycleDay,
+      symptoms: {
+        ...baseLog.symptoms,
+        bleeding: {
+          ...baseLog.symptoms.bleeding,
+          amount: hasPeriod ? 0 : 2,
+          pads: hasPeriod ? 0 : Math.max(baseLog.symptoms.bleeding.pads, 4),
+          color: hasPeriod ? null : (baseLog.symptoms.bleeding.color ?? "bright"),
+        },
+      },
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="relative h-[92vh] w-full max-w-lg overflow-hidden rounded-t-[34px] bg-white text-[#11100F] shadow-[0_28px_80px_rgba(0,0,0,0.34)] sm:rounded-[34px]">
+        <div className="sticky top-0 z-10 border-b border-[#E6E1E1] bg-[linear-gradient(180deg,#FFF7FA_0%,#FFFFFF_100%)] px-4 pb-3 pt-5">
+          <div className="flex items-center justify-between">
+            <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full text-[#11100F]" onClick={onClose} aria-label="Закрыть календарь">
+              <X className="h-8 w-8" />
+            </button>
+            <div className="grid h-12 w-[236px] grid-cols-2 rounded-full bg-[#E9DEE2] p-1">
+              <button type="button" className="rounded-full bg-white text-lg font-black shadow-sm">Месяц</button>
+              <button type="button" className="rounded-full text-lg font-black text-[#6A5D57]">Год</button>
+            </div>
+            <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full text-[#11100F]" aria-label="Настройки календаря">
+              <Info className="h-7 w-7" />
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-7 text-center text-sm font-bold text-[#6A5D57]">
+            {["П", "В", "С", "Ч", "П", "С", "В"].map((day, index) => <div key={`${day}-${index}`}>{day}</div>)}
+          </div>
+        </div>
+
+        <div className="h-full overflow-y-auto px-4 pb-60 pt-5">
+          <div className="mb-5 rounded-[18px] bg-[#0E7E7E] px-5 py-4 text-center text-lg font-bold text-white">
+            {mode === "period" ? "Выберите дни месячных" : "Пересчёт прогноза циклов..."}
+            <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full w-1/3 rounded-full bg-white" />
+            </div>
+          </div>
+
+          <h2 className="text-center text-3xl font-black text-[#11100F]">{data.month.replace(/\s2026|\s2027|\s2025/g, "")}</h2>
+          <div className="mt-6 grid grid-cols-7 gap-y-9 text-center">
+            {data.days.slice(0, 42).map((day, index) => {
+              const isSelected = day.date === selectedDay;
+              const isToday = day.date === today.getDate();
+              const dayNumber = day.date ?? undefined;
+              const hasLog = dayNumber ? logs.some((log) => log.date === new Date(today.getFullYear(), today.getMonth(), dayNumber).toISOString().slice(0, 10)) : false;
+              const hasPeriod = dayNumber
+                ? logs.some((log) => log.date === new Date(today.getFullYear(), today.getMonth(), dayNumber).toISOString().slice(0, 10) && log.symptoms.bleeding.amount > 0)
+                : false;
+              return (
+                <button
+                  key={`${day.date ?? "empty"}-${index}`}
+                  type="button"
+                  disabled={!day.date}
+                  onClick={() => {
+                    if (!day.date) return;
+                    setSelectedDay(day.date);
+                    if (mode === "period") togglePeriod(day.date);
+                  }}
+                  className="relative mx-auto flex h-12 w-12 items-center justify-center rounded-full text-[26px] font-medium disabled:opacity-0"
+                >
+                  {isToday && <span className="absolute -top-7 text-sm font-black uppercase text-[#11100F]">Сегодня</span>}
+                  <span
+                    className={`flex h-12 w-12 items-center justify-center rounded-full ${
+                      hasPeriod || day.type === "period"
+                          ? "bg-[#FF4F7D] text-white"
+                          : isSelected
+                            ? "bg-[#E4E4E4] text-[#18A7A7]"
+                          : day.type === "pms"
+                            ? "border-2 border-dotted border-[#FF4F7D] text-[#FF4F7D]"
+                            : "text-[#18A7A7]"
+                    }`}
+                  >
+                    {day.date}
+                  </span>
+                  {hasLog && <span className="absolute -bottom-2 h-2.5 w-2.5 rounded-full bg-[#A6A6A6]" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 rounded-t-[28px] bg-white/96 px-6 pb-6 pt-5 shadow-[0_-18px_42px_rgba(0,0,0,0.12)] backdrop-blur-xl">
+          <button type="button" className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#BDBDBD] text-white" onClick={onClose} aria-label="Закрыть">
+            <X className="h-6 w-6" />
+          </button>
+          <h3 className="pr-12 text-2xl font-black text-[#11100F]">{selectedTitle}</h3>
+          <p className="mt-3 text-lg font-semibold text-[#777]">
+            {mode === "period" ? "Нажимайте на даты, чтобы отметить или снять месячные" : "Добавьте вес, настроение и симптомы"}
+          </p>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            {(mode === "period" ? [
+              ["period", "Отметить день"],
+              ["track", "Открыть трекер"],
+            ] : [
+              ["period", "Месячные"],
+              ["pain", "Боль"],
+              ["mood", "Настроение"],
+              ["sleep", "Сон"],
+            ]).map(([kind, label]) => (
+              <button
+                key={kind}
+                type="button"
+                className="rounded-full bg-[#F1F1F1] px-4 py-3 text-sm font-black text-[#11100F] active:scale-[0.98]"
+                onClick={() => kind === "track" ? onOpenTrack?.() : kind === "period" && mode === "period" ? togglePeriod(selectedDay) : saveQuick(kind as "period" | "pain" | "mood" | "sleep")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="mt-4 flex h-16 w-full items-center justify-center gap-3 rounded-full bg-[#18A7A7] text-xl font-black text-white"
+            onClick={onOpenTrack}
+          >
+            <Plus className="h-8 w-8" />
+            Открыть трекер
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LifestyleModules({
+  cycleDay,
+  targetWater,
+}: {
+  cycleDay: number;
+  targetWater: number;
+}) {
+  const logs = useMiraStore((state) => state.logs.dailyLogs);
+  const careWater = useMiraStore((state) => state.care.water.current);
+  const setDailyLog = useMiraStore((state) => state.setDailyLog);
+  const setWaterStore = useMiraStore((state) => state.setWater);
+  const setWeightStore = useMiraStore((state) => state.setWeight);
+  const todayLog = logs.find((log) => log.date === todayIso());
+  const [water, setWater] = useState(todayLog?.selfCare.water || careWater || 0);
+  const [calories, setCalories] = useState(todayLog?.selfCare.calories ? String(todayLog.selfCare.calories) : "");
+  const [weight, setWeight] = useState(todayLog?.selfCare.weight ? String(todayLog.selfCare.weight) : "");
+  const [saved, setSaved] = useState(false);
+  const [foodSaved, setFoodSaved] = useState(false);
+  const [weightSaved, setWeightSaved] = useState(false);
+  const waterTarget = Math.max(1, targetWater);
+
+  function getTodayBaseLog() {
+    const date = todayIso();
+    const existingLog = logs.find((log) => log.date === date);
+    return existingLog ?? createEmptyLog(date, cycleDay);
+  }
+
+  function saveLifestyle() {
+    const baseLog = getTodayBaseLog();
+
+    setDailyLog({
+      ...baseLog,
+      selfCare: {
+        ...baseLog.selfCare,
+        water,
+      },
+    });
+    setWaterStore(water);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1800);
+  }
+
+  function saveFood() {
+    const baseLog = getTodayBaseLog();
+    const normalizedCalories = Number.parseInt(calories, 10);
+
+    setDailyLog({
+      ...baseLog,
+      selfCare: {
+        ...baseLog.selfCare,
+        calories: Number.isFinite(normalizedCalories) && normalizedCalories > 0 ? normalizedCalories : null,
+      },
+    });
+    setFoodSaved(true);
+    window.setTimeout(() => setFoodSaved(false), 1800);
+  }
+
+  function saveWeight() {
+    const baseLog = getTodayBaseLog();
+    const normalizedWeight = Number.parseFloat(weight.replace(",", "."));
+    const nextWeight = Number.isFinite(normalizedWeight) && normalizedWeight > 0 ? Math.round(normalizedWeight * 10) / 10 : null;
+
+    setDailyLog({
+      ...baseLog,
+      selfCare: {
+        ...baseLog.selfCare,
+        weight: nextWeight,
+      },
+    });
+    if (nextWeight !== null) setWeightStore(nextWeight);
+    setWeightSaved(true);
+    window.setTimeout(() => setWeightSaved(false), 1800);
+  }
+
+  return (
+    <section className="mt-4 space-y-3 pb-24">
+      <Card className={`rounded-[22px] p-5 ${darkCardClass}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Вода</p>
+            <h2 className="mt-2 text-3xl font-black leading-none text-[#84E600]">{water.toFixed(1)} л</h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2A2523] text-[#84E600]">
+            <Droplets className="h-5 w-5" />
+          </span>
+        </div>
+        <div className={`mt-5 rounded-[18px] border p-4 ${darkInsetClass}`}>
+          <input
+            type="range"
+            min={0}
+            max={3}
+            step={0.2}
+            value={water}
+            onChange={(event) => setWater(Number(event.target.value))}
+            className="w-full accent-[#84E600]"
+            aria-label="Количество воды"
+          />
+          <div className="mt-3 flex justify-between text-xs font-black text-[#8D817B]">
+            <span>0 л</span>
+            <span>{waterTarget.toFixed(1)} л</span>
+            <span>3 л</span>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            aria-label="Убавить воду"
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-[#84E600] ${darkInsetClass}`}
+            onClick={() => setWater((current) => Math.max(0, Math.round((current - 0.2) * 10) / 10))}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            className={`h-11 flex-1 rounded-2xl text-sm font-black ${limeButtonClass}`}
+            onClick={saveLifestyle}
+          >
+            {saved ? "Сохранено" : "Сохранить воду"}
+          </button>
+          <button
+            type="button"
+            aria-label="Добавить стакан воды"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#84E600] text-[#11100F]"
+            onClick={() => setWater((current) => Math.min(3, Math.round((current + 0.2) * 10) / 10))}
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className={`rounded-[22px] p-5 ${darkCardClass}`}>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Питание</p>
+              <h2 className="mt-2 text-xl font-black text-[#F5F0ED]">Калории</h2>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2A2523] text-[#84E600]">
+              <Apple className="h-5 w-5" />
+            </span>
+          </div>
+          <label className="mb-3 block">
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[#8D817B]">Калории</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={50}
+              value={calories}
+              onChange={(event) => setCalories(event.target.value)}
+              placeholder="например 1800"
+              className="mt-2 h-12 w-full rounded-2xl border border-[#342D2A] bg-[#251F1D] px-4 text-base font-black text-[#F5F0ED] outline-none placeholder:text-[#6A5D57] focus:border-[#84E600]/60"
+            />
+          </label>
+          <Button type="button" className={`mt-4 h-12 w-full rounded-2xl font-black ${limeButtonClass}`} onClick={saveFood}>
+            {foodSaved ? "Сохранено" : "Сохранить"}
+          </Button>
+        </Card>
+
+        <Card className={`rounded-[22px] p-5 ${darkCardClass}`}>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Вес</p>
+              <h2 className="mt-2 text-xl font-black text-[#F5F0ED]">Вес кг</h2>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2A2523] text-[#84E600]">
+              <Scale className="h-5 w-5" />
+            </span>
+          </div>
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[#8D817B]">Кг</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.1}
+              value={weight}
+              onChange={(event) => setWeight(event.target.value)}
+              placeholder="например 62.5"
+              className="mt-2 h-14 w-full rounded-2xl border border-[#342D2A] bg-[#251F1D] px-4 text-2xl font-black text-[#F5F0ED] outline-none placeholder:text-base placeholder:text-[#6A5D57] focus:border-[#84E600]/60"
+            />
+          </label>
+          <Button type="button" className={`mt-4 h-12 w-full rounded-2xl font-black ${limeButtonClass}`} onClick={saveWeight}>
+            {weightSaved ? "Сохранено" : "Сохранить"}
+          </Button>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+function PeriodModal({
+  open,
+  cycleDay,
+  onClose,
+}: {
+  open: boolean;
+  cycleDay: number;
+  onClose: () => void;
+}) {
+  const logs = useMiraStore((state) => state.logs.dailyLogs);
+  const setDailyLog = useMiraStore((state) => state.setDailyLog);
+  const [flow, setFlow] = useState<PeriodFlow>("moderate");
+  const [hasClots, setHasClots] = useState(false);
+
+  if (!open) return null;
+
+  function savePeriod() {
+    const date = todayIso();
+    const existingLog = logs.find((log) => log.date === date);
+    const baseLog = existingLog ?? createEmptyLog(date, cycleDay);
+    const bleedingAmount: DailyLog["symptoms"]["bleeding"]["amount"] =
+      flow === "none" ? 0 : flow === "spotting" ? 1 : flow === "moderate" ? 2 : 3;
+
+    setDailyLog({
+      ...baseLog,
+      symptoms: {
+        ...baseLog.symptoms,
+        bleeding: {
+          ...baseLog.symptoms.bleeding,
+          amount: bleedingAmount,
+          pads: flow === "heavy" ? Math.max(baseLog.symptoms.bleeding.pads, 6) : baseLog.symptoms.bleeding.pads,
+          clots: hasClots ? "small" : baseLog.symptoms.bleeding.clots,
+        },
+      },
+    });
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/45 p-4 backdrop-blur-sm sm:items-center">
+      <Card className="w-full max-w-md rounded-[28px] border-[#2E2826] bg-[#1D1816] p-5 text-[#F5F0ED] shadow-[0_28px_80px_rgba(0,0,0,0.34)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Месячные</p>
+            <h2 className="mt-2 text-2xl font-black">Кровотечение сегодня</h2>
+          </div>
+          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#2A2523]" onClick={onClose} aria-label="Закрыть">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          {periodFlowOptions.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => setFlow(item.value)}
+              className={`min-h-12 rounded-2xl border px-4 text-sm font-black transition ${
+                flow === item.value
+                  ? "border-[#84E600]/35 bg-[#252318] text-[#84E600]"
+                  : "border-[#342D2A] bg-[#251F1D] text-[#B7AAA4]"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setHasClots((current) => !current)}
+          className={`mt-3 flex min-h-12 w-full items-center justify-between rounded-2xl border px-4 text-sm font-black ${
+            hasClots ? "border-[#84E600]/35 bg-[#252318] text-[#84E600]" : "border-[#342D2A] bg-[#251F1D] text-[#B7AAA4]"
+          }`}
+        >
+          Сгустки крови
+          <span>{hasClots ? "Да" : "Нет"}</span>
+        </button>
+
+        <Button type="button" className={`mt-5 h-14 w-full rounded-[18px] font-black ${limeButtonClass}`} onClick={savePeriod}>
+          Сохранить месячные
+        </Button>
+      </Card>
+    </div>
+  );
+}
+
+function TodayPageComponent({ data = mockTodayData, onPeriod, onCheckIn, onAnalyticsCycles, onProfile }: TodayPageProps) {
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMode, setCalendarMode] = useState<"view" | "period">("view");
   const [symptomsOpen, setSymptomsOpen] = useState(false);
   const [symptomsInitialCategory, setSymptomsInitialCategory] = useState<string | undefined>(undefined);
   const cycle = useMiraStore((state) => state.cycle);
+  const userName = useMiraStore((state) => state.user.name);
   const totalCycles = useMiraStore((state) => state.user.totalCycles);
+  const waterTarget = useMiraStore((state) => state.care.water.target);
   const status = useMemo(() => getTodayStatus(data), [data]);
   const cycleSummary = useMemo(() => buildCycleSummary(cycle, data.cycleDay, totalCycles), [cycle, data.cycleDay, totalCycles]);
-
-  function openPain() {
-    if (onPain) {
-      onPain();
-      return;
-    }
-    setPainOpen(true);
-  }
 
   function openSymptoms(initialCategory?: string) {
     setSymptomsInitialCategory(initialCategory);
@@ -1000,8 +1651,18 @@ function TodayPageComponent({ data = mockTodayData, onPain, onPeriod, onCheckIn,
         <FloStyleHero
           data={data}
           status={status}
-          onPain={openPain}
-          onPeriod={onPeriod}
+          userName={userName || "Mira"}
+          onPeriod={() => {
+            setCalendarMode("period");
+            setCalendarOpen(true);
+          }}
+          onAnalyticsCycles={openAnalyticsCycles}
+          onSex={() => openSymptoms("Секс и сексуальное желание")}
+          onOpenCalendar={() => {
+            setCalendarMode("view");
+            setCalendarOpen(true);
+          }}
+          onProfile={onProfile}
           onCheckIn={() => {
             if (onCheckIn) {
               onCheckIn();
@@ -1013,9 +1674,22 @@ function TodayPageComponent({ data = mockTodayData, onPain, onPeriod, onCheckIn,
 
         <TodayDashboardStrip data={data} status={status} />
         <CompactCyclesLink summary={cycleSummary} onOpenAnalytics={openAnalyticsCycles} />
+        <CompactCycleDynamics summary={cycleSummary} onOpenAnalytics={openAnalyticsCycles} />
+        <LifestyleModules cycleDay={data.cycleDay} targetWater={waterTarget} />
       </div>
 
-      <PainDialog open={painOpen} onClose={() => setPainOpen(false)} onSave={onCheckIn} />
+      <MonthCalendarModal
+        open={calendarOpen}
+        data={data.calendar}
+        mode={calendarMode}
+        onClose={() => setCalendarOpen(false)}
+        onOpenTrack={() => {
+          setCalendarOpen(false);
+          if (onCheckIn) onCheckIn();
+          else openSymptoms();
+        }}
+      />
+      <PeriodModal open={periodOpen} cycleDay={data.cycleDay} onClose={() => setPeriodOpen(false)} />
       <SymptomsModal
         open={symptomsOpen}
         initialCategoryTitle={symptomsInitialCategory}

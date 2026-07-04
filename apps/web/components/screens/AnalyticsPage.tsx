@@ -728,6 +728,32 @@ function getNextAnalyticsAction(data: AnalyticsData, notesNeeded: number) {
   return "Начни с симптомов, сна и энергии: этого достаточно для первых выводов.";
 }
 
+function getMainInsightTitle(data: AnalyticsData, notesCount: number) {
+  if (data.redFlags.length > 0) return "Есть сигнал, который стоит вынести отдельно";
+  if (notesCount < 5) return "Пока рано искать закономерности";
+  if (data.factors.length > 0) return "Mira заметила возможную связь";
+  if (data.symptoms.length > 0) return "Mira заметила повтор";
+  return "Пока тревожных повторов не видно";
+}
+
+function getMainInsightBody(data: AnalyticsData, notesCount: number, notesNeeded: number) {
+  if (data.redFlags.length > 0) {
+    return `${data.redFlags[0]}. Это не диагноз, но такой факт лучше сохранить и consider discussing this with a qualified clinician.`;
+  }
+  if (notesCount < 5) {
+    return `Нужно ещё ${notesNeeded} отметок, чтобы отделять случайный день от повторяющегося паттерна.`;
+  }
+  if (data.factors.length > 0) return data.factors[0];
+  if (data.symptoms.length > 0) return `${data.symptoms[0].name} встречается чаще других отметок за выбранный период.`;
+  return "Продолжай отмечать цикл, боль, сон и настроение. Если появятся повторения, Mira покажет их здесь.";
+}
+
+function getPrimaryAnalyticsAction(data: AnalyticsData, notesCount: number) {
+  if (data.redFlags.length > 0) return { label: "Собрать отчёт врачу", target: "report" as const };
+  if (notesCount < 5) return { label: "Добавить отметку", target: "track" as const };
+  return { label: "Собрать отчёт врачу", target: "report" as const };
+}
+
 function statusLabel(status: AnalysisTopic["status"]) {
   const labels: Record<AnalysisTopic["status"], string> = {
     empty: "мало данных",
@@ -1426,16 +1452,11 @@ function SafetyCard({ redFlags, onOpenDoctorReport }: { redFlags: string[]; onOp
 function AnalyticsPageComponent({
   datasets,
   onOpenDoctorReport,
-  onExportPdf,
-  onExportTxt,
-  onSendToSelf,
 }: AnalyticsPageProps) {
   const [period, setPeriod] = useState<PeriodKey>("3");
-  const [selectedTopicId, setSelectedTopicId] = useState<AnalysisTopicId | null>(null);
   const rawLogs = useMiraStore((state) => state.logs.dailyLogs);
   const cycle = useMiraStore((state) => state.cycle);
   const logs = useMemo(() => getSafeLogs(rawLogs), [rawLogs]);
-  const cycleHistory = useMemo(() => getCycleHistorySummary(cycle, logs), [cycle, logs]);
   const realDatasets = useMemo<Partial<Record<PeriodKey, AnalyticsData>>>(() => {
     return periods.reduce((acc, item) => {
       acc[item.value] = buildDataFromLogs(logs, cycle, item.value);
@@ -1443,16 +1464,15 @@ function AnalyticsPageComponent({
     }, {} as Partial<Record<PeriodKey, AnalyticsData>>);
   }, [cycle, logs]);
   const data = useMemo(() => getDataset(period, datasets ?? realDatasets), [period, datasets, realDatasets]);
-  const hasEnoughForForecast = data.trackedCycles >= 2;
-  const chartTick = { fill: muted, fontSize: 12 };
-  const confidence = getConfidencePercent(data.trackedCycles);
   const notesCount = getNotesCount(data);
-  const notesNeeded = getMoreNotesNeeded(data);
-  const mainInsight = getMainInsight(data);
+  const notesNeeded = Math.max(0, 5 - notesCount);
+  const topSymptom = data.symptoms[0];
+  const hasEnoughData = notesCount >= 5;
+  const reliability = getReliability(notesCount);
+  const redFlags = data.redFlags;
+  const mainAction = getPrimaryAnalyticsAction(data, notesCount);
   const nextAction = getNextAnalyticsAction(data, notesNeeded);
-  const isCurrentEducational = period === "current" && getNotesCount(data) < 8;
-  const topics = useMemo(() => buildAnalysisTopics(data, notesCount), [data, notesCount]);
-  const selectedTopic = topics.find((topic) => topic.id === selectedTopicId) ?? null;
+  const coreTopics = buildAnalysisTopics(data, notesCount).filter((topic) => ["cycle", "period", "pain", "mood", "sleep", "doctor"].includes(topic.id));
 
   function openDoctorReport() {
     if (onOpenDoctorReport) {
@@ -1462,66 +1482,34 @@ function AnalyticsPageComponent({
     if (typeof window !== "undefined") window.location.href = "/report";
   }
 
-  const doctorPhrases = useMemo(() => {
-    const cyclesText = data.trackedCycles === 1 ? "1 месяц" : `${data.trackedCycles} месяца`;
-    return [
-      `"Я трекаю цикл ${cyclesText}. Вот данные."`,
-      data.peakDay && data.peakCount
-        ? `"В ${data.peakDay} у меня ${data.peakCount} прокладок/тампонов, обычно норма около ${data.normalCount ?? 4}."`
-        : `"Я пока не вижу пик обильности, но хочу показать записи."`,
-      data.symptoms[0]
-        ? `"Чаще всего повторяется симптом: ${data.symptoms[0].name} (${data.symptoms[0].count} раз)."`
-        : `"Я хочу обсудить симптомы, которые начала отмечать."`,
-    ];
-  }, [data]);
+  function openTrack() {
+    if (typeof window !== "undefined") window.location.href = "/track";
+  }
+
+  function handleMainAction() {
+    if (mainAction.target === "track") openTrack();
+    else openDoctorReport();
+  }
 
   return (
     <main className="min-h-screen bg-[#050505] px-5 py-6 text-[#F5F0ED]">
       <style jsx global>{`
         @keyframes miraAnalyticsIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
-      <div className="mx-auto max-w-6xl">
-        {/* Хедер */}
+      <div className="mx-auto max-w-3xl space-y-5">
         <header className={`rounded-[22px] p-5 ${darkCardClass}`}>
-          <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <Eyebrow>Центр данных</Eyebrow>
-            <h1 className="mt-1 text-3xl font-black tracking-tight text-[#F5F0ED]">Анализ</h1>
-            <p className="mt-1 max-w-3xl text-sm font-semibold leading-relaxed text-[#B7AAA4]">
-              Mira собирает трекинг, заботу и симптомы в одну понятную карту: что происходит, что повторяется и что можно показать врачу.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-[#F5F0ED] ${darkInsetClass}`}
-              aria-label="Уведомления"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-[#F5F0ED] ${darkInsetClass}`}
-              aria-label="Настройки"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
-          </div>
-          </div>
+          <Eyebrow>Анализ</Eyebrow>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#F5F0ED]">Что Mira заметила</h1>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+            Наблюдения по твоим отметкам из Трека. Не диагноз.
+          </p>
         </header>
 
-        {/* Переключатель периода */}
-        <Tabs value={period} onValueChange={(value) => setPeriod(value as PeriodKey)} className="mt-6">
+        <Tabs value={period} onValueChange={(value) => setPeriod(value as PeriodKey)}>
           <TabsList className={`grid w-full grid-cols-2 gap-1 rounded-[20px] border p-1 md:grid-cols-4 ${darkCardClass}`}>
             {periods.map((item) => (
               <TabsTrigger key={item.value} value={item.value} className="h-11 rounded-[16px] data-[state=active]:bg-[#84E600] data-[state=active]:text-[#11100F]">
@@ -1531,270 +1519,120 @@ function AnalyticsPageComponent({
           </TabsList>
         </Tabs>
 
-        <div className="mt-6 space-y-6">
-          <DataSourceMap logs={logs} cycle={cycle} />
+        <SectionCard delay={8}>
+          <div className="flex flex-col gap-4">
+            <div className={`rounded-[20px] border p-5 ${darkInsetClass}`}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Главное сейчас</p>
+                  <h2 className="mt-2 text-2xl font-black leading-tight text-[#F5F0ED]">
+                    {getMainInsightTitle(data, notesCount)}
+                  </h2>
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+                    {getMainInsightBody(data, notesCount, notesNeeded)}
+                  </p>
+                </div>
+                <StatBadge value={reliability.label} tone={reliability.tone} />
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <InsightNote title="Что сделать" body={nextAction} />
+                <InsightNote title="Основано на" body={`${notesCount} ${notesCount === 1 ? "факте" : notesCount > 1 && notesCount < 5 ? "фактах" : "фактах"} из Track`} />
+              </div>
+              <Button type="button" className={`mt-5 h-14 w-full rounded-[18px] text-sm font-black ${limeButtonClass}`} onClick={handleMainAction}>
+                {mainAction.target === "track" ? <Activity className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />}
+                {mainAction.label}
+              </Button>
+            </div>
+          </div>
+        </SectionCard>
 
-          <SectionCard eyebrow="Вся картина" title="Нажми на любой блок, чтобы увидеть объяснение, схему и данные" delay={10}>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {topics.map((topic) => (
-                <AnalysisTopicCard
-                  key={topic.id}
-                  topic={topic}
-                  data={data}
-                  onOpen={() => setSelectedTopicId(topic.id)}
-                />
+        <SectionCard title="База анализа" delay={12}>
+          <div className="grid gap-3 sm:grid-cols-4">
+            {[
+              ["Дни", `${logs.length}`, "green"],
+              ["Отметки", `${notesCount}`, reliability.tone],
+              ["Циклы", `${data.trackedCycles}`, "pink"],
+              ["Надежность", reliability.label, reliability.tone],
+            ].map(([label, value, tone]) => (
+              <div key={label} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+                <p className="text-[10px] font-black uppercase tracking-wide text-[#8D817B]">{label}</p>
+                <p className="mt-2 text-2xl font-black text-[#F5F0ED]">{value}</p>
+                <div className={`mt-3 h-1.5 rounded-full ${
+                  tone === "green" ? "bg-[#84E600]" : tone === "yellow" ? "bg-[#FFB800]" : tone === "red" ? "bg-[#FF6B6B]" : "bg-[#F9359E]"
+                }`} />
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title={hasEnoughData ? "Повторы по отметкам" : "Пока собираем данные"} delay={16}>
+          {topSymptom ? (
+            <div className="space-y-3">
+              {data.symptoms.slice(0, 3).map((symptom) => (
+                <div key={symptom.name} className={`flex items-center justify-between gap-3 rounded-[18px] border p-4 ${darkInsetClass}`}>
+                  <span className="text-sm font-black text-[#F5F0ED]">{symptom.name}</span>
+                  <span className="rounded-full bg-[#252318] px-3 py-1 text-xs font-black text-[#84E600]">{symptom.count}</span>
+                </div>
               ))}
             </div>
-          </SectionCard>
-
-          <InsightCard
-            noticed={hasEnoughForForecast ? mainInsight : "Mira пока собирает первые данные по циклу"}
-            why="Так проще отличать случайный день от повторения и понимать, что можно показать врачу."
-            action={hasEnoughForForecast ? nextAction : "Отмечай месячные, симптомы, сон или энергию 3–5 дней подряд."}
-            sampleSize={notesCount}
-            delay={20}
-            detailLabel="Показать прогноз"
-          >
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className={`rounded-[18px] border px-4 py-3 ${darkInsetClass}`}>
-                <p className="text-xs font-black uppercase tracking-wide text-[#8D817B]">Месячные</p>
-                <p className="mt-1 text-sm font-black text-[#F5F0ED]">{data.periodStart && data.periodEnd ? `${data.periodStart}–${data.periodEnd}` : "пока нет прогноза"}</p>
-              </div>
-              <div className={`rounded-[18px] border px-4 py-3 ${darkInsetClass}`}>
-                <p className="text-xs font-black uppercase tracking-wide text-[#8D817B]">Циклы</p>
-                <p className="mt-1 text-sm font-black text-[#F5F0ED]">{data.trackedCycles}</p>
-              </div>
-              <div className={`rounded-[18px] border px-4 py-3 ${darkInsetClass}`}>
-                <p className="text-xs font-black uppercase tracking-wide text-[#8D817B]">Уверенность</p>
-                <p className="mt-1 text-sm font-black text-[#84E600]">{confidence}%</p>
-              </div>
-            </div>
-          </InsightCard>
-
-          <SafetyCard redFlags={data.redFlags} onOpenDoctorReport={openDoctorReport} />
-
-          <CycleHistoryModule summary={cycleHistory} />
-
-          {isCurrentEducational && (
-            <SectionCard eyebrow="Текущий цикл" title="Пока мало данных для выводов" delay={48}>
-              <div className="grid gap-3 md:grid-cols-3">
-                {[
-                  ["Что это значит", "Mira видит только текущие отметки. Это ещё не закономерность."],
-                  ["Что сделать", "Добавь месячные, боль, настроение, сон или заботу 3–5 дней."],
-                  ["Что получишь", "После первых отметок появятся честные выводы: что повторяется и что показать врачу."],
-                ].map(([title, body]) => (
-                  <div key={title} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
-                    <p className="text-sm font-black text-[#F5F0ED]">{title}</p>
-                    <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{body}</p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
+          ) : (
+            <EmptyState title="Недостаточно отметок" body={`Нужно ещё ${notesNeeded} для первых повторов.`} />
           )}
+        </SectionCard>
 
-          <SectionCard eyebrow="Что делать дальше" title="3 простых шага" delay={55}>
-            <div className="grid gap-3 md:grid-cols-3">
-              {[
-                ["1", "Отмечай состояние", "3–5 дней подряд достаточно, чтобы Mira нашла первые повторения."],
-                ["2", "Смотри, что повторяется", "Симптомы важнее отдельных графиков: Mira объяснит, почему это может быть важно."],
-                ["3", "Покажи врачу факты", "Если есть боль, обильность или задержки, открой отчёт и выбери, что включить."],
-              ].map(([number, title, body]) => (
-                <div key={number} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#84E600] text-sm font-black text-[#11100F]">{number}</span>
-                  <p className="mt-3 text-sm font-black text-[#F5F0ED]">{title}</p>
-                  <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{body}</p>
+        <SectionCard title="MVP-темы" delay={20}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {coreTopics.map((topic) => (
+              <div key={topic.id} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-[#F5F0ED]">{topic.title}</p>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{topic.headline}</p>
+                  </div>
+                  <StatBadge value={statusLabel(topic.status)} tone={statusTone(topic.status)} />
+                </div>
+                <p className="mt-3 text-[11px] font-bold text-[#8D817B]">
+                  Основано на {topic.sampleSize} {topic.sampleSize === 1 ? "отметке" : "отметках"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title={redFlags.length ? "Красные флаги" : "Для отчёта"} delay={24}>
+          {redFlags.length ? (
+            <div className="space-y-2">
+              {redFlags.slice(0, 3).map((flag) => (
+                <div key={flag} className={`flex items-center gap-3 rounded-[18px] border p-4 ${darkInsetClass}`}>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#33201F] text-sm font-black text-[#FF6B6B]">!</span>
+                  <span className="text-sm font-bold text-[#F5F0ED]">{flag}</span>
                 </div>
               ))}
             </div>
-          </SectionCard>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Длина цикла */}
-            <InsightCard
-              noticed={data.cycleLengthData.length ? `Средняя длина цикла сейчас около ${data.avgCycle ?? "—"} дней` : "Mira пока не знает твою длину цикла"}
-              why="Длина цикла помогает точнее считать задержку, прогноз месячных и изменения между циклами."
-              action="Продолжай отмечать первый день месячных. Этого достаточно, чтобы Mira считала цикл точнее."
-              sampleSize={data.cycleLengthData.length}
-              delay={70}
-              detailLabel="Показать график длины цикла"
-            >
-              {data.cycleLengthData.length ? (
-                <>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={data.cycleLengthData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-                        <CartesianGrid stroke="#F0E8EC" vertical={false} />
-                        <XAxis dataKey="month" tickLine={false} axisLine={false} tick={chartTick} />
-                        <YAxis domain={[25, 35]} tickLine={false} axisLine={false} tick={chartTick} />
-                        <Tooltip
-                          contentStyle={{ border: 0, borderRadius: 16, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
-                          formatter={(value) => [`${value} дней`, "Длина цикла"]}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="length"
-                          stroke={pink}
-                          strokeWidth={4}
-                          dot={{ r: 4, fill: pink, strokeWidth: 0 }}
-                          activeDot={{ r: 6, fill: pink, strokeWidth: 0 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </>
-              ) : (
-                <EmptyState title="Начни трекать цикл" body="Добавь даты месячных, чтобы увидеть длину цикла." />
-              )}
-            </InsightCard>
-
-            {/* Обильность */}
-            <InsightCard
-              noticed={data.peakDay ? `Пик обильности чаще приходится на ${data.peakDay}` : "Mira пока не видит пик обильности"}
-              why={getFlowCaption(data).replace("📌 ", "").replace("🟡 ", "").replace("🔴 ", "")}
-              action="Если пик обильности растёт или мешает жить, добавь эти данные в отчёт врачу."
-              sampleSize={getFlowSampleSize(data)}
-              delay={120}
-              detailLabel="Показать обильность по дням"
-            >
-              {data.flowData.length ? (
-                <>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data.flowData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-                        <CartesianGrid stroke="#F0E8EC" vertical={false} />
-                        <XAxis dataKey="day" tickLine={false} axisLine={false} tick={chartTick} />
-                        <YAxis domain={[0, 7]} tickLine={false} axisLine={false} tick={chartTick} />
-                        <Tooltip
-                          contentStyle={{ border: 0, borderRadius: 16, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
-                          formatter={(value) => [`${value}`, "Прокладки/тампоны"]}
-                        />
-                        <Bar dataKey="count" fill={pink} radius={[12, 12, 4, 4]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </>
-              ) : (
-                <EmptyState title="Нет данных об обильности" body="Отмечай обильность в дни месячных." />
-              )}
-            </InsightCard>
-          </div>
-
-          <SkinCycleBars items={data.skinData} avgCycle={data.avgCycle} />
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Факторы влияния */}
-            {data.factors.length > 0 && (
-              <section style={{ animation: "miraAnalyticsIn 420ms ease 170ms both" }}>
-                <Eyebrow>Что влияет на самочувствие</Eyebrow>
-                <h2 className="mt-2 mb-5 text-xl font-black leading-snug text-[#F5F0ED]">Возможные связи</h2>
-                <div className="space-y-3">
-                  {data.factors.slice(0, 3).map((factor) => {
-                    const sampleSize = getSampleSizeFromText(factor);
-                    const n = sampleSize ?? 0;
-
-                    return (
-                      <InsightCard
-                        key={factor}
-                        noticed={factor.replace(/\s*\([^)]*\)/, "")}
-                        why="Такие совпадения помогают понять, что может влиять на самочувствие, но не являются диагнозом."
-                        action={n < 5 ? "Отмечай эту связь ещё 7 дней, чтобы подтвердить или отбросить её." : "Продолжай отмечать этот фактор и добавь его в отчёт врачу, если он мешает жить."}
-                        sampleSize={n}
-                        detailLabel="Показать пояснение"
-                      >
-                        <p className="text-sm font-semibold leading-relaxed text-[#B7AAA4]">{getSampleExplanation(sampleSize)}</p>
-                      </InsightCard>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {/* Частые симптомы */}
-            <InsightCard
-              noticed={data.symptoms[0] ? `Чаще всего повторяется: ${data.symptoms[0].name}` : "Mira пока не видит частые симптомы"}
-              why="Повторяющиеся симптомы помогают понять, что готовить заранее и что стоит обсудить с врачом."
-              action="Отмечай симптомы каждый день до следующих месячных, чтобы Mira увидела повтор по фазам цикла."
-              sampleSize={data.symptoms.reduce((sum, symptom) => sum + symptom.count, 0)}
-              delay={220}
-              detailLabel="Показать топ симптомов"
-            >
-              <SymptomBars symptoms={data.symptoms} />
-            </InsightCard>
-          </div>
-
-          {/* Отчёт врачу */}
-          <Card
-            className={`overflow-hidden rounded-[22px] p-0 ${darkCardClass}`}
-            style={{ animation: "miraAnalyticsIn 420ms ease 320ms both" }}
-          >
-            <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
-              <div className="bg-[#251F1D] p-6 text-white">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8D817B]">Главная польза аналитики</p>
-                <h2 className="mt-2 text-3xl font-black leading-tight">Подготовить визит к врачу</h2>
-                <p className="mt-3 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
-                  Mira переводит отметки в факты: даты, повторы, обильность, симптомы и вопросы врачу.
-                </p>
-                <div className="mt-5 grid gap-3">
-                  <div className="rounded-[18px] border border-[#342D2A] bg-[#1D1816] p-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-[#8D817B]">Что включено</p>
-                    <p className="mt-1 text-sm font-black text-white">
-                      {data.trackedCycles} циклов, {notesCount} отметок, {data.redFlags.length || "нет"} тревожных сигналов.
-                    </p>
-                  </div>
-                  <div className="rounded-[18px] border border-[#342D2A] bg-[#1D1816] p-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-[#8D817B]">Приватность</p>
-                    <p className="mt-1 text-sm font-black text-white">Личные заметки скрыты, пока ты сама их не включишь.</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <Eyebrow>Фразы для врача</Eyebrow>
-                <div className="mt-4 space-y-3">
-                  {doctorPhrases.map((phrase, index) => (
-                    <div
-                      key={phrase}
-                      className={`flex items-start gap-3 rounded-[18px] border px-4 py-3 text-sm font-semibold leading-relaxed text-[#F5F0ED] ${darkInsetClass}`}
-                    >
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#84E600] text-xs font-black text-[#11100F]">
-                        {index + 1}
-                      </span>
-                      {phrase}
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  className={`mt-5 h-14 w-full rounded-[18px] text-sm font-black ${limeButtonClass}`}
-                  onClick={openDoctorReport}
-                >
-                  <Stethoscope className="h-4 w-4" />
-                  Подготовить визит к врачу
-                </Button>
-                <div className="mt-5 grid gap-3 md:grid-cols-3">
-                  <ExportButton label="PDF" icon={<FileText className="h-4 w-4" />} onClick={onExportPdf} />
-                  <ExportButton label="TXT" icon={<FileText className="h-4 w-4" />} onClick={onExportTxt} />
-                  <ExportButton label="Отправить себе" icon={<Mail className="h-4 w-4" />} onClick={onSendToSelf} />
-                </div>
-              </div>
+          ) : (
+            <div className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+              <p className="text-sm font-black text-[#F5F0ED]">Можно собрать спокойный отчёт</p>
+              <p className="mt-1 text-sm font-semibold text-[#8D817B]">
+                {notesCount} фактов можно перенести в Report. Секс и личные заметки останутся выключены по умолчанию.
+              </p>
             </div>
-          </Card>
+          )}
+          <Button type="button" className={`mt-4 h-14 w-full rounded-[18px] text-sm font-black ${limeButtonClass}`} onClick={openDoctorReport}>
+            <Stethoscope className="h-4 w-4" />
+            Собрать отчёт врачу
+          </Button>
+        </SectionCard>
 
-          <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
-            <div className={`rounded-2xl border px-3 py-2 text-[#84E600] ${darkInsetClass}`}>Норма</div>
-            <div className={`rounded-2xl border px-3 py-2 text-[#FFB800] ${darkInsetClass}`}>Внимание</div>
-            <div className={`rounded-2xl border px-3 py-2 text-[#FF6B6B] ${darkInsetClass}`}>К врачу</div>
+        <SectionCard title="Что продолжать отмечать" delay={32}>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {["Месячные", "Боль", "Сон / настроение"].map((item) => (
+              <div key={item} className={`rounded-[18px] border px-4 py-3 text-sm font-black text-[#F5F0ED] ${darkInsetClass}`}>
+                {item}
+              </div>
+            ))}
           </div>
-        </div>
+        </SectionCard>
       </div>
-      {selectedTopic && (
-        <AnalysisTopicModal
-          topic={selectedTopic}
-          data={data}
-          chartTick={chartTick}
-          onClose={() => setSelectedTopicId(null)}
-          onOpenDoctorReport={openDoctorReport}
-        />
-      )}
     </main>
   );
 }

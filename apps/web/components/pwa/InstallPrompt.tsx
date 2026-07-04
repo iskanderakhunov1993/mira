@@ -36,19 +36,20 @@ export function InstallPrompt() {
     setPromptEvent(null);
   }
 
+  if (!promptEvent || installed) return null;
+
   return (
-    <div className="rounded-2xl bg-[#FAF8F5] p-4">
-      <p className="text-sm font-black text-[#1A1A1A]">📲 Установить Mira</p>
-      <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+    <div className="fixed bottom-24 left-3 right-3 z-30 mx-auto max-w-[480px] rounded-[24px] border border-[#2E2826] bg-[#1D1816] p-4 text-[#F5F0ED] shadow-[0_18px_44px_rgba(0,0,0,0.34)]">
+      <p className="text-sm font-black text-[#F5F0ED]">Установить Mira</p>
+      <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">
         Добавь приложение на главный экран телефона, чтобы открывать его как нативное.
       </p>
       <Button
         type="button"
-        className="mt-4 w-full rounded-2xl bg-[#8B6FB3] text-white hover:bg-[#74599A]"
-        disabled={!promptEvent || installed}
+        className="mt-4 w-full rounded-2xl bg-[#84E600] text-[#11100F] hover:bg-[#73CC00]"
         onClick={install}
       >
-        {installed ? "Уже установлено" : promptEvent ? "Установить приложение" : "Установка доступна в меню браузера"}
+        Установить приложение
       </Button>
     </div>
   );

@@ -3,8 +3,11 @@ const OFFLINE_URL = "/offline";
 const APP_SHELL = [
   "/",
   "/today",
-  "/care",
+  "/track",
+  "/analysis",
+  "/report",
   "/profile",
+  "/offline",
   "/manifest.webmanifest",
   "/mira-icon.svg",
   "/favicon.svg",

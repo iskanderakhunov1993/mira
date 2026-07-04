@@ -39,7 +39,7 @@ function todayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
-function buildMonthCalendar(today = new Date(), todayLog?: DailyLog): TodayData["calendar"] {
+function buildMonthCalendar(today = new Date(), todayLog: DailyLog | undefined, cycle: CycleState): TodayData["calendar"] {
   const year = today.getFullYear();
   const month = today.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -50,6 +50,13 @@ function buildMonthCalendar(today = new Date(), todayLog?: DailyLog): TodayData[
     ...Array.from({ length: daysInMonth }, (_, index) => {
       const date = index + 1;
       if (todayLog && date === today.getDate()) return { date, type: "note" as const };
+      const currentDate = new Date(year, month, date);
+      const todayStart = new Date(year, month, today.getDate());
+      const diff = Math.round((currentDate.getTime() - todayStart.getTime()) / 86_400_000);
+      const cycleDay = cycle.currentDay + diff;
+      const normalizedDay = ((cycleDay - 1) % cycle.averageLength + cycle.averageLength) % cycle.averageLength + 1;
+      if (normalizedDay <= cycle.periodLength) return { date, type: "period" as const };
+      if (normalizedDay >= cycle.averageLength - 4) return { date, type: "pms" as const };
       return { date, type: "normal" as const };
     }),
   ];
@@ -96,7 +103,7 @@ export function buildTodayDataFromStore(cycle: CycleState, logs: DailyLog[]): To
     recommendations: symptoms.length > 0
       ? ["Отметить симптомы", "Сохранить факт", "При сильных симптомах открыть «Мне плохо»"]
       : ["Отметить месячные", "Добавить симптом", "Открыть отчёт врачу"],
-    calendar: buildMonthCalendar(today, log),
+    calendar: buildMonthCalendar(today, log, cycle),
   };
 }
 

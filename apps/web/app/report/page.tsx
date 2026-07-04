@@ -11,7 +11,7 @@ import { useMiraStore } from "@/store";
 
 function routeFor(page: NavPage) {
   if (page === "today") return "/today";
-  if (page === "care") return "/care";
+  if (page === "care") return "/today";
   if (page === "analytics") return "/analysis";
   return `/${page}`;
 }

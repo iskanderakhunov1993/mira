@@ -40,11 +40,41 @@ function toDailyCheckIn(log: DailyLog): DailyCheckIn {
   const mood = toMood(log.symptoms.mood);
   const energy = toEnergy(log.symptoms.energy);
   const sleepQuality = toSleep(log.symptoms.sleep.quality);
+  const context = new Set(log.symptoms.context);
   const period = log.symptoms.bleeding.amount > 0
     ? {
       intensity: log.symptoms.bleeding.amount >= 3 ? "heavy" as const : log.symptoms.bleeding.amount === 2 ? "moderate" as const : "light" as const,
       type: log.symptoms.bleeding.clots === "large" ? "clots" as const : "normal" as const,
     }
+    : undefined;
+  const intimacy = context.has("sex_none")
+    ? undefined
+    : (context.has("sex_protected") ||
+      context.has("sex_unprotected") ||
+      context.has("sex_pain") ||
+      context.has("sex_bleeding") ||
+      ["high", "medium", "low"].includes(log.symptoms.libido ?? ""))
+      ? {
+        happened: context.has("sex_protected") || context.has("sex_unprotected") || context.has("sex_pain") || context.has("sex_bleeding"),
+        protection: context.has("sex_unprotected") ? "unprotected" as const : context.has("sex_protected") ? "protected" as const : undefined,
+        feeling: context.has("sex_pain") ? "pain" as const : undefined,
+        bleedingAfter: context.has("sex_bleeding") || undefined,
+      }
+      : undefined;
+  const symptomLog = {
+    anxiety: log.symptoms.mood === "anxious",
+    libido: log.symptoms.libido === "high" ? "high" as const : log.symptoms.libido === "medium" ? "normal" as const : log.symptoms.libido === "low" ? "low" as const : undefined,
+    sweetCraving: context.has("craving_sweet") || undefined,
+    appetite: context.has("appetite_high") ? "high" as const : undefined,
+  };
+  const calories = log.selfCare.calories;
+  const meals = calories && calories > 0
+    ? [{
+      type: "snack" as const,
+      size: "medium" as const,
+      components: [],
+      estimatedKcal: { min: calories, max: calories },
+    }]
     : undefined;
 
   return {
@@ -56,10 +86,9 @@ function toDailyCheckIn(log: DailyLog): DailyCheckIn {
     energy: energy ? { value: energy } : undefined,
     sleep: sleepQuality ? { quality: sleepQuality, hours: log.symptoms.sleep.hours ?? undefined } : undefined,
     note: log.symptoms.note ? { text: log.symptoms.note } : undefined,
-    symptomLog: {
-      anxiety: log.symptoms.mood === "anxious",
-      libido: log.symptoms.libido === "high" ? "high" : log.symptoms.libido === "medium" ? "normal" : log.symptoms.libido === "low" ? "low" : undefined,
-    },
+    intimacy,
+    meals,
+    symptomLog,
   };
 }
 
@@ -106,10 +135,21 @@ export function mergeStoreIntoReportData(
     };
   }, legacyData.walkingLog);
 
+  const weightLogFromLogs = logs.reduce<MiraLocalData["weightLog"]>((acc, log) => {
+    if (!log.selfCare.weight) return acc;
+    return {
+      ...(acc ?? {}),
+      [log.date]: {
+        date: log.date,
+        weight: log.selfCare.weight,
+      },
+    };
+  }, legacyData.weightLog);
+
   const weightLog = care.weight.history.reduce<MiraLocalData["weightLog"]>((acc, entry) => ({
     ...(acc ?? {}),
     [entry.date]: entry,
-  }), legacyData.weightLog);
+  }), weightLogFromLogs);
 
   return {
     ...legacyData,

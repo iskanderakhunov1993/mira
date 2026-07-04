@@ -1,5 +1,5 @@
-import { CareRoute } from "./CareRoute";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <CareRoute />;
+  redirect("/today");
 }

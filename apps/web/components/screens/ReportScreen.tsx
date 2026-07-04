@@ -71,7 +71,7 @@ const defaultReportSections: Record<ReportSectionId, boolean> = {
   symptoms: true,
   moodEnergy: true,
   sleep: true,
-  labs: true,
+  labs: false,
   doctorQuestions: true,
   privateNotes: false,
   sex: false,
@@ -264,7 +264,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       delayChecks.length > 0 ? `Есть ${delayChecks.length} разбор(ов) задержки с возможными причинами.` : null,
       lowEnergyEntries.length >= 2 ? `Низкая энергия или сильная слабость отмечены ${lowEnergyEntries.length} дня.` : null,
       badSleepEntries.length >= 2 ? `Сон ухудшался ${badSleepEntries.length} дня, это может усиливать боль и усталость.` : null,
-      care.weightDelta !== null && Math.abs(care.weightDelta) >= 1 ? `Вес изменился на ${care.weightDelta > 0 ? "+" : ""}${care.weightDelta.toFixed(1)} кг за период отметок.` : null,
       intimacyRiskEntries.some(checkIn => checkIn.intimacy?.feeling === "pain" || checkIn.intimacy?.bleedingAfter) ? "Есть отметки боли или крови после секса." : null,
     ].filter(Boolean) as string[];
 
@@ -273,9 +272,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       ...correlations.slice(0, 3).map(item => item.body),
       ...phaseCorrelations.slice(0, 2).map(item => item.explanation),
       care.lowWaterDays >= 2 ? `В ${care.lowWaterDays} дня воды было меньше 1 л. Это стоит сравнить со вздутием, слабостью и головной болью.` : null,
-      care.walkingEntries.length >= 3 ? `Ходьба отмечена ${care.walkingEntries.length} дня. Врач может видеть контекст активности в дни боли и усталости.` : null,
-      care.completedWorkouts >= 2 ? `Выполнено ${care.completedWorkouts} тренировок. Это помогает оценить нагрузку рядом с ухудшением самочувствия.` : null,
-      care.weightDelta !== null ? `Вес: ${care.latestWeight?.weight.toFixed(1)} кг, изменение ${care.weightDelta > 0 ? "+" : ""}${care.weightDelta.toFixed(1)} кг за период отметок.` : null,
     ].filter(Boolean).slice(0, 7) as string[];
 
     const questions = [
@@ -285,7 +281,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       intimacyRiskEntries.some(checkIn => checkIn.intimacy?.feeling === "pain" || checkIn.intimacy?.bleedingAfter) ? "С чем может быть связана боль или кровь после секса?" : null,
       medicationEntries.length > 0 ? "Могут ли лекарства из списка влиять на цикл или симптомы?" : null,
       care.lowWaterDays >= 2 ? "Может ли слабость/головная боль/вздутие усиливаться из-за недостатка воды или других факторов?" : null,
-      care.weightDelta !== null && Math.abs(care.weightDelta) >= 1 ? "Может ли изменение веса быть связано с фазой цикла, задержкой жидкости или гормональными причинами?" : null,
       "Какие красные флаги в моих записях требуют очного осмотра?",
     ].filter(Boolean) as string[];
 
@@ -346,15 +341,9 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       "ГЛАВНОЕ ДЛЯ ВРАЧА",
       ...(getVisiblePersonalItems(report.doctorHighlights).length ? getVisiblePersonalItems(report.doctorHighlights).map(item => `— ${item}`) : ["— Повторяющихся тревожных сигналов пока мало"]),
       "",
-      "ЗАКОНОМЕРНОСТИ ИЗ АНАЛИТИКИ",
-      ...(report.analyticsFindings.length ? report.analyticsFindings.map(item => `— ${item}`) : ["— Данных пока недостаточно для личных закономерностей"]),
-      "",
-      "ФАКТОРЫ ЗАБОТЫ",
+      "КОНТЕКСТ",
       `— Вода: ${report.care.waterEntries.length} дней с отметками, мало воды: ${report.care.lowWaterDays} дней`,
       `— Питание: ${report.care.mealDays} дней с отметками`,
-      `— Ходьба: ${report.care.walkingEntries.length} дней, достаточно шагов: ${report.care.walkingGoodDays} дней`,
-      `— Тренировки: ${report.care.workouts.length} записей, выполнено: ${report.care.completedWorkouts}`,
-      `— Вес: ${report.care.weightEntries.length} замеров${report.care.latestWeight ? `, последний ${report.care.latestWeight.weight.toFixed(1)} кг` : ""}`,
       "",
       "ЧТО ОБСУДИТЬ",
       ...(getVisiblePersonalItems(report.focusItems).length ? getVisiblePersonalItems(report.focusItems).map(item => `— ${item}`) : ["— Явных повторяющихся сигналов в выбранном периоде мало"]),
@@ -391,6 +380,11 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           includedSections.pain && row.badEpisodes?.length ? `мне плохо: ${row.badEpisodes.map(ep => ep.summary).join("; ")}` : null,
           includedSections.delays && row.delayChecks?.length ? `задержка: ${row.delayChecks.map(delay => `${delay.delayDays} дн.`).join(", ")}` : null,
           includedSections.privateNotes && row.note?.text ? `личная заметка: ${row.note.text}` : null,
+          includedSections.sex && row.intimacy?.happened ? `секс: ${[
+            row.intimacy.protection ? protectionLabels[row.intimacy.protection] : null,
+            row.intimacy.feeling === "pain" ? "боль" : null,
+            row.intimacy.bleedingAfter ? "кровь после" : null,
+          ].filter(Boolean).join(", ")}` : null,
         ].filter(Boolean);
         return `— ${row.date}: ${parts.join("; ")}`;
       }) : ["— нет детальных записей"]),
@@ -429,13 +423,16 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
     const a = document.createElement("a");
     a.href = url;
     a.download = `mira-doctor-report-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function handlePrintPdf() {
     setShowFullReport(true);
-    window.setTimeout(() => window.print(), 50);
+    window.print();
   }
 
   const doctorScript = getDoctorScript(data);
@@ -458,6 +455,8 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           title="Mira пока не знает твой цикл"
           body="Добавь дату последних месячных, чтобы получить прогноз и основу для отчёта врачу."
           onProfile={() => navigate("profile")}
+          onExportText={handleExportText}
+          onPrintPdf={handlePrintPdf}
         />
       </div>
     );
@@ -472,10 +471,117 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           body="Добавь месячные, симптомы, боль или заметки — и Mira соберёт факты для приёма."
           onCheckIn={onCheckIn}
           onPeriod={onCheckIn}
+          onExportText={handleExportText}
+          onPrintPdf={handlePrintPdf}
         />
       </div>
     );
   }
+
+  return (
+    <div>
+      <ReportTopHeader entriesCount={report.entries.length} />
+
+      <Card className="mb-5 rounded-[24px] border-[#2E2826] bg-[#1D1816] p-5 text-[#F5F0ED] print:hidden">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Перед экспортом</p>
+            <h2 className="mt-2 text-2xl font-black text-[#F5F0ED]">Отчёт врачу</h2>
+          </div>
+          <div className="rounded-2xl bg-[#252318] px-4 py-3 text-sm font-black text-[#84E600]">
+            {selectedSectionsCount} разделов
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <MiniStat tone="pink" icon={<Calendar className="h-4 w-4" />} label="Дней" value={`${report.entries.length}`} note={`${selectedPeriod} мес.`} />
+          <MiniStat tone="red" icon={<Activity className="h-4 w-4" />} label="Боль" value={`${report.painEntries.length}`} note={`сильная: ${report.strongPainEntries.length}`} />
+          <MiniStat tone="yellow" icon={<Moon className="h-4 w-4" />} label="Сон" value={`${report.badSleepEntries.length}`} note="хуже" />
+          <MiniStat tone="green" icon={<Droplets className="h-4 w-4" />} label="Вода" value={`${report.care.waterEntries.length}`} note={`мало: ${report.care.lowWaterDays}`} />
+        </div>
+
+        <div className="mt-5 rounded-[20px] border border-[#342D2A] bg-[#251F1D] p-4">
+          <p className="text-sm font-black text-[#F5F0ED]">Период</p>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {periods.map(period => (
+              <button
+                key={period.months}
+                onClick={() => setSelectedPeriod(period.months)}
+                className={`rounded-2xl px-2 py-3 text-xs font-black transition ${
+                  selectedPeriod === period.months ? "bg-[#84E600] text-[#11100F]" : "bg-[#1D1816] text-[#8D817B]"
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-[20px] border border-[#342D2A] bg-[#251F1D] p-4">
+          <p className="text-sm font-black text-[#F5F0ED]">Что включить</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {reportSectionLabels.map(section => (
+              <ReportCheckbox
+                key={section.id}
+                checked={includedSections[section.id]}
+                label={section.label}
+                sensitive={section.sensitive}
+                onClick={() => toggleSection(section.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          <Button type="button" onClick={handlePrintPdf} className="rounded-[18px] bg-[#84E600] font-black text-[#11100F] hover:bg-[#73CC00]">
+            <Printer className="h-4 w-4" /> PDF / печать
+          </Button>
+          <Button type="button" variant="outline" onClick={handleExportText} className="rounded-[18px] border-[#342D2A] bg-[#251F1D] font-black text-[#F5F0ED] hover:bg-[#2A2523]">
+            <Download className="h-4 w-4" /> Скачать TXT
+          </Button>
+          <Button type="button" variant="outline" onClick={handleCopyQuestions} className="rounded-[18px] border-[#342D2A] bg-[#251F1D] font-black text-[#F5F0ED] hover:bg-[#2A2523]">
+            <Copy className="h-4 w-4" /> Вопросы
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="mb-5 rounded-[24px] border-[#2E2826] bg-[#1D1816] p-5 text-[#F5F0ED] print:hidden">
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Главное</p>
+        <div className="mt-4 space-y-2">
+          {(visibleDoctorHighlights.length ? visibleDoctorHighlights : ["Повторяющихся тревожных сигналов пока мало."]).slice(0, 4).map((item, index) => (
+            <DoctorPoint key={item} index={index + 1} text={item} />
+          ))}
+        </div>
+      </Card>
+
+      <Card className="mb-5 rounded-[24px] border-[#2E2826] bg-[#1D1816] p-5 text-[#F5F0ED] print:hidden">
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Факты</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {includedSections.periodDates && <InfoRow label="Месячные" value={`${report.periodEntries.length} дней, цикл ${report.cycleLength} дн.`} />}
+          {includedSections.pain && <InfoRow label="Боль" value={`${report.painEntries.length} дней, сильная: ${report.strongPainEntries.length}`} />}
+          {includedSections.symptoms && <InfoRow label="Обильность" value={`${report.heavyFlowEntries.length} обильных дней`} />}
+          {includedSections.moodEnergy && <InfoRow label="Энергия" value={`${report.lowEnergyEntries.length} дней низкой энергии`} />}
+          {includedSections.sleep && <InfoRow label="Сон" value={`${report.badSleepEntries.length} дней хуже`} />}
+          {includedSections.delays && <InfoRow label="Задержки" value={`${report.delayChecks.length}`} />}
+          <InfoRow label="Вода" value={`${report.care.waterEntries.length} дней, мало: ${report.care.lowWaterDays}`} />
+          <InfoRow label="Питание" value={`${report.care.mealDays} дней`} />
+        </div>
+      </Card>
+
+      <Card className="mb-5 rounded-[24px] border-[#2E2826] bg-[#1D1816] p-5 text-[#F5F0ED] print:hidden">
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Вопросы врачу</p>
+        <div className="mt-4 space-y-2">
+          {(includedSections.doctorQuestions ? report.questions : ["Вопросы скрыты"]).slice(0, 4).map((question, index) => (
+            <DoctorPoint key={question} index={index + 1} text={question} />
+          ))}
+        </div>
+      </Card>
+
+      <div className="hidden print:block">
+        <pre className="whitespace-pre-wrap text-sm">{generateTextReport()}</pre>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -547,13 +653,13 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={handlePrintPdf}>
+              <Button type="button" onClick={handlePrintPdf}>
                 <Printer className="h-4 w-4" /> Скачать PDF
               </Button>
-              <Button variant="outline" onClick={handleExportText}>
+              <Button type="button" variant="outline" onClick={handleExportText}>
                 <Download className="h-4 w-4" /> Скачать TXT
               </Button>
-              <Button variant="outline" onClick={handleCopyQuestions}>
+              <Button type="button" variant="outline" onClick={handleCopyQuestions}>
                 <Copy className="h-4 w-4" /> Вопросы
               </Button>
             </div>
@@ -993,13 +1099,13 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         )}
 
         <div className="flex gap-3 print:hidden">
-          <Button className="flex-1" onClick={handlePrintPdf}>
+          <Button type="button" className="flex-1" onClick={handlePrintPdf}>
             <Printer className="h-4 w-4" /> Скачать PDF
           </Button>
-          <Button variant="outline" className="flex-1" onClick={handleExportText}>
+          <Button type="button" variant="outline" className="flex-1" onClick={handleExportText}>
             <Download className="h-4 w-4" /> Скачать TXT
           </Button>
-          <Button variant="outline" className="flex-1" onClick={handleCopyQuestions}>
+          <Button type="button" variant="outline" className="flex-1" onClick={handleCopyQuestions}>
             <Copy className="h-4 w-4" /> Скопировать вопросы врачу
           </Button>
         </div>
@@ -1081,12 +1187,16 @@ function ReportEmptyState({
   onCheckIn,
   onPeriod,
   onProfile,
+  onExportText,
+  onPrintPdf,
 }: {
   title: string;
   body: string;
   onCheckIn?: () => void;
   onPeriod?: () => void;
   onProfile?: () => void;
+  onExportText?: () => void;
+  onPrintPdf?: () => void;
 }) {
   return (
     <Card className="border-[#8B6FB3]/10 bg-white p-6 shadow-[0_12px_32px_rgba(45,38,64,0.05)]">
@@ -1102,6 +1212,20 @@ function ReportEmptyState({
             {onPeriod && <Button variant="outline" onClick={onPeriod}>Отметить месячные</Button>}
             {onProfile && <Button onClick={onProfile}>Добавить дату</Button>}
           </div>
+          {(onPrintPdf || onExportText) && (
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              {onPrintPdf && (
+                <Button type="button" variant="outline" onClick={onPrintPdf}>
+                  <Printer className="h-4 w-4" /> PDF / печать
+                </Button>
+              )}
+              {onExportText && (
+                <Button type="button" variant="outline" onClick={onExportText}>
+                  <Download className="h-4 w-4" /> Скачать TXT
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Card>

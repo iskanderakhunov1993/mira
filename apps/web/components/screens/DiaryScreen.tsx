@@ -1,368 +1,499 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import type React from "react";
 import {
-  BookOpen,
-  CalendarDays,
-  PencilLine,
-  Plus,
-  Shield,
+  Apple,
+  Battery,
+  Bed,
+  Brain,
+  ChevronLeft,
+  ChevronRight,
+  CircleDot,
+  Droplet,
+  Flame,
+  Heart,
+  HeartPulse,
+  Moon,
+  Search,
+  ShieldCheck,
+  Smile,
+  Sparkles,
+  Stethoscope,
+  TestTube2,
+  ThermometerSun,
+  Utensils,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { dateKey, getCyclePhase, getPhaseLabel, saveCheckIn } from "@/lib/store";
-import type { DailyCheckIn, MiraLocalData } from "@/lib/types";
 import type { ScreenProps } from "./types";
+import { useMiraStore, type DailyLog } from "@/store";
 
-const weekDays = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+type TrackTone = "pink" | "orange" | "purple" | "blue";
 
-function recentDays(count = 21) {
-  const today = new Date();
-  return Array.from({ length: count }, (_, index) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (count - 1 - index));
-    return {
-      key: dateKey(d),
-      day: d.getDate(),
-      weekDay: weekDays[d.getDay()],
-      isToday: dateKey(d) === dateKey(),
-    };
-  });
+type TrackItem = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  tone: TrackTone;
+};
+
+type TrackCategory = {
+  title: string;
+  subtitle?: string;
+  items: TrackItem[];
+};
+
+const toneClass: Record<TrackTone, { chip: string; active: string; icon: string; iconActive: string }> = {
+  pink: {
+    chip: "bg-[#FDECF3] text-[#1A1A1A]",
+    active: "bg-[#F64F86] text-white shadow-[0_12px_24px_rgba(246,79,134,0.22)]",
+    icon: "bg-[#FFD7E4] text-[#F64F86]",
+    iconActive: "bg-white/20 text-white",
+  },
+  orange: {
+    chip: "bg-[#FFF4EA] text-[#1A1A1A]",
+    active: "bg-[#F6A041] text-white shadow-[0_12px_24px_rgba(246,160,65,0.22)]",
+    icon: "bg-[#FFE2BF] text-[#D97815]",
+    iconActive: "bg-white/20 text-white",
+  },
+  purple: {
+    chip: "bg-[#F2EAFE] text-[#1A1A1A]",
+    active: "bg-[#8B6FE8] text-white shadow-[0_12px_24px_rgba(139,111,232,0.22)]",
+    icon: "bg-[#E2D6FF] text-[#805BE0]",
+    iconActive: "bg-white/20 text-white",
+  },
+  blue: {
+    chip: "bg-[#EAF6FF] text-[#1A1A1A]",
+    active: "bg-[#2C9FE8] text-white shadow-[0_12px_24px_rgba(44,159,232,0.20)]",
+    icon: "bg-[#D4ECFF] text-[#247FC0]",
+    iconActive: "bg-white/20 text-white",
+  },
+};
+
+const menstrualCategory: TrackCategory = {
+  title: "Менструальные выделения",
+  subtitle: "Оцени интенсивность за день",
+  items: [
+    { id: "flow_spotting", label: "Скудные", icon: Droplet, tone: "pink" },
+    { id: "flow_moderate", label: "Умеренные", icon: Droplet, tone: "pink" },
+    { id: "flow_heavy", label: "Обильные", icon: DropletsIcon, tone: "pink" },
+    { id: "flow_clots", label: "Сгустки крови", icon: CircleDot, tone: "pink" },
+  ],
+};
+
+const trackCategories: TrackCategory[] = [
+  {
+    title: "Боль",
+    items: [
+      { id: "pain_lower", label: "Боли внизу живота", icon: HeartPulse, tone: "pink" },
+      { id: "pain_back", label: "Боль в спине", icon: Stethoscope, tone: "pink" },
+      { id: "pain_head", label: "Головная боль", icon: Brain, tone: "pink" },
+      { id: "pain_breast", label: "Чувствительная грудь", icon: Heart, tone: "pink" },
+      { id: "pain_joint", label: "Боль в суставах", icon: Sparkles, tone: "pink" },
+    ],
+  },
+  {
+    title: "Пищеварение и аппетит",
+    items: [
+      { id: "digestion_bloat", label: "Вздутие", icon: CircleDot, tone: "orange" },
+      { id: "digestion_nausea", label: "Тошнота", icon: Utensils, tone: "orange" },
+      { id: "stool_constipation", label: "Запор", icon: ShieldCheck, tone: "orange" },
+      { id: "stool_diarrhea", label: "Диарея", icon: Droplet, tone: "orange" },
+      { id: "appetite_high", label: "Повышенный аппетит", icon: Apple, tone: "orange" },
+      { id: "craving_sweet", label: "Тяга к сладкому", icon: Sparkles, tone: "orange" },
+    ],
+  },
+  {
+    title: "Выделения",
+    items: [
+      { id: "discharge_mucus", label: "Слизистые", icon: Droplet, tone: "purple" },
+      { id: "discharge_creamy", label: "Кремообразные", icon: Droplet, tone: "purple" },
+      { id: "discharge_watery", label: "Водянистые", icon: DropletsIcon, tone: "purple" },
+      { id: "discharge_sticky", label: "Липкие", icon: CircleDot, tone: "purple" },
+      { id: "discharge_itch", label: "Зуд", icon: Flame, tone: "purple" },
+      { id: "discharge_dryness", label: "Сухость", icon: Moon, tone: "purple" },
+    ],
+  },
+  {
+    title: "Настроение",
+    items: [
+      { id: "mood_calm", label: "Спокойствие", icon: Smile, tone: "orange" },
+      { id: "mood_joy", label: "Радость", icon: Smile, tone: "orange" },
+      { id: "mood_irritable", label: "Раздражение", icon: Flame, tone: "orange" },
+      { id: "mood_sad", label: "Грусть", icon: Moon, tone: "orange" },
+      { id: "mood_anxious", label: "Тревога", icon: Brain, tone: "orange" },
+      { id: "mood_swings", label: "Перепады настроения", icon: ThermometerSun, tone: "orange" },
+      { id: "mood_apathy", label: "Апатия", icon: CircleDot, tone: "orange" },
+    ],
+  },
+  {
+    title: "Энергия и сон",
+    items: [
+      { id: "energy_high", label: "Много энергии", icon: Battery, tone: "blue" },
+      { id: "energy_low", label: "Мало энергии", icon: Battery, tone: "blue" },
+      { id: "energy_exhausted", label: "Нет сил", icon: Battery, tone: "blue" },
+      { id: "sleep_good", label: "Хороший сон", icon: Bed, tone: "blue" },
+      { id: "sleep_bad", label: "Плохой сон", icon: Moon, tone: "blue" },
+      { id: "sleep_insomnia", label: "Бессонница", icon: Moon, tone: "blue" },
+    ],
+  },
+  {
+    title: "Секс и сексуальное желание",
+    items: [
+      { id: "sex_none", label: "Секса не было", icon: ShieldCheck, tone: "pink" },
+      { id: "sex_protected", label: "Секс с защитой", icon: ShieldCheck, tone: "pink" },
+      { id: "sex_unprotected", label: "Секс без защиты", icon: Heart, tone: "pink" },
+      { id: "sex_pain", label: "Боль после секса", icon: HeartPulse, tone: "pink" },
+      { id: "sex_bleeding", label: "Кровь после секса", icon: Droplet, tone: "pink" },
+      { id: "libido_high", label: "Сильное желание", icon: Heart, tone: "pink" },
+      { id: "libido_medium", label: "Среднее желание", icon: Heart, tone: "pink" },
+      { id: "libido_low", label: "Слабое желание", icon: Heart, tone: "pink" },
+    ],
+  },
+  {
+    title: "Тесты и беременность",
+    items: [
+      { id: "pregnancy_negative", label: "Тест отрицательный", icon: TestTube2, tone: "blue" },
+      { id: "pregnancy_positive", label: "Тест положительный", icon: TestTube2, tone: "blue" },
+      { id: "pregnancy_faint", label: "Неясный тест", icon: TestTube2, tone: "blue" },
+      { id: "ovulation_positive", label: "Овуляционный тест +", icon: CircleDot, tone: "blue" },
+      { id: "ovulation_negative", label: "Овуляционный тест -", icon: CircleDot, tone: "blue" },
+    ],
+  },
+];
+
+const optionById = new Map([menstrualCategory, ...trackCategories].flatMap((category) => category.items.map((item) => [item.id, item])));
+
+function DropletsIcon(props: React.ComponentProps<typeof Droplet>) {
+  return (
+    <span className="relative flex h-5 w-5 items-center justify-center">
+      <Droplet className="absolute left-0 top-0 h-4 w-4" {...props} />
+      <Droplet className="absolute bottom-0 right-0 h-3.5 w-3.5" {...props} />
+    </span>
+  );
 }
 
-function getCycleDayForDate(data: MiraLocalData, dayKey: string): number | null {
-  const config = data.profile?.cycleConfig;
-  if (!config?.periodStart) return null;
-  const start = new Date(config.periodStart);
-  const d = new Date(dayKey);
-  const diff = Math.floor((d.getTime() - start.getTime()) / 86_400_000);
-  return ((diff % config.cycleLength) + config.cycleLength) % config.cycleLength + 1;
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function getPhaseForDate(data: MiraLocalData, dayKey: string) {
-  const cycleDay = getCycleDayForDate(data, dayKey);
-  if (!cycleDay || !data.profile) return null;
-  const { cycleLength, periodLength } = data.profile.cycleConfig;
+function createEmptyLog(date: string, cycleDay: number): DailyLog {
   return {
+    date,
     cycleDay,
-    label: getPhaseLabel(getCyclePhase(cycleDay, periodLength, cycleLength)),
+    symptoms: {
+      bleeding: { amount: 0, pads: 0, color: null, clots: null },
+      pain: {
+        level: 0,
+        type: null,
+        location: [],
+        radiation: [],
+        affectedLife: "none",
+        tookPainkiller: false,
+        painkillerHelped: null,
+      },
+      mood: null,
+      energy: null,
+      sleep: { quality: null, hours: null, wokeUp: null, wokeUpReason: null },
+      skin: { acne: false, acneCount: null, dryness: false, oiliness: false, hairLoss: false },
+      libido: null,
+      context: [],
+      note: "",
+    },
+    selfCare: {
+      water: 0,
+      calories: null,
+      protein: null,
+      fats: null,
+      carbs: null,
+      walking: null,
+      workout: null,
+      weight: null,
+      vitamins: { magnesium: false, omega3: false, zinc: false },
+    },
   };
 }
 
-const moodLabel: Record<string, string> = {
-  joy: "хорошее",
-  normal: "ровное",
-  sadness: "грусть",
-  anger: "раздражение",
-  anxiety: "тревога",
-  swings: "перепады",
-};
-
-const energyLabel: Record<string, string> = {
-  high: "много",
-  normal: "нормально",
-  low: "низкая",
-  exhausted: "нет сил",
-};
-
-const sleepLabel: Record<string, string> = {
-  good: "хороший",
-  normal: "нормальный",
-  bad: "плохой",
-  little: "мало сна",
-  insomnia: "бессонница",
-};
-
-const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,0,0,0.28)]";
-const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
-const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
-
-function ProgressBar({ value, max = 100, tone = "lime" }: { value: number; max?: number; tone?: "lime" | "pink" | "muted" }) {
-  const width = Math.min(100, Math.max(0, (value / max) * 100));
-  const color = {
-    lime: "bg-[#84E600]",
-    pink: "bg-[#F9359E]",
-    muted: "bg-[#6A5D57]",
-  }[tone];
-  return (
-    <div className="h-2 overflow-hidden rounded-full bg-[#342D2A]">
-      <div className={`h-full rounded-full ${color} transition-all duration-300`} style={{ width: `${width}%` }} />
-    </div>
-  );
+function addUnique(target: string[], values: string[]) {
+  return Array.from(new Set([...target, ...values]));
 }
 
-function StatTile({ label, value, tone = "lime" }: { label: string; value: string; tone?: "lime" | "pink" | "muted" }) {
-  const dot = { lime: "bg-[#84E600]", pink: "bg-[#F9359E]", muted: "bg-[#6A5D57]" }[tone];
-  return (
-    <div className={`rounded-[16px] border px-3 py-3 ${darkInsetClass}`}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#8D817B]">{label}</p>
-        <span className={`mt-0.5 h-2 w-2 rounded-full ${dot}`} />
-      </div>
-      <p className="mt-2 line-clamp-1 text-sm font-black text-[#F5F0ED]">{value}</p>
-    </div>
-  );
-}
+function buildUpdatedLog(base: DailyLog, selectedIds: string[]): DailyLog {
+  const selected = new Set(selectedIds);
+  const labels = selectedIds.map((id) => optionById.get(id)?.label).filter(Boolean) as string[];
+  const next: DailyLog = {
+    ...base,
+    symptoms: {
+      ...base.symptoms,
+      bleeding: { ...base.symptoms.bleeding },
+      pain: {
+        ...base.symptoms.pain,
+        location: [...base.symptoms.pain.location],
+        radiation: [...base.symptoms.pain.radiation],
+      },
+      sleep: { ...base.symptoms.sleep, wokeUpReason: base.symptoms.sleep.wokeUpReason ? [...base.symptoms.sleep.wokeUpReason] : null },
+      skin: { ...base.symptoms.skin },
+      context: [...base.symptoms.context],
+    },
+    selfCare: { ...base.selfCare, vitamins: { ...base.selfCare.vitamins } },
+  };
 
-export function DiaryScreen({ data, persist, onCheckIn }: ScreenProps) {
-  const [selectedDay, setSelectedDay] = useState(dateKey());
-  const [diaryText, setDiaryText] = useState("");
-  const [savedNote, setSavedNote] = useState(false);
-  const days = useMemo(() => recentDays(21), []);
-  const selectedCheckIn = data.checkIns[selectedDay];
-  const phase = getPhaseForDate(data, selectedDay);
-  const checkIns = Object.values(data.checkIns);
-  const diaryEntries = checkIns
-    .filter((entry) => entry.note?.text)
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const summaryCount = [
-    selectedCheckIn?.period,
-    selectedCheckIn?.pain?.level,
-    selectedCheckIn?.mood?.value,
-    selectedCheckIn?.energy?.value,
-    selectedCheckIn?.sleep?.quality,
-    selectedCheckIn?.note?.text,
-  ].filter(Boolean).length;
+  if (selected.has("flow_spotting")) next.symptoms.bleeding.amount = Math.max(next.symptoms.bleeding.amount, 1) as DailyLog["symptoms"]["bleeding"]["amount"];
+  if (selected.has("flow_moderate")) next.symptoms.bleeding.amount = Math.max(next.symptoms.bleeding.amount, 2) as DailyLog["symptoms"]["bleeding"]["amount"];
+  if (selected.has("flow_heavy")) {
+    next.symptoms.bleeding.amount = 3;
+    next.symptoms.bleeding.pads = Math.max(next.symptoms.bleeding.pads, 6);
+  }
+  if (selected.has("flow_clots")) next.symptoms.bleeding.clots = "small";
 
-  useEffect(() => {
-    setDiaryText(selectedCheckIn?.note?.text ?? "");
-    setSavedNote(false);
-  }, [selectedDay, selectedCheckIn?.note?.text]);
-
-  function saveDiaryNote() {
-    const text = diaryText.trim();
-    const existing = data.checkIns[selectedDay];
-    const nextCheckIn: DailyCheckIn = {
-      ...(existing ?? {}),
-      date: selectedDay,
-      savedAt: new Date().toISOString(),
-      ...(text ? { note: { text } } : { note: undefined }),
-    };
-    persist(saveCheckIn(data, nextCheckIn));
-    setSavedNote(true);
-    window.setTimeout(() => setSavedNote(false), 1800);
+  const painLocations: string[] = [];
+  if (selected.has("pain_lower")) painLocations.push("low_abdomen");
+  if (selected.has("pain_back")) painLocations.push("back");
+  if (selected.has("pain_head")) painLocations.push("head");
+  if (selected.has("pain_breast")) painLocations.push("breast");
+  if (selected.has("pain_joint")) painLocations.push("joints");
+  if (selected.has("sex_pain")) painLocations.push("after_sex");
+  if (painLocations.length > 0) {
+    next.symptoms.pain.level = Math.max(next.symptoms.pain.level, 2) as DailyLog["symptoms"]["pain"]["level"];
+    next.symptoms.pain.type = selected.has("pain_lower") ? "cramping" : "aching";
+    next.symptoms.pain.location = addUnique(next.symptoms.pain.location, painLocations);
   }
 
-  return (
-    <div className="text-[#F5F0ED]">
-      <header className={`mb-5 rounded-[22px] p-5 ${darkCardClass}`}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Track</p>
-            <h1 className="mt-1 text-[34px] font-black tracking-tight text-[#F5F0ED]">Отслеживать</h1>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-[#B7AAA4]">
-              Медицинские отметки: месячные, симптомы, боль, настроение, сон, секс и личные заметки.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onCheckIn?.(selectedDay)}
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] ${limeButtonClass}`}
-            aria-label="Добавить отметку"
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-        </div>
-      </header>
+  if (selected.has("mood_calm") || selected.has("mood_joy")) next.symptoms.mood = selected.has("mood_joy") ? "great" : "good";
+  if (selected.has("mood_irritable")) next.symptoms.mood = "irritable";
+  if (selected.has("mood_anxious")) next.symptoms.mood = "anxious";
+  if (selected.has("mood_sad") || selected.has("mood_apathy")) next.symptoms.mood = "low";
 
-      <Card className={`mb-5 rounded-[20px] p-4 ${darkCardClass}`}>
-        <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
-            <Shield className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-black text-[#F5F0ED]">Что было в этот день?</p>
-            <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">
-              Симптомы попадут в Анализ. Личная заметка видна только тебе и не попадёт в отчёт врачу по умолчанию.
-            </p>
-          </div>
-        </div>
-      </Card>
+  if (selected.has("energy_high")) next.symptoms.energy = "high";
+  if (selected.has("energy_low")) next.symptoms.energy = "low";
+  if (selected.has("energy_exhausted")) next.symptoms.energy = "exhausted";
+  if (selected.has("sleep_good")) next.symptoms.sleep.quality = "good";
+  if (selected.has("sleep_bad") || selected.has("sleep_insomnia")) next.symptoms.sleep.quality = "poor";
 
-      <div className="mb-3 flex items-end justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Календарь цикла</p>
-          <p className="text-sm font-black text-[#F5F0ED]">Выбери день для записи</p>
-        </div>
-        <CalendarDays className="h-5 w-5 text-[#8D817B]" />
-      </div>
+  if (selected.has("libido_high")) next.symptoms.libido = "high";
+  if (selected.has("libido_medium")) next.symptoms.libido = "medium";
+  if (selected.has("libido_low")) next.symptoms.libido = "low";
+  if (selected.has("sex_none")) next.symptoms.libido = next.symptoms.libido ?? "none";
+  if (selected.has("discharge_watery")) next.symptoms.bleeding.color = "watery";
 
-      <div className="mb-5 grid grid-cols-7 gap-1.5">
-        {days.map((day) => {
-          const hasData = !!data.checkIns[day.key] || !!data.waterLog?.[day.key] || (data.walkingLog?.[day.key]?.steps ?? 0) > 0 || data.workouts.some((w) => w.date === day.key);
-          const hasNote = !!data.checkIns[day.key]?.note?.text;
-          const isSelected = day.key === selectedDay;
-          const dayPhase = getPhaseForDate(data, day.key);
-          return (
-            <button
-              key={day.key}
-              onClick={() => setSelectedDay(day.key)}
-              className={`min-h-[76px] rounded-[16px] border p-1.5 text-center transition active:scale-[0.98] ${
-                isSelected
-                  ? "border-[#84E600]/40 bg-[#84E600] text-[#11100F] shadow-[0_12px_28px_rgba(132,230,0,0.18)]"
-                  : day.isToday
-                    ? "border-[#84E600]/25 bg-[#252318] text-[#F5F0ED]"
-                    : "border-[#342D2A] bg-[#1D1816] text-[#8D817B]"
-              }`}
-            >
-              <span className="block text-[10px] font-semibold">{day.weekDay}</span>
-              <span className="mt-1 block text-base font-bold">{day.day}</span>
-              <span className="mt-0.5 block text-[9px] font-semibold opacity-70">
-                {dayPhase ? `${dayPhase.cycleDay} дц` : "—"}
-              </span>
-              <span className="mt-1 flex items-center justify-center gap-1">
-                <span className={`block h-1.5 w-1.5 rounded-full ${hasData ? (isSelected ? "bg-[#11100F]" : "bg-[#84E600]") : "bg-transparent"}`} />
-                <span className={`block h-1.5 w-1.5 rounded-full ${hasNote ? (isSelected ? "bg-[#11100F]" : "bg-[#F9359E]") : "bg-transparent"}`} />
-              </span>
-            </button>
-          );
-        })}
-      </div>
+  const contextIds = selectedIds.filter((id) => ![
+    "flow_spotting",
+    "flow_moderate",
+    "flow_heavy",
+    "flow_clots",
+    "pain_lower",
+    "pain_back",
+    "pain_head",
+    "pain_breast",
+    "pain_joint",
+    "mood_calm",
+    "mood_joy",
+    "mood_irritable",
+    "mood_anxious",
+    "mood_sad",
+    "mood_apathy",
+    "energy_high",
+    "energy_low",
+    "energy_exhausted",
+    "sleep_good",
+    "sleep_bad",
+    "sleep_insomnia",
+    "libido_high",
+    "libido_medium",
+    "libido_low",
+    "sex_none",
+    "discharge_watery",
+  ].includes(id));
+  next.symptoms.context = addUnique(next.symptoms.context, contextIds);
 
-      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-[10px] font-semibold text-[#8D817B]">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#84E600]" />
-          отметки дня
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#F9359E]" />
-          личная запись
-        </span>
-      </div>
+  if (labels.length > 0) {
+    const line = `Отмечено: ${labels.join(", ")}`;
+    next.symptoms.note = next.symptoms.note ? `${next.symptoms.note}\n${line}` : line;
+  }
 
-      <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Сводка дня</p>
-            <p className="text-lg font-black text-[#F5F0ED]">
-              {new Date(selectedDay).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-            </p>
-            <p className="text-xs font-semibold text-[#B7AAA4]">
-              {phase ? `${phase.cycleDay}-й день цикла` : "День без привязки к циклу"}
-            </p>
-          </div>
-          <div className="min-w-[120px]">
-            <div className="mb-2 flex items-center justify-between text-[10px] font-black text-[#8D817B]">
-              <span>заполнено</span>
-              <span className="text-[#84E600]">{Math.round((summaryCount / 6) * 100)}%</span>
-            </div>
-            <ProgressBar value={summaryCount} max={6} />
-          </div>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <StatTile label="Месячные" value={selectedCheckIn?.period ? "есть" : "нет"} tone={selectedCheckIn?.period ? "pink" : "muted"} />
-          <StatTile label="Боль" value={selectedCheckIn?.pain?.level ? selectedCheckIn.pain.level : "нет"} tone={selectedCheckIn?.pain?.level ? "pink" : "muted"} />
-          <StatTile label="Настроение" value={selectedCheckIn?.mood?.value ? moodLabel[selectedCheckIn.mood.value] ?? selectedCheckIn.mood.value : "нет"} tone="lime" />
-          <StatTile label="Энергия" value={selectedCheckIn?.energy?.value ? energyLabel[selectedCheckIn.energy.value] ?? selectedCheckIn.energy.value : "нет"} tone="lime" />
-          <StatTile label="Сон" value={selectedCheckIn?.sleep?.quality ? sleepLabel[selectedCheckIn.sleep.quality] ?? selectedCheckIn.sleep.quality : "нет"} tone="muted" />
-          <StatTile label="Заметка" value={selectedCheckIn?.note?.text ? "есть" : "нет"} tone={selectedCheckIn?.note?.text ? "pink" : "muted"} />
-        </div>
-
-        <div className="mt-4">
-          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Быстрые действия</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            <DiaryQuickButton label="Месячные" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Симптомы" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Настроение / сон" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Секс" onClick={() => onCheckIn?.(selectedDay)} />
-            <DiaryQuickButton label="Заметка" onClick={() => document.getElementById("diary-note")?.focus()} />
-          </div>
-        </div>
-      </Card>
-
-      <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F9359E]">Личная запись</p>
-            <p className="text-lg font-black text-[#F5F0ED]">
-              {new Date(selectedDay).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
-            </p>
-            <p className="text-xs font-semibold text-[#B7AAA4]">
-              {phase ? `${phase.cycleDay}-й день цикла · ${phase.label.toLowerCase()} фаза` : "День без привязки к циклу"}
-            </p>
-          </div>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
-            <PencilLine className="h-5 w-5" />
-          </span>
-        </div>
-        <textarea
-          id="diary-note"
-          value={diaryText}
-          onChange={(event) => setDiaryText(event.target.value)}
-          placeholder="Что сегодня происходило? Настроение, мысли, стресс, боль, важные события..."
-          rows={5}
-          className="w-full resize-none rounded-[18px] border border-[#342D2A] bg-[#2A2523] p-4 text-sm font-semibold leading-relaxed text-[#F5F0ED] outline-none transition placeholder:text-[#6A5D57] focus:border-[#84E600]/45 focus:ring-4 focus:ring-[#84E600]/10"
-        />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[11px] font-semibold leading-snug text-[#8D817B]">
-            Эта запись останется в выбранном дне и будет видна в истории цикла.
-          </p>
-          <Button size="sm" className={limeButtonClass} onClick={saveDiaryNote}>
-            {savedNote ? "Сохранено" : "Сохранить"}
-          </Button>
-        </div>
-      </Card>
-
-      <Card className={`mb-5 rounded-[20px] p-5 ${darkCardClass}`}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-black text-[#F5F0ED]">Записи по циклу</p>
-            <p className="text-xs font-semibold text-[#B7AAA4]">Последние личные заметки с привязкой к дню цикла</p>
-          </div>
-          <BookOpen className="h-5 w-5 text-[#8D817B]" />
-        </div>
-        {diaryEntries.length === 0 ? (
-          <div className={`rounded-[18px] border border-dashed p-4 text-center ${darkInsetClass}`}>
-            <p className="text-sm font-black text-[#F5F0ED]">Пока нет личных записей</p>
-            <p className="mt-1 text-xs font-semibold text-[#B7AAA4]">Добавь заметку или отметь состояние 3–5 дней, и Mira начнёт видеть первые повторения.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {diaryEntries.slice(0, 5).map((entry) => {
-              const entryPhase = getPhaseForDate(data, entry.date);
-              return (
-                <button
-                  key={entry.date}
-                  onClick={() => setSelectedDay(entry.date)}
-                  className={`w-full rounded-[16px] border px-3 py-2.5 text-left transition hover:bg-[#302927] active:scale-[0.99] ${darkInsetClass}`}
-                >
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <p className="text-xs font-black text-[#F5F0ED]">
-                      {new Date(entry.date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
-                    </p>
-                    <span className="shrink-0 text-[10px] font-black text-[#84E600]">
-                      {entryPhase ? `${entryPhase.cycleDay} дц` : "без цикла"}
-                    </span>
-                  </div>
-                  <p className="line-clamp-2 text-xs font-semibold leading-snug text-[#B7AAA4]">{entry.note?.text}</p>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-    </div>
-  );
+  return next;
 }
 
-function SummaryPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={`rounded-2xl border px-3 py-2 ${darkInsetClass}`}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-[#8D817B]">{label}</p>
-      <p className="mt-1 text-xs font-semibold text-[#F5F0ED]">{value}</p>
-    </div>
-  );
-}
-
-function DiaryQuickButton({ label, onClick }: { label: string; onClick: () => void }) {
+function TrackChip({ item, selected, onClick }: { item: TrackItem; selected: boolean; onClick: () => void }) {
+  const Icon = item.icon;
+  const tone = toneClass[item.tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className="min-h-11 rounded-2xl border border-[#342D2A] bg-[#251F1D] px-3 py-2 text-xs font-black text-[#F5F0ED] transition hover:-translate-y-0.5 hover:border-[#84E600]/35 hover:bg-[#2A2523] active:scale-[0.98]"
+      className={`inline-flex min-h-[54px] items-center gap-3 rounded-full py-2 pl-2 pr-5 text-left text-[17px] font-bold leading-tight transition active:scale-[0.98] ${
+        selected ? tone.active : tone.chip
+      }`}
+      aria-pressed={selected}
     >
-      {label}
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${selected ? tone.iconActive : tone.icon}`}>
+        <Icon className="h-5 w-5" strokeWidth={2.5} />
+      </span>
+      <span className={selected ? "text-white" : "text-[#1A1A1A]"}>{item.label}</span>
     </button>
   );
 }
+
+function FeelingShortcut({ item, selected, onClick }: { item: TrackItem; selected: boolean; onClick: () => void }) {
+  const Icon = item.icon;
+  const tone = toneClass[item.tone];
+  return (
+    <button type="button" onClick={onClick} className="min-w-0 text-center active:scale-[0.98]" aria-pressed={selected}>
+      <span className={`mx-auto flex h-[76px] w-[76px] items-center justify-center rounded-full ${selected ? tone.active : tone.icon}`}>
+        <Icon className="h-8 w-8" strokeWidth={2.4} />
+      </span>
+      <span className="mt-3 block text-sm font-bold leading-tight text-[#1A1A1A]">{item.label}</span>
+    </button>
+  );
+}
+
+export function DiaryScreen({ navigate }: ScreenProps) {
+  const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState(false);
+  const logs = useMiraStore((state) => state.logs.dailyLogs);
+  const cycleDay = useMiraStore((state) => state.cycle.currentDay);
+  const setDailyLog = useMiraStore((state) => state.setDailyLog);
+  const topItems = trackCategories
+    .flatMap((category) => category.items)
+    .filter((item) => ["mood_calm", "mood_joy", "discharge_creamy", "discharge_watery"].includes(item.id));
+
+  const visibleCategories = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return trackCategories;
+    return trackCategories
+      .map((category) => ({
+        ...category,
+        items: category.items.filter((item) => item.label.toLowerCase().includes(normalized)),
+      }))
+      .filter((category) => category.items.length > 0);
+  }, [query]);
+
+  function toggle(id: string) {
+    setSaved(false);
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
+
+  function save() {
+    const date = todayIso();
+    const existingLog = logs.find((log) => log.date === date);
+    const updatedLog = buildUpdatedLog(existingLog ?? createEmptyLog(date, cycleDay), selectedIds);
+    const cleanNote = note.trim();
+    if (cleanNote) {
+      updatedLog.symptoms.note = updatedLog.symptoms.note
+        ? `${updatedLog.symptoms.note}\nЗаметка: ${cleanNote}`
+        : cleanNote;
+    }
+    setDailyLog(updatedLog);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1800);
+  }
+
+  return (
+    <div className="mx-auto min-h-screen max-w-[720px] bg-[#F1F1F1] pb-56 text-[#1A1A1A]">
+      <div className="sticky top-0 z-20 bg-[#F1F1F1]/95 px-5 pb-4 pt-3 backdrop-blur-xl">
+        <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-[#BDBDBD]" />
+        <header className="flex items-center justify-between">
+          <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full text-[#111]" aria-label="Назад">
+            <ChevronLeft className="h-8 w-8" />
+          </button>
+          <div className="text-center">
+            <h1 className="text-[32px] font-black leading-none">Сегодня</h1>
+            <p className="mt-1 text-sm font-bold text-[#777]">{cycleDay}-й день цикла</p>
+          </div>
+          <button type="button" className="flex h-11 w-11 items-center justify-center rounded-full text-[#B9B9B9]" aria-label="Следующий день">
+            <ChevronRight className="h-8 w-8" />
+          </button>
+        </header>
+        <div className="mt-6 flex h-[60px] items-center gap-3 rounded-full bg-[#E3E3E3] px-5">
+          <Search className="h-7 w-7 shrink-0 text-[#9B9B9B]" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Искать или задать вопрос"
+            className="h-full min-w-0 flex-1 bg-transparent text-[20px] font-semibold text-[#1A1A1A] outline-none placeholder:text-[#A8A8A8]"
+          />
+        </div>
+      </div>
+
+      <main className="space-y-6 px-5">
+        <section className="rounded-[28px] bg-white px-5 py-6 text-[#1A1A1A] shadow-[0_12px_32px_rgba(20,20,20,0.04)]">
+          <h2 className="text-[24px] font-black leading-tight text-[#1A1A1A]">Как вы себя чувствуете сегодня?</h2>
+          <div className="mt-6 grid grid-cols-4 gap-4">
+            {topItems.map((item) => (
+              <FeelingShortcut key={item.id} item={item} selected={selectedIds.includes(item.id)} onClick={() => toggle(item.id)} />
+            ))}
+          </div>
+        </section>
+
+        <div className="flex items-center">
+          <h2 className="text-[30px] font-black">Категории</h2>
+        </div>
+
+        {visibleCategories.map((category) => (
+          <section key={category.title} className="rounded-[28px] bg-white px-5 py-6 text-[#1A1A1A] shadow-[0_12px_32px_rgba(20,20,20,0.04)]">
+            <h3 className="text-[26px] font-black leading-tight text-[#1A1A1A]">{category.title}</h3>
+            {category.subtitle && <p className="mt-2 text-base font-semibold text-[#8E8E93]">{category.subtitle}</p>}
+            <div className="mt-5 flex flex-wrap gap-3">
+              {category.items.map((item) => (
+                <TrackChip key={item.id} item={item} selected={selectedIds.includes(item.id)} onClick={() => toggle(item.id)} />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {visibleCategories.length === 0 && (
+          <section className="rounded-[28px] bg-white px-5 py-8 text-center">
+            <p className="text-lg font-black">Ничего не нашла</p>
+            <p className="mt-2 text-sm font-semibold text-[#8E8E93]">Попробуй другое слово или выбери из категорий.</p>
+          </section>
+        )}
+
+        <section className="rounded-[28px] bg-white px-5 py-6 text-[#1A1A1A] shadow-[0_12px_32px_rgba(20,20,20,0.04)]">
+          <h3 className="text-[26px] font-black leading-tight text-[#1A1A1A]">Заметка</h3>
+          <textarea
+            value={note}
+            onChange={(event) => {
+              setSaved(false);
+              setNote(event.target.value);
+            }}
+            placeholder="Например: мало спала, стресс, тянет на сладкое..."
+            className="mt-5 min-h-[120px] w-full resize-none rounded-[24px] bg-[#F1F1F1] px-5 py-4 text-base font-semibold leading-relaxed text-[#1A1A1A] outline-none placeholder:text-[#A8A8A8] focus:ring-2 focus:ring-[#F64F86]/35"
+          />
+        </section>
+      </main>
+
+      <footer className="fixed inset-x-0 bottom-24 z-50 px-5">
+        <div className="mx-auto grid max-w-[720px] grid-cols-[1fr_auto] items-center gap-3 rounded-[28px] bg-white/95 px-4 py-3 shadow-[0_-14px_34px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+          <div>
+            <p className="text-sm font-black text-[#1A1A1A]">{selectedIds.length ? `Выбрано: ${selectedIds.length}` : note.trim() ? "Есть заметка" : "Выберите отметки"}</p>
+            <p className="mt-0.5 text-xs font-bold text-[#8E8E93]">
+              {saved ? "Сохранено в Анализ и Отчёт. Секс и заметки скрыты по умолчанию." : "Секс и личные заметки скрыты из Report по умолчанию."}
+            </p>
+            {saved && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button type="button" className="rounded-full bg-[#F1F1F1] px-3 py-1.5 text-xs font-black text-[#1A1A1A]" onClick={() => navigate("analytics")}>
+                  Анализ
+                </button>
+                <button type="button" className="rounded-full bg-[#F1F1F1] px-3 py-1.5 text-xs font-black text-[#1A1A1A]" onClick={() => navigate("report")}>
+                  Отчёт врачу
+                </button>
+              </div>
+            )}
+          </div>
+          <Button
+            type="button"
+            disabled={selectedIds.length === 0 && !note.trim()}
+            className="h-13 rounded-full bg-[#F64F86] px-6 font-black text-white hover:bg-[#E83F78] disabled:bg-[#E8E8E8] disabled:text-[#9D9D9D]"
+            onClick={save}
+          >
+            {saved ? "Сохранено" : "Сохранить"}
+          </Button>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default DiaryScreen;

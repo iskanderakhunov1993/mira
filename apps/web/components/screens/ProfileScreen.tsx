@@ -61,7 +61,7 @@ function PrivacyRow({
   );
 }
 
-export function ProfileScreen({ data, persist }: ScreenProps) {
+export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
   const profile = data.profile;
   const [section, setSection] = useState<string | null>(null);
   const [notifOn, setNotifOn] = useState(false);
@@ -702,6 +702,23 @@ export function ProfileScreen({ data, persist }: ScreenProps) {
                 ))}
               </div>
             </Card>
+
+            <button
+              type="button"
+              onClick={() => navigate("report")}
+              className="mb-5 flex w-full items-center justify-between gap-4 rounded-[22px] border border-[#84E600]/25 bg-[#252318] p-5 text-left shadow-[0_18px_48px_rgba(0,0,0,0.28)] transition hover:-translate-y-0.5 hover:bg-[#2B2A1E]"
+            >
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-[#84E600] text-[#11100F]">
+                  <Download className="h-6 w-6" />
+                </span>
+                <div>
+                  <p className="text-lg font-black text-[#F5F0ED]">Отчёт врачу</p>
+                  <p className="mt-1 text-sm font-semibold text-[#B7AAA4]">Экспорт данных и приватность</p>
+                </div>
+              </div>
+              <ChevronRight className="h-6 w-6 shrink-0 text-[#84E600]" />
+            </button>
 
             <div className="mb-5 grid gap-3 md:grid-cols-3">
               {[

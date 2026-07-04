@@ -13,7 +13,7 @@ import { useMiraStore } from "@/store";
 
 function routeFor(page: NavPage) {
   if (page === "today") return "/today";
-  if (page === "care") return "/care";
+  if (page === "care") return "/today";
   if (page === "analytics") return "/analysis";
   if (page === "diary") return "/track";
   return `/${page}`;
@@ -43,8 +43,8 @@ export default function Page() {
 
   return (
     <>
-      <main className="min-h-screen bg-[#050505] px-5 py-6">
-        <div className="mx-auto max-w-5xl">
+      <main className="min-h-screen bg-[#050505]">
+        <div className="mx-auto max-w-[720px]">
           <DiaryScreen
             data={data}
             persist={persist}
