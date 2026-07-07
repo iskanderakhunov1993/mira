@@ -1,14 +1,11 @@
-import * as React from "react";
+import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-export function Card({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "rounded-[24px] border border-[#DED6E8] bg-white/88 p-4 shadow-[0_12px_34px_rgba(62,52,83,0.07)] backdrop-blur-xl transition-all duration-200 sm:p-5",
+        "rounded-[24px] border border-[var(--mira-token-border)] bg-[var(--mira-token-card)] text-[var(--mira-token-foreground)] shadow-[0_18px_44px_rgba(86,70,104,0.07)]",
         className
       )}
       {...props}

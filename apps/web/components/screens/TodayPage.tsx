@@ -14,6 +14,7 @@ import {
   Plus,
   Scale,
   Sparkles,
+  ThermometerSun,
   TriangleAlert,
   UserRound,
   X,
@@ -163,6 +164,7 @@ function createEmptyLog(date: string, cycleDay: number): DailyLog {
       energy: null,
       sleep: { quality: null, hours: null, wokeUp: null, wokeUpReason: null },
       skin: { acne: false, acneCount: null, dryness: false, oiliness: false, hairLoss: false },
+      basalTemperature: null,
       libido: null,
       context: [],
       note: "",
@@ -866,11 +868,15 @@ function CompactCycleDynamics({ summary, onOpenAnalytics }: { summary: CycleSumm
   const chartTop = 12;
   const chartBottom = 78;
   const toY = (value: number) => chartBottom - ((Math.min(maxValue, Math.max(minValue, value)) - minValue) / (maxValue - minValue)) * (chartBottom - chartTop);
+  const normalTop = toY(normalMax);
+  const normalBottom = toY(normalMin);
   const plotted = points.map((item, index) => ({
     x: chartLeft + (points.length === 1 ? 0 : (index / (points.length - 1)) * (chartRight - chartLeft)),
     y: toY(item.length),
     value: item.length,
-    isOutlier: !item.isCurrent && (item.length < normalMin || item.length > normalMax),
+    label: item.isCurrent ? "сейчас" : `${index + 1}`,
+    isCurrent: item.isCurrent,
+    isOutlier: item.length < normalMin || item.length > normalMax,
   }));
   const path = plotted
     .map((point, index) => {
@@ -881,52 +887,108 @@ function CompactCycleDynamics({ summary, onOpenAnalytics }: { summary: CycleSumm
     })
     .join(" ");
   const hasOutlier = plotted.some((point) => point.isOutlier);
+  const isStable = summary.fluctuationMax - summary.fluctuationMin <= 7;
+  const averageLength = Math.round(points.reduce((sum, item) => sum + item.length, 0) / points.length);
+  const hasEnoughDynamics = points.length >= 3;
+  const statusLabel = !hasEnoughDynamics ? "Мало данных" : hasOutlier ? "Есть отклонение" : isStable ? "В пределах ориентира" : "Есть колебания";
+  const caption = !hasEnoughDynamics
+    ? "Нужно 3 цикла, чтобы увереннее видеть динамику. Сейчас Mira показывает первые точки."
+    : hasOutlier
+      ? "Одна или несколько точек вышли за ориентир 21-35 дней. Это не диагноз, но такие циклы стоит не потерять."
+      : isStable
+        ? "Последние циклы держатся внутри ориентира 21-35 дней без резких скачков."
+        : "Циклы внутри ориентира, но разброс заметный. История покажет, повторяется ли это.";
+  const actionLabel = hasEnoughDynamics ? "Посмотреть историю циклов" : "Добавить месячные";
 
   return (
-    <Card className={`mt-4 overflow-hidden rounded-[22px] p-0 ${darkCardClass}`}>
-      <div className="flex items-center justify-between border-b border-[#342D2A] px-5 py-4">
-        <h2 className="text-lg font-black text-[#F5F0ED]">Динамика цикла</h2>
-        <button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#2A2523] text-[#8D817B]" onClick={onOpenAnalytics} aria-label="Открыть аналитику">
+    <Card className="mt-4 overflow-hidden rounded-[28px] border-0 bg-white p-0 text-[#1A1A1A] shadow-[0_18px_50px_rgba(12,10,18,0.10)]">
+      <div className="flex items-center justify-between gap-4 border-b border-[#EFEFEF] px-5 py-5">
+        <div>
+          <h2 className="text-[22px] font-black leading-none text-[#1A1A1A]">Динамика цикла</h2>
+          <p className="mt-2 text-sm font-bold text-[#8E8E93]">{statusLabel}</p>
+        </div>
+        <button type="button" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F2F2F2] text-[#A7A7A7]" onClick={onOpenAnalytics} aria-label="Открыть аналитику">
           <Info className="h-5 w-5" />
         </button>
       </div>
 
-      <div className="px-4 pt-4">
-        <div className="relative h-[260px] overflow-hidden rounded-[20px] bg-[#F7F7F7]">
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="График динамики цикла">
-            <rect x="7" y={toY(normalMax)} width="86" height={toY(normalMin) - toY(normalMax)} fill="#E6E8EB" />
-            {[15, 30, 45, 60, 75, 90].map((x) => (
-              <line key={`v-${x}`} x1={x} x2={x} y1="12" y2="82" stroke="#E1E1E1" strokeWidth="0.35" />
+      <div className="px-5 pt-5">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ["сейчас", `${summary.current.length} дн.`],
+            ["средний", `${averageLength} дн.`],
+            ["разброс", `${summary.fluctuationMin}-${summary.fluctuationMax}`],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-[18px] bg-[#F7F7F7] px-3 py-3">
+              <p className="text-[10px] font-black uppercase tracking-wide text-[#8E8E93]">{label}</p>
+              <p className="mt-1 text-lg font-black text-[#1A1A1A]">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="relative mt-5 h-[295px] overflow-hidden rounded-[22px] bg-white">
+          <svg className="absolute inset-x-0 top-0 h-[238px] w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="График динамики цикла">
+            <defs>
+              <linearGradient id="compactCycleArea" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#C9CED8" stopOpacity="0.24" />
+                <stop offset="100%" stopColor="#C9CED8" stopOpacity="0.04" />
+              </linearGradient>
+              <linearGradient id="compactCycleLine" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#C4C8D1" />
+                <stop offset="60%" stopColor="#AEB4C0" />
+                <stop offset="100%" stopColor="#C4C8D1" />
+              </linearGradient>
+              <filter id="compactCycleGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#FFB800" floodOpacity="0.36" />
+              </filter>
+            </defs>
+            <rect x="7" y={normalTop} width="86" height={normalBottom - normalTop} rx="2" fill="#E9EBEF" />
+            {[chartLeft, 29, 50, 71, chartRight].map((x) => (
+              <line key={`v-${x}`} x1={x} x2={x} y1="12" y2="82" stroke="#E7E7E7" strokeWidth="0.45" />
             ))}
-            {[18, 34, 50, 66, 82].map((y) => (
-              <line key={`h-${y}`} x1="7" x2="93" y1={y} y2={y} stroke="#E1E1E1" strokeWidth="0.35" />
+            {[chartTop, normalTop, (normalTop + normalBottom) / 2, normalBottom, chartBottom].map((y) => (
+              <line key={`h-${y}`} x1="7" x2="93" y1={y} y2={y} stroke="#E7E7E7" strokeWidth="0.45" />
             ))}
-            <path d={path} fill="none" stroke="#B8BEC8" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+            {hasOutlier && <text x="15" y="24" className="fill-[#606A7D] text-[5px] font-black">НЕ НОРМА</text>}
+            {hasOutlier && <text x="62" y="70" className="fill-[#606A7D] text-[5px] font-black">НЕ НОРМА</text>}
+            <path d={`${path} L ${plotted[plotted.length - 1]?.x ?? chartLeft} ${chartBottom} L ${plotted[0]?.x ?? chartLeft} ${chartBottom} Z`} fill="url(#compactCycleArea)" />
+            <path d={path} fill="none" stroke="url(#compactCycleLine)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
             {plotted.map((point, index) => (
-              <g key={`${point.x}-${point.y}-${index}`}>
-                {point.isOutlier && <circle cx={point.x} cy={point.y} r="7.5" fill="#FFB800" opacity="0.28" />}
-                <circle cx={point.x} cy={point.y} r={point.isOutlier ? "3.4" : "2.8"} fill={point.isOutlier ? "#FFB800" : "#4B5C78"} stroke="white" strokeWidth="1.3" />
+              <g key={`${point.x}-${point.y}-${index}`} filter={point.isOutlier ? "url(#compactCycleGlow)" : undefined}>
+                {point.isOutlier && <circle cx={point.x} cy={point.y} r="8.4" fill="#FFB800" opacity="0.26" />}
+                <circle cx={point.x} cy={point.y} r={point.isOutlier ? "4.1" : "3.4"} fill={point.isOutlier ? "#FFB800" : "#59657A"} stroke="white" strokeWidth="1.6" />
+                {point.isOutlier && <circle cx={point.x} cy={point.y} r="2" fill="white" opacity="0.82" />}
               </g>
             ))}
-            {hasOutlier && (
-              <>
-                <text x="13" y="25" className="fill-[#4B5C78] text-[5px] font-black">НЕ НОРМА</text>
-                <text x="62" y="71" className="fill-[#4B5C78] text-[5px] font-black">НЕ НОРМА</text>
-              </>
-            )}
           </svg>
-          <div className="absolute bottom-4 left-6 right-6 flex justify-between">
+          <div className="absolute bottom-7 left-5 right-5 flex justify-between gap-1">
             {plotted.map((point) => (
-              <span key={`${point.x}-tick`} className="h-3 w-8 rounded-full bg-[#E0E0E0]" />
+              <span key={`${point.x}-tick`} className="h-3 min-w-8 rounded-full bg-[#E2E2E2]" aria-label={point.label} />
             ))}
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-[16px] bg-[#F2F3F5] px-3 py-2">
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#59657A]">норма</p>
+            <p className="mt-1 text-xs font-semibold text-[#8E8E93]">21-35 дней</p>
+          </div>
+          <div className="rounded-[16px] bg-[#FFF4D6] px-3 py-2">
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#FFB800]">отклонение</p>
+            <p className="mt-1 text-xs font-semibold text-[#8E8E93]">короче 21 или длиннее 35</p>
           </div>
         </div>
       </div>
 
       <div className="px-5 py-5">
-        <p className="text-xl font-semibold leading-snug text-[#F5F0ED]">
-          На графике видно динамику циклов. {hasOutlier ? <strong>Есть отклонения, которые стоит сохранить для врача.</strong> : <strong>Пока сильных отклонений не видно.</strong>}
+        <p className="text-[26px] font-black leading-tight text-[#1A1A1A]">
+          {statusLabel}
         </p>
+        <p className="mt-2 text-lg font-semibold leading-snug text-[#1A1A1A]">
+          {caption}
+        </p>
+        <Button type="button" className="mt-6 h-14 w-full rounded-full bg-[linear-gradient(90deg,#FFB978_0%,#F65A9D_48%,#6177F2_100%)] text-base font-black text-white shadow-[0_10px_24px_rgba(246,90,157,0.22)] hover:opacity-95" onClick={onOpenAnalytics}>
+          {actionLabel}
+        </Button>
       </div>
     </Card>
   );
@@ -1348,9 +1410,11 @@ function LifestyleModules({
   const setWeightStore = useMiraStore((state) => state.setWeight);
   const todayLog = logs.find((log) => log.date === todayIso());
   const [water, setWater] = useState(todayLog?.selfCare.water || careWater || 0);
+  const [basalTemperature, setBasalTemperature] = useState(todayLog?.symptoms.basalTemperature ? String(todayLog.symptoms.basalTemperature) : "");
   const [calories, setCalories] = useState(todayLog?.selfCare.calories ? String(todayLog.selfCare.calories) : "");
   const [weight, setWeight] = useState(todayLog?.selfCare.weight ? String(todayLog.selfCare.weight) : "");
   const [saved, setSaved] = useState(false);
+  const [temperatureSaved, setTemperatureSaved] = useState(false);
   const [foodSaved, setFoodSaved] = useState(false);
   const [weightSaved, setWeightSaved] = useState(false);
   const waterTarget = Math.max(1, targetWater);
@@ -1374,6 +1438,24 @@ function LifestyleModules({
     setWaterStore(water);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1800);
+  }
+
+  function saveBasalTemperature() {
+    const baseLog = getTodayBaseLog();
+    const normalizedTemperature = Number.parseFloat(basalTemperature.replace(",", "."));
+    const nextTemperature = Number.isFinite(normalizedTemperature) && normalizedTemperature >= 34 && normalizedTemperature <= 42
+      ? Math.round(normalizedTemperature * 100) / 100
+      : null;
+
+    setDailyLog({
+      ...baseLog,
+      symptoms: {
+        ...baseLog.symptoms,
+        basalTemperature: nextTemperature,
+      },
+    });
+    setTemperatureSaved(true);
+    window.setTimeout(() => setTemperatureSaved(false), 1800);
   }
 
   function saveFood() {
@@ -1462,6 +1544,50 @@ function LifestyleModules({
             <Plus className="h-5 w-5" />
           </button>
         </div>
+      </Card>
+
+      <Card className={`rounded-[22px] p-5 ${darkCardClass}`}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Базальная температура</p>
+            <h2 className="mt-2 text-2xl font-black text-[#F5F0ED]">
+              {basalTemperature.trim() ? `${basalTemperature.replace(",", ".")} °C` : "Утреннее измерение"}
+            </h2>
+          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#2A2523] text-[#84E600]">
+            <ThermometerSun className="h-5 w-5" />
+          </span>
+        </div>
+        <div className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
+          <label className="block">
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[#8D817B]">Температура, °C</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={34}
+              max={42}
+              step={0.01}
+              value={basalTemperature}
+              onChange={(event) => {
+                setBasalTemperature(event.target.value);
+                setTemperatureSaved(false);
+              }}
+              placeholder="например 36.55"
+              className="mt-2 h-14 w-full rounded-2xl border border-[#342D2A] bg-[#251F1D] px-4 text-2xl font-black text-[#F5F0ED] outline-none placeholder:text-base placeholder:text-[#6A5D57] focus:border-[#84E600]/60"
+            />
+          </label>
+          <p className="mt-3 text-xs font-semibold leading-relaxed text-[#8D817B]">
+            Лучше измерять утром до подъёма. Mira не делает выводов по одному измерению.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className={`mt-4 h-12 w-full rounded-2xl font-black ${limeButtonClass}`}
+          onClick={saveBasalTemperature}
+          disabled={!basalTemperature.trim()}
+        >
+          {temperatureSaved ? "Сохранено" : "Сохранить температуру"}
+        </Button>
       </Card>
 
       <div className="grid grid-cols-2 gap-3">

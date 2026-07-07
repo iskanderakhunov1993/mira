@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#c8bbe0",
+                    "surface-container-low": "#f5f3ef",
+                    "outline": "#827474",
+                    "on-secondary-container": "#546662",
+                    "secondary-fixed": "#d3e7e1",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#1f1732",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed": "#301216",
+                    "primary-fixed": "#ffdadc",
+                    "inverse-surface": "#30312e",
+                    "secondary-container": "#d0e4de",
+                    "surface-dim": "#dbdad6",
+                    "secondary-fixed-dim": "#b7cbc5",
+                    "secondary": "#50625d",
+                    "surface-variant": "#e4e2de",
+                    "on-surface-variant": "#504444",
+                    "surface-tint": "#7c5357",
+                    "primary-fixed-dim": "#eeb9bd",
+                    "on-secondary-fixed": "#0d1f1b",
+                    "on-primary-container": "#6b4448",
+                    "surface-bright": "#fbf9f5",
+                    "surface-container-high": "#eae8e4",
+                    "outline-variant": "#d4c2c3",
+                    "surface-container": "#efeeea",
+                    "on-secondary-fixed-variant": "#384a46",
+                    "on-tertiary-fixed-variant": "#4b4260",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "background": "#fbf9f5",
+                    "on-tertiary-container": "#534a69",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#cdc1e5",
+                    "inverse-primary": "#eeb9bd",
+                    "inverse-on-surface": "#f2f0ed",
+                    "tertiary": "#635979",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#e4e2de",
+                    "primary-container": "#e8b4b8",
+                    "tertiary-fixed": "#eaddff",
+                    "on-primary": "#ffffff",
+                    "surface": "#fbf9f5",
+                    "on-primary-fixed-variant": "#623c40",
+                    "primary": "#7c5357",
+                    "on-surface": "#1b1c1a",
+                    "on-background": "#1b1c1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding-desktop": "40px",
+                    "base": "8px",
+                    "gutter": "16px",
+                    "container-padding-mobile": "20px",
+                    "touch-target-min": "44px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fbf9f5;
+            color: #1b1c1a;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+        .selected-date {
+            background-color: #7c5357;
+            color: white;
+            border-radius: 9999px;
+        }
+        .active-ring {
+            box-shadow: 0 0 0 4px rgba(124, 83, 87, 0.1);
+        }
+        .soft-shadow {
+            box-shadow: 0px 4px 20px 0px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+<!-- Top Navigation Suppression: As per rules, onboarding screens suppress the main TopAppBar/BottomNavBar -->
+<header class="h-16 px-container-padding-mobile flex items-center justify-between z-10">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-on-surface">chevron_left</span>
+</button>
+<div class="flex gap-1.5">
+<div class="h-1.5 w-8 rounded-full bg-primary"></div>
+<div class="h-1.5 w-8 rounded-full bg-outline-variant"></div>
+<div class="h-1.5 w-8 rounded-full bg-outline-variant"></div>
+</div>
+<div class="w-10"></div> <!-- Spacer for symmetry -->
+</header>
+<main class="flex-1 flex flex-col items-center px-container-padding-mobile pt-4 pb-12 max-w-md mx-auto w-full">
+<!-- Text Header Section -->
+<section class="text-center mb-8">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-3 px-4">Когда начались последние месячные?</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Это поможет Mira рассчитать день цикла</p>
+</section>
+<!-- Dynamic Content: Calendar Component -->
+<section class="w-full bg-surface-container-lowest rounded-[24px] p-6 soft-shadow mb-8 relative overflow-hidden">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Октябрь 2023</h2>
+<div class="flex gap-2">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">chevron_left</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="calendar-grid text-center mb-4">
+<span class="font-label-sm text-label-sm text-outline uppercase">Пн</span>
+<span class="font-label-sm text-label-sm text-outline uppercase">Вт</span>
+<span class="font-label-sm text-label-sm text-outline uppercase">Ср</span>
+<span class="font-label-sm text-label-sm text-outline uppercase">Чт</span>
+<span class="font-label-sm text-label-sm text-outline uppercase">Пт</span>
+<span class="font-label-sm text-label-sm text-outline uppercase">Сб</span>
+<span class="font-label-sm text-label-sm text-outline uppercase">Вс</span>
+</div>
+<div class="calendar-grid gap-y-2 text-center" id="calendar-days">
+<!-- Empty spaces for the start of the month -->
+<div class="h-10"></div>
+<div class="h-10"></div>
+<!-- Calendar Days -->
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">1</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">2</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">3</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">4</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">5</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">6</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">7</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">8</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">9</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">10</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">11</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">12</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">13</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">14</button>
+<!-- Selected State Example -->
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md selected-date active-ring transition-all">15</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">16</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">17</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">18</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">19</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">20</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">21</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">22</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">23</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">24</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">25</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">26</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">27</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">28</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">29</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">30</button>
+<button class="h-10 w-10 mx-auto flex items-center justify-center font-body-md text-body-md text-on-surface rounded-full hover:bg-surface-container-low transition-all">31</button>
+</div>
+<!-- Atmospheric Aesthetic Element -->
+<div class="absolute -bottom-12 -right-12 w-32 h-32 bg-primary-container/20 rounded-full blur-3xl pointer-events-none"></div>
+</section>
+<!-- Secondary Illustration/Atmosphere -->
+<div class="flex-1 flex items-center justify-center w-full min-h-[120px] mb-8">
+<div class="relative w-full h-full max-h-[180px] rounded-3xl overflow-hidden">
+<div class="bg-cover bg-center w-full h-full opacity-60" data-alt="A peaceful and minimalist digital illustration for a health app. Soft pink and sage green organic shapes float in a warm cream space, creating a sense of natural rhythm and menstrual cycle harmony. The lighting is diffused and high-key, evoking a sanctuary-like atmosphere that feels safe, personal, and supportive for a feminine audience." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAtkh0H9O3TzDN2bOWBAHvbZhddfx_5FKSRYT2El90qlfNvup7-NJyTYp_IASlA1N2P3HRpP36-lfcQesRaR0we2Yc0aw79OHpLAu-KozbE74LlQXr8WhJeLw6P1gxIbIIJCUG8oLkwYc80tALMgWUEUJAxg86ATqqqktSJmABF5Y8p2JFe6yzYfVgHR_E48wb0Nv-GHeFEv013KZdWBRIJzYcOKYnrZ78dFQ7YTBcThPhrHIDfd637tQMQw86uVvWtdh181zklqyW-')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="w-full flex flex-col gap-3">
+<button class="w-full h-[56px] bg-primary text-on-primary rounded-full font-label-md text-label-md hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center shadow-lg shadow-primary/10">
+                Продолжить
+            </button>
+<button class="w-full h-[48px] text-on-surface-variant font-label-md text-label-md hover:bg-surface-variant/30 rounded-full transition-colors flex items-center justify-center">
+                Не помню
+            </button>
+</div>
+</main>
+<!-- Footer Space -->
+<footer class="pb-safe h-8"></footer>
+<script>
+        // Micro-interactions for calendar selection
+        const dayButtons = document.querySelectorAll('#calendar-days button');
+        dayButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                dayButtons.forEach(b => {
+                    b.classList.remove('selected-date', 'active-ring');
+                    b.classList.add('text-on-surface', 'rounded-full', 'hover:bg-surface-container-low');
+                });
+                btn.classList.add('selected-date', 'active-ring');
+                btn.classList.remove('text-on-surface', 'rounded-full', 'hover:bg-surface-container-low');
+                
+                // Add a small scale effect
+                btn.style.transform = 'scale(0.9)';
+                setTimeout(() => btn.style.transform = 'scale(1)', 100);
+            });
+        });
+
+        // Atmospheric parallax on mouse move (desktop only)
+        if (window.innerWidth > 768) {
+            document.addEventListener('mousemove', (e) => {
+                const moveX = (e.clientX - window.innerWidth / 2) / 100;
+                const moveY = (e.clientY - window.innerHeight / 2) / 100;
+                document.querySelector('.blur-3xl').style.transform = `translate(${moveX}px, ${moveY}px)`;
+            });
+        }
+    </script>
+</body></html>

@@ -1,4 +1,5 @@
 import type { DailyCheckIn, MiraLocalData, UserProfile } from "@/lib/types";
+import { getCycleNorm } from "@/lib/cycleEngine";
 import type { CareState, Cycle, CyclePhase, DailyLog, SettingsState } from "@/store";
 
 function dateStr(daysAgo: number): string {
@@ -50,7 +51,10 @@ function periodToBleeding(period?: DailyCheckIn["period"]): DailyLog["symptoms"]
 }
 
 function cycleDayForDate(date: string, profile: UserProfile) {
-  const start = new Date(`${profile.cycleConfig.periodStart}T00:00:00`);
+  const starts = profile.cycleConfig.periodStarts?.length
+    ? profile.cycleConfig.periodStarts
+    : [profile.cycleConfig.periodStart];
+  const start = new Date(`${starts.filter((item) => item <= date).at(-1) ?? profile.cycleConfig.periodStart}T00:00:00`);
   const current = new Date(`${date}T00:00:00`);
   const diff = Math.floor((current.getTime() - start.getTime()) / 86_400_000);
   return ((diff % profile.cycleConfig.cycleLength) + profile.cycleConfig.cycleLength) % profile.cycleConfig.cycleLength + 1;
@@ -92,6 +96,7 @@ function checkInToDailyLog(checkIn: DailyCheckIn, data: MiraLocalData): DailyLog
         oiliness: false,
         hairLoss: false,
       },
+      basalTemperature: null,
       libido: checkIn.symptomLog?.libido === "high" ? "high" : checkIn.symptomLog?.libido === "normal" ? "medium" : checkIn.symptomLog?.libido === "low" ? "low" : null,
       context: [
         checkIn.stress ? "stress" : null,
@@ -116,7 +121,10 @@ function checkInToDailyLog(checkIn: DailyCheckIn, data: MiraLocalData): DailyLog
 
 function buildCyclesFromProfile(data: MiraLocalData): Cycle[] {
   const profile = data.profile;
-  const starts = profile?.cycleConfig.periodStarts ?? [];
+  const starts = Array.from(new Set([
+    ...(profile?.cycleConfig.periodStarts ?? []),
+    ...(profile?.cycleConfig.periodStart ? [profile.cycleConfig.periodStart] : []),
+  ])).sort();
   if (!profile || starts.length < 2) return [];
 
   return starts.slice(0, -1).map((startDate, index) => {
@@ -143,8 +151,9 @@ export function buildStoreStateFromLocalData(data: MiraLocalData) {
     .map((entry) => checkInToDailyLog(entry, data));
   const cycles = buildCyclesFromProfile(data);
   const today = dateStr(0);
-  const currentDay = profile ? cycleDayForDate(today, profile) : 1;
-  const averageLength = profile?.cycleConfig.cycleLength ?? 28;
+  const norm = profile ? getCycleNorm(profile) : null;
+  const currentDay = norm?.cycleDay ?? 1;
+  const averageLength = norm?.cycleLength ?? profile?.cycleConfig.cycleLength ?? 28;
   const periodLength = profile?.cycleConfig.periodLength ?? 5;
   const latestWeight = Object.values(data.weightLog ?? {}).sort((a, b) => b.date.localeCompare(a.date))[0];
   const todayLog = logs.find((log) => log.date === today);
@@ -190,7 +199,7 @@ export function buildStoreStateFromLocalData(data: MiraLocalData) {
       cycles,
       currentDay,
       phase: cyclePhaseForDay(currentDay, periodLength, averageLength),
-      daysUntilPeriod: averageLength - currentDay,
+      daysUntilPeriod: norm?.isDelayed ? -norm.delayDays : norm?.daysUntilPeriod ?? averageLength - currentDay,
     },
     logs: {
       dailyLogs: logs,

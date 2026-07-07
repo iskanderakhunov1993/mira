@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileScreen } from "@/components/screens/ProfileScreen";
+import { LocalHealthRepository } from "@/data/healthRepository";
 import type { NavPage } from "@/components/layout/types";
 import { createEmpty, readData, writeData } from "@/lib/store";
 import { schedulePush } from "@/lib/sync";
+import { mergeHealthSnapshotIntoLegacy } from "@/lib/healthSnapshotBridge";
 import { mergeStoreIntoReportData } from "@/lib/miraStoreBridge";
 import type { MiraLocalData } from "@/lib/types";
 import { useMiraStore } from "@/store";
@@ -20,6 +22,7 @@ function routeFor(page: NavPage) {
 
 export function ProfileRoute() {
   const router = useRouter();
+  const repository = useMemo(() => new LocalHealthRepository(), []);
   const user = useMiraStore((state) => state.user);
   const cycle = useMiraStore((state) => state.cycle);
   const logs = useMiraStore((state) => state.logs.dailyLogs);
@@ -31,8 +34,20 @@ export function ProfileRoute() {
   );
 
   useEffect(() => {
-    setData(readData());
-  }, []);
+    let cancelled = false;
+
+    async function loadData() {
+      const localData = readData();
+      const snapshot = await repository.getSnapshot();
+      const merged = snapshot.ok ? mergeHealthSnapshotIntoLegacy(localData, snapshot.data) : localData;
+      if (!cancelled) setData(merged);
+    }
+
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [repository]);
 
   function persist(nextData: MiraLocalData) {
     setData(nextData);
@@ -41,7 +56,7 @@ export function ProfileRoute() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-5 py-6">
+    <main className="min-h-screen bg-[#050505] px-5 pb-36 pt-6">
       <div className="mx-auto max-w-5xl">
         <ProfileScreen
           data={profileData}

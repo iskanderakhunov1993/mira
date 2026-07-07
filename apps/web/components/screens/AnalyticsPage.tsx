@@ -64,6 +64,12 @@ type SkinCyclePoint = {
   hairLossCount?: number;
 };
 
+type BasalTemperaturePoint = {
+  label: string;
+  cycleDay: number;
+  temperature: number;
+};
+
 type CycleHistoryItem = {
   id: string;
   title: string;
@@ -84,6 +90,13 @@ type CycleHistorySummary = {
   fluctuationMin: number;
   fluctuationMax: number;
   averageLength: number;
+};
+
+type CycleDynamicsStatus = "not_enough_history" | "stable" | "fluctuation";
+
+type AnalyticsAction = {
+  label: string;
+  target: "track" | "report";
 };
 
 type AnalyticsData = {
@@ -144,6 +157,9 @@ const red = "#FF6B6B";
 const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,0,0,0.28)]";
 const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
 const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
+const calmCardClass = "border-[#EFE8E3] bg-white shadow-[0_18px_44px_rgba(111,88,73,0.08)]";
+const calmInsetClass = "border-[#F0E7E1] bg-[#FFFCFA]";
+const pinkButtonClass = "bg-[#F64F86] text-white shadow-[0_14px_28px_rgba(246,79,134,0.22)] hover:bg-[#E83F78]";
 
 const periods: Array<{ value: PeriodKey; label: string }> = [
   { value: "current", label: "Текущий цикл" },
@@ -722,23 +738,48 @@ function getMainInsight(data: AnalyticsData) {
 
 function getNextAnalyticsAction(data: AnalyticsData, notesNeeded: number) {
   if (data.redFlags.length > 0) return "Сформируй отчёт врачу и добавь туда тревожные симптомы.";
-  if (notesNeeded > 0) return `Отметь ещё ${notesNeeded} наблюдений, чтобы Mira точнее отделяла случайность от повторения.`;
+  if (notesNeeded > 0) return "Отмечай месячные, боль и сон ближайшие 3 дня: этого достаточно для первых повторов.";
   if ((data.peakCount ?? 0) > (data.normalCount ?? 4)) return "Продолжай отмечать обильность в первые 3 дня месячных.";
   if (data.factors.length > 0) return "Проверь одну связь 7 дней подряд: сон, вода или стресс.";
   return "Начни с симптомов, сна и энергии: этого достаточно для первых выводов.";
 }
 
-function getMainInsightTitle(data: AnalyticsData, notesCount: number) {
+function getCycleDynamicsStatus(summary: CycleHistorySummary): CycleDynamicsStatus {
+  if (summary.completed.length < 2) return "not_enough_history";
+  return summary.fluctuationMax - summary.fluctuationMin > 7 ? "fluctuation" : "stable";
+}
+
+function buildBasalTemperatureData(logs: DailyLog[]): BasalTemperaturePoint[] {
+  return [...logs]
+    .filter((log) => typeof log.symptoms.basalTemperature === "number")
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-14)
+    .map((log) => ({
+      label: `${log.cycleDay}`,
+      cycleDay: log.cycleDay,
+      temperature: log.symptoms.basalTemperature as number,
+    }));
+}
+
+function getMainInsightTitle(data: AnalyticsData, notesCount: number, cycleStatus: CycleDynamicsStatus) {
   if (data.redFlags.length > 0) return "Есть сигнал, который стоит вынести отдельно";
+  if (cycleStatus === "fluctuation") return "Mira заметила колебания цикла";
+  if (cycleStatus === "stable") return "Цикл выглядит стабильным";
   if (notesCount < 5) return "Пока рано искать закономерности";
   if (data.factors.length > 0) return "Mira заметила возможную связь";
   if (data.symptoms.length > 0) return "Mira заметила повтор";
   return "Пока тревожных повторов не видно";
 }
 
-function getMainInsightBody(data: AnalyticsData, notesCount: number, notesNeeded: number) {
+function getMainInsightBody(data: AnalyticsData, notesCount: number, notesNeeded: number, cycleStatus: CycleDynamicsStatus, cycleSummary: CycleHistorySummary) {
   if (data.redFlags.length > 0) {
-    return `${data.redFlags[0]}. Это не диагноз, но такой факт лучше сохранить и consider discussing this with a qualified clinician.`;
+    return `${data.redFlags[0]}. Это не диагноз, но такой факт лучше сохранить и обсудить с квалифицированным специалистом.`;
+  }
+  if (cycleStatus === "fluctuation") {
+    return `Разброс между завершёнными циклами ${cycleSummary.fluctuationMin}–${cycleSummary.fluctuationMax} дней. Это не диагноз, но такой паттерн стоит наблюдать и при необходимости вынести в отчёт.`;
+  }
+  if (cycleStatus === "stable") {
+    return `Завершённые циклы держатся в близком диапазоне ${cycleSummary.fluctuationMin}–${cycleSummary.fluctuationMax} дней. Mira продолжит следить за отклонениями.`;
   }
   if (notesCount < 5) {
     return `Нужно ещё ${notesNeeded} отметок, чтобы отделять случайный день от повторяющегося паттерна.`;
@@ -748,10 +789,30 @@ function getMainInsightBody(data: AnalyticsData, notesCount: number, notesNeeded
   return "Продолжай отмечать цикл, боль, сон и настроение. Если появятся повторения, Mira покажет их здесь.";
 }
 
-function getPrimaryAnalyticsAction(data: AnalyticsData, notesCount: number) {
-  if (data.redFlags.length > 0) return { label: "Собрать отчёт врачу", target: "report" as const };
-  if (notesCount < 5) return { label: "Добавить отметку", target: "track" as const };
-  return { label: "Собрать отчёт врачу", target: "report" as const };
+function hasPeriodDataToday(log?: DailyLog) {
+  if (!log) return false;
+  return log.symptoms.bleeding.amount > 0 || log.symptoms.bleeding.pads > 0 || Boolean(log.symptoms.bleeding.clots);
+}
+
+function hasSymptomDataToday(log?: DailyLog) {
+  if (!log) return false;
+  return Boolean(
+    log.symptoms.pain.level > 0 ||
+      log.symptoms.pain.location.length > 0 ||
+      log.symptoms.mood ||
+      log.symptoms.energy ||
+      log.symptoms.sleep.quality ||
+      log.symptoms.context.length > 0 ||
+      log.symptoms.note.trim()
+  );
+}
+
+function getPrimaryAnalyticsAction(data: AnalyticsData, notesCount: number, cycleStatus: CycleDynamicsStatus, todayLog?: DailyLog): AnalyticsAction {
+  if (data.redFlags.length > 0 || cycleStatus === "fluctuation") return { label: "Собрать отчёт врачу", target: "report" };
+  if (notesCount < 5) return { label: "Добавить данные за сегодня", target: "track" };
+  if (!hasPeriodDataToday(todayLog)) return { label: "Добавить месячные", target: "track" };
+  if (!hasSymptomDataToday(todayLog)) return { label: "Добавить симптомы", target: "track" };
+  return { label: "Собрать отчёт врачу", target: "report" };
 }
 
 function statusLabel(status: AnalysisTopic["status"]) {
@@ -896,9 +957,9 @@ function buildAnalysisTopics(data: AnalyticsData, notesCount: number): AnalysisT
 
 function InsightNote({ title, body }: { title: string; body: string }) {
   return (
-    <div className={`rounded-[18px] border px-4 py-3 ${darkInsetClass}`}>
-      <p className="text-xs font-black uppercase tracking-wide text-[#8D817B]">{title}</p>
-      <p className="mt-1 text-sm font-bold leading-relaxed text-[#F5F0ED]">{body}</p>
+    <div className={`rounded-[18px] border px-4 py-3 ${calmInsetClass}`}>
+      <p className="text-xs font-black uppercase tracking-wide text-[#9A8F89]">{title}</p>
+      <p className="mt-1 text-sm font-bold leading-relaxed text-[#1A1A1A]">{body}</p>
     </div>
   );
 }
@@ -925,10 +986,10 @@ function AnalyticsCycleDots({ item }: { item: CycleHistoryItem }) {
         key={day}
         className={`h-2.5 w-2.5 shrink-0 rounded-full ${
           isToday || isPeriod
-            ? "bg-[#F9359E]"
+            ? "bg-[#F64F86]"
             : isFertile
-              ? "bg-[#84E600]"
-              : "bg-[#6A5D57]"
+              ? "bg-[#6EDDE8]"
+              : "bg-[#E7DED8]"
         }`}
       />
     );
@@ -938,116 +999,255 @@ function AnalyticsCycleDots({ item }: { item: CycleHistoryItem }) {
 }
 
 function CycleHistoryModule({ summary }: { summary: CycleHistorySummary }) {
-  const isStable = summary.fluctuationMax - summary.fluctuationMin <= 7;
+  const cycleStatus = getCycleDynamicsStatus(summary);
+  const isStable = cycleStatus === "stable";
+  const hasFluctuations = cycleStatus === "fluctuation";
   const totalNotes = summary.all.reduce((sum, item) => sum + item.noteCount, 0);
   const trendData = [...summary.completed].reverse().concat(summary.current).slice(-8);
 
   return (
-    <SectionCard eyebrow="База циклов" title="История циклов" delay={62}>
+    <SectionCard eyebrow="Динамика цикла" title="Норма или не норма" delay={16}>
       <div id="cycle-history" className="scroll-mt-8" />
-      <div className="grid gap-3 md:grid-cols-4">
-        {[
-          ["Текущий", `${summary.current.length} дн.`],
-          ["Средний", `${summary.averageLength} дн.`],
-          ["Разброс", `${summary.fluctuationMin}–${summary.fluctuationMax}`],
-          ["Отметки", `${totalNotes}`],
-        ].map(([label, value]) => (
-          <div key={label} className={`rounded-[18px] border px-4 py-3 ${darkInsetClass}`}>
-            <p className="text-[11px] font-black uppercase tracking-wide text-[#8D817B]">{label}</p>
-            <p className="mt-1 text-xl font-black text-[#F5F0ED]">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className={`mt-4 rounded-[18px] border px-4 py-4 ${darkInsetClass}`}>
+      <div className={`rounded-[20px] border px-4 py-4 ${calmInsetClass}`}>
         <div className="flex items-start gap-3">
-          <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isStable ? "bg-[#252318] text-[#84E600]" : "bg-[#302B1B] text-[#FFB800]"}`}>
+          <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isStable ? "bg-[#E8F8EF] text-[#34C759]" : "bg-[#FFF3D2] text-[#B47600]"}`}>
             {isStable ? <CheckCircle2 className="h-5 w-5" /> : "!"}
           </span>
           <div>
             <p className={`text-sm font-black ${isStable ? "text-[#1D8A49]" : "text-[#8A6500]"}`}>
-              {isStable ? "Длина циклов выглядит стабильной" : "Есть заметные колебания"}
+              {isStable ? "Циклы выглядят стабильными" : hasFluctuations ? "Есть заметные колебания" : "Пока мало истории циклов"}
             </p>
-            <p className="mt-1 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">
               {isStable
-                ? "Главная страница показывает короткую выжимку, а здесь хранится вся база для сравнения."
-                : "Колебания больше недели лучше сохранить в отчёте врачу, особенно если есть боль, задержки или обильность."}
+                ? "Разброс меньше недели: Mira будет следить, не появляются ли новые отклонения."
+                : hasFluctuations
+                  ? "Колебания больше недели лучше сохранить в отчёте врачу, особенно если есть боль, задержки или обильность."
+                  : "Нужно хотя бы 2 завершённых цикла, чтобы сравнивать норму и отклонения."}
             </p>
           </div>
         </div>
       </div>
 
-      <div className={`mt-5 overflow-hidden rounded-[20px] border ${darkInsetClass}`}>
-        <div className="flex items-center justify-between gap-4 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#302927] text-[#F9359E]">
-              <CalendarDays className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-base font-black text-[#F5F0ED]">Все циклы</p>
-              <p className="text-xs font-bold text-[#B7AAA4]">Текущий и завершённые циклы из базы</p>
-            </div>
-          </div>
-          <p className="text-xs font-black uppercase tracking-wide text-[#8D817B]">{summary.all.length} записей</p>
+      <div className="relative mt-5 overflow-hidden rounded-[22px] border border-[#F0E7E1] bg-white px-4 py-5">
+        <div className="absolute left-4 right-4 top-[46%] h-16 -translate-y-1/2 rounded-[18px] bg-[#F0F2F5]" />
+        <div className="relative h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendData.map((item, index) => ({ label: item.isCurrent ? "сейчас" : `${index + 1}`, length: item.length }))} margin={{ top: 10, right: 10, left: -22, bottom: 0 }}>
+              <CartesianGrid stroke="#F3EDEA" vertical={false} />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#A39A95", fontSize: 11, fontWeight: 700 }} />
+              <YAxis domain={[18, 40]} ticks={[21, 28, 35]} tickLine={false} axisLine={false} tick={{ fill: "#A39A95", fontSize: 11, fontWeight: 700 }} />
+              <Tooltip
+                contentStyle={{ border: "1px solid #F0E7E1", borderRadius: 16, boxShadow: "0 8px 24px rgba(111,88,73,0.12)" }}
+                formatter={(value) => [`${value} дней`, "Длина цикла"]}
+              />
+              <Line
+                type="monotone"
+                dataKey="length"
+                stroke="#B9BEC8"
+                strokeWidth={5}
+                dot={(props) => {
+                  const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: { length?: number } };
+                  if (typeof cx !== "number" || typeof cy !== "number") return <circle />;
+                  const length = payload?.length ?? 0;
+                  const abnormal = length < 21 || length > 35;
+                  return (
+                    <g>
+                      {abnormal && <circle cx={cx} cy={cy} r={15} fill="#FFB800" opacity={0.24} />}
+                      <circle cx={cx} cy={cy} r={6} fill={abnormal ? "#FFB800" : "#556071"} stroke="#FFFFFF" strokeWidth={3} />
+                    </g>
+                  );
+                }}
+                activeDot={{ r: 7, fill: "#F64F86", stroke: "#FFFFFF", strokeWidth: 3 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
+        <div className="mt-3 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-wide text-[#A39A95]">
+          <span>21 дн.</span>
+          <span className="rounded-full bg-[#F0F2F5] px-3 py-1 text-[#6D7684]">норма 21–35</span>
+          <span>35 дн.</span>
+        </div>
+        <p className="mt-3 text-xs font-semibold leading-relaxed text-[#8E8E93]">
+          Ориентир: 21–35 дней. Mira также смотрит на разброс между циклами: колебание больше 7 дней подсвечивается как повод наблюдать.
+        </p>
+      </div>
 
-        {summary.all.map((item) => (
-          <div key={item.id} className="border-t border-[#342D2A] px-5 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-black text-[#F5F0ED]">{item.title}</p>
-                  {item.isCurrent && <StatBadge value="сейчас" tone="pink" />}
-                  {item.isIrregular && <StatBadge value="колебание" tone="yellow" />}
-                </div>
-                <p className="mt-1 text-sm font-bold text-[#B7AAA4]">{item.range}</p>
-                <AnalyticsCycleDots item={item} />
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-[11px] font-black uppercase tracking-wide text-[#8D817B]">месячные</p>
-                <p className="mt-1 text-lg font-black text-[#F5F0ED]">{item.periodLength} дн.</p>
-                <p className="mt-1 text-xs font-bold text-[#B7AAA4]">{item.noteCount} отметок</p>
-              </div>
-            </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {[
+          ["Текущий", `${summary.current.length} дн.`],
+          ["Средний", `${summary.averageLength} дн.`],
+          ["Разброс", `${summary.fluctuationMin}–${summary.fluctuationMax}`],
+        ].map(([label, value]) => (
+          <div key={label} className={`rounded-[18px] border px-3 py-3 ${calmInsetClass}`}>
+            <p className="text-[10px] font-black uppercase tracking-wide text-[#9A8F89]">{label}</p>
+            <p className="mt-1 text-lg font-black text-[#1A1A1A]">{value}</p>
           </div>
         ))}
       </div>
 
-      {trendData.length > 1 && (
-        <details className={`mt-5 rounded-[18px] border p-4 ${darkInsetClass}`}>
-          <summary className="cursor-pointer text-sm font-black text-[#84E600]">Показать мини-динамику</summary>
-          <div className="mt-4 h-40">
+      <details className={`mt-4 rounded-[18px] border p-4 ${calmInsetClass}`}>
+        <summary className="cursor-pointer text-sm font-black text-[#F64F86]">Показать циклы списком</summary>
+        <div className="mt-4 space-y-3">
+          {summary.all.map((item) => (
+            <div key={item.id} className="rounded-[16px] border border-[#F0E7E1] bg-white px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-black text-[#1A1A1A]">{item.title}</p>
+                    {item.isCurrent && <StatBadge value="сейчас" tone="pink" />}
+                    {item.isIrregular && <StatBadge value="колебание" tone="yellow" />}
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-[#8E8E93]">{item.range}</p>
+                  <AnalyticsCycleDots item={item} />
+                </div>
+                <p className="shrink-0 text-xs font-black text-[#9A8F89]">{item.noteCount} отметок</p>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs font-semibold text-[#8E8E93]">Всего {totalNotes} отметок в истории циклов.</p>
+        </div>
+      </details>
+    </SectionCard>
+  );
+}
+
+function BasalTemperatureModule({
+  points,
+  onOpenTrack,
+}: {
+  points: BasalTemperaturePoint[];
+  onOpenTrack: () => void;
+}) {
+  const hasMinimum = points.length >= 5;
+  const needed = Math.max(0, 5 - points.length);
+  const temperatures = points.map((point) => point.temperature);
+  const minTemperature = temperatures.length ? Math.min(...temperatures) : 36.1;
+  const maxTemperature = temperatures.length ? Math.max(...temperatures) : 37.1;
+  const yMin = Math.max(34, Math.floor((minTemperature - 0.2) * 10) / 10);
+  const yMax = Math.min(42, Math.ceil((maxTemperature + 0.2) * 10) / 10);
+
+  return (
+    <SectionCard eyebrow="Базальная температура" title="График по дням цикла" delay={18}>
+      <div className={`rounded-[20px] border px-4 py-4 ${calmInsetClass}`}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-black text-[#1A1A1A]">
+              {hasMinimum ? "Есть первые измерения" : "Пока мало измерений"}
+            </p>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+              Нужно минимум 5–7 утренних измерений, чтобы смотреть динамику. Mira не делает выводов по одному значению.
+            </p>
+          </div>
+          <StatBadge value={`${points.length}`} tone={hasMinimum ? "green" : "yellow"} />
+        </div>
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-[22px] border border-[#F0E7E1] bg-white px-4 py-5">
+        {points.length ? (
+          <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData.map((item, index) => ({ label: item.isCurrent ? "тек." : `${index + 1}`, length: item.length }))} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-                <CartesianGrid stroke="#EFE7EC" vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: muted, fontSize: 12 }} />
-                <YAxis domain={[18, 38]} tickLine={false} axisLine={false} tick={{ fill: muted, fontSize: 12 }} />
+              <LineChart data={points} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke="#F3EDEA" vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#A39A95", fontSize: 11, fontWeight: 700 }} />
+                <YAxis domain={[yMin, yMax]} tickLine={false} axisLine={false} tick={{ fill: "#A39A95", fontSize: 11, fontWeight: 700 }} />
                 <Tooltip
-                  contentStyle={{ border: 0, borderRadius: 16, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
-                  formatter={(value) => [`${value} дней`, "Длина цикла"]}
+                  contentStyle={{ border: "1px solid #F0E7E1", borderRadius: 16, boxShadow: "0 8px 24px rgba(111,88,73,0.12)" }}
+                  formatter={(value) => [`${value} °C`, "Температура"]}
+                  labelFormatter={(label) => `День цикла ${label}`}
                 />
                 <Line
                   type="monotone"
-                  dataKey="length"
-                  stroke={pink}
+                  dataKey="temperature"
+                  stroke="#F64F86"
                   strokeWidth={4}
-                  dot={{ r: 4, fill: pink, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: pink, strokeWidth: 0 }}
+                  dot={{ r: 5, fill: "#F64F86", stroke: "#FFFFFF", strokeWidth: 3 }}
+                  activeDot={{ r: 7, fill: "#F64F86", stroke: "#FFFFFF", strokeWidth: 3 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </details>
-      )}
+        ) : (
+          <EmptyState title="Температуры пока нет" body="Добавь первое утреннее измерение на Today, и график появится здесь." />
+        )}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <InsightNote title="Что важно" body="Измеряй утром до подъёма и по возможности в одно и то же время." />
+        <InsightNote title="Нужно ещё" body={hasMinimum ? "Продолжай измерять регулярно" : `${needed} ${needed === 1 ? "измерение" : needed > 1 && needed < 5 ? "измерения" : "измерений"} до минимума`} />
+      </div>
+
+      <Button type="button" className={`mt-4 h-14 w-full rounded-[18px] text-sm font-black ${pinkButtonClass}`} onClick={onOpenTrack}>
+        <Activity className="h-4 w-4" />
+        Измерять ещё 3 утра
+      </Button>
     </SectionCard>
   );
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className={`rounded-[20px] border border-dashed p-6 text-center ${darkInsetClass}`}>
-      <p className="text-sm font-black text-[#F5F0ED]">{title}</p>
-      <p className="mt-2 text-sm font-semibold leading-relaxed text-[#B7AAA4]">{body}</p>
+    <div className={`rounded-[20px] border border-dashed p-6 text-center ${calmInsetClass}`}>
+      <p className="text-sm font-black text-[#1A1A1A]">{title}</p>
+      <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">{body}</p>
+    </div>
+  );
+}
+
+function LowDataPlan({
+  notesNeeded,
+  onOpenTrack,
+}: {
+  notesNeeded: number;
+  onOpenTrack: () => void;
+}) {
+  const planItems = [
+    {
+      icon: CalendarDays,
+      title: "Месячные",
+      body: "отметь начало, конец или что сегодня их нет",
+    },
+    {
+      icon: HeartPulse,
+      title: "Боль",
+      body: "укажи есть/нет и насколько сильная",
+    },
+    {
+      icon: Moon,
+      title: "Сон",
+      body: "добавь качество сна и энергию",
+    },
+  ];
+
+  return (
+    <div className={`rounded-[20px] border border-dashed p-5 ${calmInsetClass}`}>
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-black text-[#1A1A1A]">Нужен короткий план на 3 дня</p>
+        <p className="text-sm font-semibold leading-relaxed text-[#8E8E93]">
+          Осталось {notesNeeded} {notesNeeded === 1 ? "отметка" : notesNeeded > 1 && notesNeeded < 5 ? "отметки" : "отметок"} до первых выводов. Отмечай эти 3 вещи, чтобы Mira начала видеть повторы.
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {planItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.title} className="flex items-start gap-3 rounded-[16px] bg-white p-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[#FFE8F0] text-[#F64F86]">
+                <Icon className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-sm font-black text-[#1A1A1A]">{item.title}</p>
+                <p className="mt-0.5 text-xs font-semibold leading-relaxed text-[#8E8E93]">{item.body}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Button type="button" className={`mt-4 h-12 w-full rounded-[16px] text-sm font-black ${pinkButtonClass}`} onClick={onOpenTrack}>
+        <Activity className="h-4 w-4" />
+        Добавить отметку в Track
+      </Button>
     </div>
   );
 }
@@ -1068,10 +1268,10 @@ function StatBadge({
   tone?: "pink" | "green" | "yellow" | "red";
 }) {
   const toneMap: Record<string, string> = {
-    pink: "bg-[#302927] text-[#F9359E]",
-    green: "bg-[#252318] text-[#84E600]",
-    yellow: "bg-[#302B1B] text-[#FFB800]",
-    red: "bg-[#33201F] text-[#FF6B6B]",
+    pink: "bg-[#FFE8F0] text-[#F64F86]",
+    green: "bg-[#E8F8EF] text-[#1D8A49]",
+    yellow: "bg-[#FFF3D2] text-[#8A6500]",
+    red: "bg-[#FFE8E8] text-[#D93434]",
   };
   return (
     <span
@@ -1147,11 +1347,11 @@ function SectionCard({
 }) {
   return (
     <Card
-      className={`rounded-[22px] p-6 transition hover:-translate-y-0.5 ${darkCardClass}`}
+      className={`rounded-[26px] p-5 transition hover:-translate-y-0.5 sm:p-6 ${calmCardClass}`}
       style={{ animation: `miraAnalyticsIn 420ms ease ${delay}ms both` }}
     >
       {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-      {title && <h2 className={`text-xl font-black leading-snug text-[#F5F0ED] ${eyebrow ? "mt-2 mb-5" : "mb-5"}`}>{title}</h2>}
+      {title && <h2 className={`text-xl font-black leading-snug text-[#1A1A1A] ${eyebrow ? "mt-2 mb-5" : "mb-5"}`}>{title}</h2>}
       {children}
     </Card>
   );
@@ -1470,9 +1670,17 @@ function AnalyticsPageComponent({
   const hasEnoughData = notesCount >= 5;
   const reliability = getReliability(notesCount);
   const redFlags = data.redFlags;
-  const mainAction = getPrimaryAnalyticsAction(data, notesCount);
-  const nextAction = getNextAnalyticsAction(data, notesNeeded);
-  const coreTopics = buildAnalysisTopics(data, notesCount).filter((topic) => ["cycle", "period", "pain", "mood", "sleep", "doctor"].includes(topic.id));
+  const cycleHistorySummary = useMemo(() => getCycleHistorySummary(cycle, logs), [cycle, logs]);
+  const basalTemperatureData = useMemo(() => buildBasalTemperatureData(logs), [logs]);
+  const cycleStatus = getCycleDynamicsStatus(cycleHistorySummary);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayLog = logs.find((log) => log.date === todayKey);
+  const mainAction = getPrimaryAnalyticsAction(data, notesCount, cycleStatus, todayLog);
+  const reliabilityText = notesCount < 5
+    ? `Основано на ${notesCount} ${notesCount === 1 ? "отметке" : "отметках"}. Для первых выводов нужно ещё ${notesNeeded} ${notesNeeded === 1 ? "отметка" : notesNeeded > 1 && notesNeeded < 5 ? "отметки" : "отметок"}.`
+    : cycleStatus === "not_enough_history"
+      ? `Основано на ${notesCount} ${notesCount === 1 ? "отметке" : "отметках"}. Для сравнения нормы цикла нужен ещё ${Math.max(1, 2 - cycleHistorySummary.completed.length)} завершённый цикл.`
+    : `Основано на ${notesCount} ${notesCount === 1 ? "отметке" : "отметках"} и ${data.trackedCycles} ${data.trackedCycles === 1 ? "цикле" : "циклах"}. Mira всё равно показывает наблюдения осторожно.`;
 
   function openDoctorReport() {
     if (onOpenDoctorReport) {
@@ -1492,7 +1700,7 @@ function AnalyticsPageComponent({
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] px-5 py-6 text-[#F5F0ED]">
+    <main className="min-h-screen bg-[#FAF8F5] px-5 py-6 text-[#1A1A1A]">
       <style jsx global>{`
         @keyframes miraAnalyticsIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -1500,19 +1708,19 @@ function AnalyticsPageComponent({
         }
       `}</style>
 
-      <div className="mx-auto max-w-3xl space-y-5">
-        <header className={`rounded-[22px] p-5 ${darkCardClass}`}>
+      <div className="mx-auto max-w-3xl space-y-4 pb-6">
+        <header className={`rounded-[28px] border p-5 ${calmCardClass}`}>
           <Eyebrow>Анализ</Eyebrow>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#F5F0ED]">Что Mira заметила</h1>
-          <p className="mt-2 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
-            Наблюдения по твоим отметкам из Трека. Не диагноз.
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#1A1A1A]">Что Mira заметила</h1>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+            Короткий вывод по твоим отметкам. Не диагноз.
           </p>
         </header>
 
         <Tabs value={period} onValueChange={(value) => setPeriod(value as PeriodKey)}>
-          <TabsList className={`grid w-full grid-cols-2 gap-1 rounded-[20px] border p-1 md:grid-cols-4 ${darkCardClass}`}>
+          <TabsList className={`grid w-full grid-cols-2 gap-1 rounded-[22px] border p-1 md:grid-cols-4 ${calmCardClass}`}>
             {periods.map((item) => (
-              <TabsTrigger key={item.value} value={item.value} className="h-11 rounded-[16px] data-[state=active]:bg-[#84E600] data-[state=active]:text-[#11100F]">
+              <TabsTrigger key={item.value} value={item.value} className="h-11 rounded-[18px] text-[#8E8E93] data-[state=active]:bg-[#F64F86] data-[state=active]:text-white">
                 {item.label}
               </TabsTrigger>
             ))}
@@ -1521,116 +1729,86 @@ function AnalyticsPageComponent({
 
         <SectionCard delay={8}>
           <div className="flex flex-col gap-4">
-            <div className={`rounded-[20px] border p-5 ${darkInsetClass}`}>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8D817B]">Главное сейчас</p>
-                  <h2 className="mt-2 text-2xl font-black leading-tight text-[#F5F0ED]">
-                    {getMainInsightTitle(data, notesCount)}
-                  </h2>
-                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[#B7AAA4]">
-                    {getMainInsightBody(data, notesCount, notesNeeded)}
-                  </p>
-                </div>
-                <StatBadge value={reliability.label} tone={reliability.tone} />
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#9A8F89]">Что Mira заметила</p>
+                <h2 className="mt-2 text-2xl font-black leading-tight text-[#1A1A1A]">
+                  {getMainInsightTitle(data, notesCount, cycleStatus)}
+                </h2>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <InsightNote title="Что сделать" body={nextAction} />
-                <InsightNote title="Основано на" body={`${notesCount} ${notesCount === 1 ? "факте" : notesCount > 1 && notesCount < 5 ? "фактах" : "фактах"} из Track`} />
-              </div>
-              <Button type="button" className={`mt-5 h-14 w-full rounded-[18px] text-sm font-black ${limeButtonClass}`} onClick={handleMainAction}>
-                {mainAction.target === "track" ? <Activity className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />}
-                {mainAction.label}
-              </Button>
+              <StatBadge value={reliability.label} tone={reliability.tone} />
             </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="База анализа" delay={12}>
-          <div className="grid gap-3 sm:grid-cols-4">
-            {[
-              ["Дни", `${logs.length}`, "green"],
-              ["Отметки", `${notesCount}`, reliability.tone],
-              ["Циклы", `${data.trackedCycles}`, "pink"],
-              ["Надежность", reliability.label, reliability.tone],
-            ].map(([label, value, tone]) => (
-              <div key={label} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
-                <p className="text-[10px] font-black uppercase tracking-wide text-[#8D817B]">{label}</p>
-                <p className="mt-2 text-2xl font-black text-[#F5F0ED]">{value}</p>
-                <div className={`mt-3 h-1.5 rounded-full ${
-                  tone === "green" ? "bg-[#84E600]" : tone === "yellow" ? "bg-[#FFB800]" : tone === "red" ? "bg-[#FF6B6B]" : "bg-[#F9359E]"
-                }`} />
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard title={hasEnoughData ? "Повторы по отметкам" : "Пока собираем данные"} delay={16}>
-          {topSymptom ? (
-            <div className="space-y-3">
-              {data.symptoms.slice(0, 3).map((symptom) => (
-                <div key={symptom.name} className={`flex items-center justify-between gap-3 rounded-[18px] border p-4 ${darkInsetClass}`}>
-                  <span className="text-sm font-black text-[#F5F0ED]">{symptom.name}</span>
-                  <span className="rounded-full bg-[#252318] px-3 py-1 text-xs font-black text-[#84E600]">{symptom.count}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="Недостаточно отметок" body={`Нужно ещё ${notesNeeded} для первых повторов.`} />
-          )}
-        </SectionCard>
-
-        <SectionCard title="MVP-темы" delay={20}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {coreTopics.map((topic) => (
-              <div key={topic.id} className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-black text-[#F5F0ED]">{topic.title}</p>
-                    <p className="mt-1 text-xs font-semibold leading-relaxed text-[#B7AAA4]">{topic.headline}</p>
+            <p className="text-sm font-semibold leading-relaxed text-[#5D5753]">
+              {getMainInsightBody(data, notesCount, notesNeeded, cycleStatus, cycleHistorySummary)}
+            </p>
+            {topSymptom ? (
+              <div className="grid gap-2">
+                {data.symptoms.slice(0, 3).map((symptom) => (
+                  <div key={symptom.name} className={`flex items-center justify-between gap-3 rounded-[18px] border px-4 py-3 ${calmInsetClass}`}>
+                    <span className="text-sm font-black text-[#1A1A1A]">{symptom.name}</span>
+                    <span className="rounded-full bg-[#FFE8F0] px-3 py-1 text-xs font-black text-[#F64F86]">{symptom.count}</span>
                   </div>
-                  <StatBadge value={statusLabel(topic.status)} tone={statusTone(topic.status)} />
-                </div>
-                <p className="mt-3 text-[11px] font-bold text-[#8D817B]">
-                  Основано на {topic.sampleSize} {topic.sampleSize === 1 ? "отметке" : "отметках"}
-                </p>
+                ))}
               </div>
-            ))}
+            ) : null}
           </div>
         </SectionCard>
 
-        <SectionCard title={redFlags.length ? "Красные флаги" : "Для отчёта"} delay={24}>
-          {redFlags.length ? (
+        {redFlags.length ? (
+          <SectionCard title="Красные флаги" delay={10}>
             <div className="space-y-2">
               {redFlags.slice(0, 3).map((flag) => (
-                <div key={flag} className={`flex items-center gap-3 rounded-[18px] border p-4 ${darkInsetClass}`}>
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#33201F] text-sm font-black text-[#FF6B6B]">!</span>
-                  <span className="text-sm font-bold text-[#F5F0ED]">{flag}</span>
+                <div key={flag} className={`flex items-center gap-3 rounded-[18px] border p-4 ${calmInsetClass}`}>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#FFE8E8] text-sm font-black text-[#D93434]">!</span>
+                  <span className="text-sm font-bold text-[#1A1A1A]">{flag}</span>
                 </div>
               ))}
             </div>
+            <p className="mt-3 text-xs font-semibold leading-relaxed text-[#8E8E93]">
+              Эти признаки стоит вынести в отчёт и при необходимости обсудить с квалифицированным специалистом.
+            </p>
+            <Button type="button" className={`mt-4 h-14 w-full rounded-[18px] text-sm font-black ${pinkButtonClass}`} onClick={openDoctorReport}>
+              <Stethoscope className="h-4 w-4" />
+              Собрать отчёт врачу
+            </Button>
+          </SectionCard>
+        ) : null}
+
+        <CycleHistoryModule summary={cycleHistorySummary} />
+
+        <BasalTemperatureModule points={basalTemperatureData} onOpenTrack={openTrack} />
+
+        <SectionCard title="Надёжность" delay={20}>
+          <div className={`rounded-[20px] border p-4 ${calmInsetClass}`}>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FFE8F0] text-[#F64F86]">
+                <ShieldAlert className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-base font-black text-[#1A1A1A]">{reliability.label}</p>
+                <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">{reliabilityText}</p>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Следующий шаг" delay={24}>
+          {mainAction.target === "track" && !hasEnoughData ? (
+            <LowDataPlan notesNeeded={notesNeeded} onOpenTrack={openTrack} />
           ) : (
-            <div className={`rounded-[18px] border p-4 ${darkInsetClass}`}>
-              <p className="text-sm font-black text-[#F5F0ED]">Можно собрать спокойный отчёт</p>
-              <p className="mt-1 text-sm font-semibold text-[#8D817B]">
-                {notesCount} фактов можно перенести в Report. Секс и личные заметки останутся выключены по умолчанию.
+            <div className={`rounded-[20px] border p-4 ${calmInsetClass}`}>
+              <p className="text-sm font-black text-[#1A1A1A]">
+                {redFlags.length || cycleStatus === "fluctuation" ? "Подготовь данные для врача" : "Можно собрать спокойный отчёт"}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-relaxed text-[#8E8E93]">
+                {redFlags.length || cycleStatus === "fluctuation" ? "Mira добавит важные факты, а чувствительные разделы останутся под твоим выбором." : `${notesCount} фактов можно перенести в Report. Секс и личные заметки останутся выключены по умолчанию.`}
               </p>
             </div>
           )}
-          <Button type="button" className={`mt-4 h-14 w-full rounded-[18px] text-sm font-black ${limeButtonClass}`} onClick={openDoctorReport}>
-            <Stethoscope className="h-4 w-4" />
-            Собрать отчёт врачу
+          <Button type="button" className={`mt-4 h-14 w-full rounded-[18px] text-sm font-black ${pinkButtonClass}`} onClick={handleMainAction}>
+            {mainAction.target === "track" ? <Activity className="h-4 w-4" /> : <Stethoscope className="h-4 w-4" />}
+            {mainAction.label}
           </Button>
-        </SectionCard>
-
-        <SectionCard title="Что продолжать отмечать" delay={32}>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {["Месячные", "Боль", "Сон / настроение"].map((item) => (
-              <div key={item} className={`rounded-[18px] border px-4 py-3 text-sm font-black text-[#F5F0ED] ${darkInsetClass}`}>
-                {item}
-              </div>
-            ))}
-          </div>
         </SectionCard>
       </div>
     </main>

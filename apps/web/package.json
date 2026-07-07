@@ -1,13 +1,20 @@
 {
   "name": "@mira/web",
   "private": true,
+  "type": "module",
   "version": "1.3.0",
   "scripts": {
-    "dev": "next dev -p 4173",
+    "dev": "next dev --hostname 127.0.0.1 -p 4173",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs tests/*.test.ts",
     "smoke": "node scripts/smoke.mjs",
-    "start": "next start"
+    "visual-qa": "node scripts/visual-qa.mjs",
+    "core-flow": "node scripts/core-flow.mjs",
+    "core-flow:cloud": "node scripts/core-flow-cloud.mjs",
+    "verify:supabase": "node scripts/verify-supabase.mjs",
+    "start": "next start --hostname 127.0.0.1 -p 4173"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",

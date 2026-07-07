@@ -3,6 +3,21 @@
 @tailwind utilities;
 
 :root {
+  --mira-token-background: #FCFAF8;
+  --mira-token-foreground: #26232A;
+  --mira-token-card: #FFFFFF;
+  --mira-token-card-muted: #F5F1F4;
+  --mira-token-border: #E9E3E8;
+  --mira-token-primary: #7863A8;
+  --mira-token-primary-contrast: #FFFFFF;
+  --mira-token-accent: #7863A8;
+  --mira-token-muted: #6F6875;
+  --mira-token-success: #2F8F5B;
+  --mira-token-peach: #F8E5DC;
+  --mira-token-sage: #E2EEE7;
+  --mira-token-lavender: #EAE3F5;
+  --mira-token-warning: #F8EBCB;
+  --mira-token-danger: #F7DFDF;
   --mira-background: #050505;
   --mira-foreground: #F5F0ED;
   --mira-card: #1D1816;
@@ -13,8 +28,28 @@
   --mira-muted: #B7AAA4;
   --mira-pink: #F9359E;
   --mira-inset: #2A2523;
-  color: var(--mira-foreground);
-  background: var(--mira-background);
+  color: var(--mira-token-foreground);
+  background: var(--mira-token-background);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mira-token-background: #17141B;
+    --mira-token-foreground: #F7F2F8;
+    --mira-token-card: #2A2530;
+    --mira-token-card-muted: #332D3D;
+    --mira-token-border: #3C3542;
+    --mira-token-primary: #B8A4E0;
+    --mira-token-primary-contrast: #17141B;
+    --mira-token-accent: #B8A4E0;
+    --mira-token-muted: #C8C0CA;
+    --mira-token-success: #A9D8BC;
+    --mira-token-peach: #3B2B2A;
+    --mira-token-sage: #24362D;
+    --mira-token-lavender: #453B58;
+    --mira-token-warning: #3D3421;
+    --mira-token-danger: #40292D;
+  }
 }
 
 * {
@@ -29,19 +64,22 @@ html {
 body {
   min-height: 100vh;
   min-height: 100dvh;
-  color: var(--mira-foreground);
+  color: var(--mira-token-foreground);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  background: #050505;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(234, 227, 245, 0.95) 0, rgba(234, 227, 245, 0.45) 18%, transparent 34%),
+    radial-gradient(circle at 92% 20%, rgba(248, 229, 220, 0.85) 0, rgba(248, 229, 220, 0.36) 20%, transparent 38%),
+    var(--mira-token-background);
   background-attachment: fixed;
 }
 
 ::selection {
-  background: rgba(179, 255, 106, 0.18);
+  background: rgba(120, 99, 168, 0.18);
 }
 
 :focus-visible {
-  outline: 3px solid rgba(179, 255, 106, 0.24);
+  outline: 3px solid rgba(120, 99, 168, 0.24);
   outline-offset: 2px;
 }
 
@@ -319,4 +357,77 @@ body {
 
 .mira-gradient-night {
   background: linear-gradient(135deg, #3F3A56 0%, #6D6AA8 100%);
+}
+
+.mira-app-page .mira-track-light {
+  background: #F1F1F1 !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-white"] {
+  border-color: transparent !important;
+  background: #FFFFFF !important;
+  color: #1A1A1A !important;
+  box-shadow: 0 12px 32px rgba(20, 20, 20, 0.04) !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#F1F1F1\]"] {
+  background: #F1F1F1 !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#E3E3E3\]"] {
+  background: #E3E3E3 !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#FDECF3\]"] {
+  background: #FDECF3 !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#FFF4EA\]"] {
+  background: #FFF4EA !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#F2EAFE\]"] {
+  background: #F2EAFE !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#EAF6FF\]"] {
+  background: #EAF6FF !important;
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#FFD7E4\]"] {
+  background: #FFD7E4 !important;
+  color: #F64F86 !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#FFE2BF\]"] {
+  background: #FFE2BF !important;
+  color: #D97815 !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#E2D6FF\]"] {
+  background: #E2D6FF !important;
+  color: #805BE0 !important;
+}
+
+.mira-app-page .mira-track-light [class*="bg-\[\#D4ECFF\]"] {
+  background: #D4ECFF !important;
+  color: #247FC0 !important;
+}
+
+.mira-app-page .mira-track-light [class*="text-\[\#1A1A1A\]"],
+.mira-app-page .mira-track-light [class*="text-\[\#111\]"] {
+  color: #1A1A1A !important;
+}
+
+.mira-app-page .mira-track-light [class*="text-\[\#777\]"],
+.mira-app-page .mira-track-light [class*="text-\[\#8E8E93\]"],
+.mira-app-page .mira-track-light [class*="text-\[\#A8A8A8\]"] {
+  color: #777777 !important;
 }

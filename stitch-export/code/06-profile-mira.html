@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira — Профиль и Настройки</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#fbf9f5",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#fbf9f5",
+                    "on-tertiary-fixed-variant": "#4b4260",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#d0e4de",
+                    "on-secondary-fixed": "#0d1f1b",
+                    "outline-variant": "#d4c2c3",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#cdc1e5",
+                    "surface-container-highest": "#e4e2de",
+                    "surface-container-high": "#eae8e4",
+                    "on-primary-fixed": "#301216",
+                    "inverse-on-surface": "#f2f0ed",
+                    "error-container": "#ffdad6",
+                    "on-error": "#ffffff",
+                    "surface": "#fbf9f5",
+                    "tertiary-container": "#c8bbe0",
+                    "primary-fixed": "#ffdadc",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#eeb9bd",
+                    "on-surface": "#1b1c1a",
+                    "on-secondary-container": "#546662",
+                    "tertiary": "#635979",
+                    "tertiary-fixed": "#eaddff",
+                    "surface-container-low": "#f5f3ef",
+                    "on-tertiary-fixed": "#1f1732",
+                    "on-primary-container": "#6b4448",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#504444",
+                    "surface-dim": "#dbdad6",
+                    "inverse-primary": "#eeb9bd",
+                    "outline": "#827474",
+                    "surface-tint": "#7c5357",
+                    "on-primary-fixed-variant": "#623c40",
+                    "on-tertiary-container": "#534a69",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#1b1c1a",
+                    "secondary": "#50625d",
+                    "surface-container": "#efeeea",
+                    "on-secondary-fixed-variant": "#384a46",
+                    "secondary-fixed": "#d3e7e1",
+                    "surface-variant": "#e4e2de",
+                    "primary-container": "#e8b4b8",
+                    "inverse-surface": "#30312e",
+                    "primary": "#7c5357",
+                    "secondary-fixed-dim": "#b7cbc5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding-mobile": "20px",
+                    "base": "8px",
+                    "container-padding-desktop": "40px",
+                    "touch-target-min": "44px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            user-select: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d4c2c3;
+            border-radius: 10px;
+        }
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen pb-20 md:pb-0 md:pl-64">
+<!-- Desktop Side Navigation -->
+<nav class="hidden md:flex flex-col p-6 gap-4 h-screen fixed left-0 top-0 bg-surface-container-low border-r border-outline-variant/30 w-64 z-50">
+<div class="mb-8">
+<h1 class="text-headline-lg font-headline-lg text-primary">Mira</h1>
+<p class="text-label-md text-on-surface-variant">Приватный спутник</p>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-body-md text-body-md">Сегодня</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">edit_calendar</span>
+<span class="font-body-md text-body-md">Трек</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md">Анализ</span>
+</a>
+<a class="flex items-center gap-3 p-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-md text-body-md">Отчёт</span>
+</a>
+<a class="flex items-center gap-3 p-3 bg-secondary-container text-on-secondary-container font-medium rounded-xl translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-body-md text-body-md">Профиль</span>
+</a>
+</div>
+<div class="mt-auto flex items-center gap-3 p-4 bg-surface-container-high/50 rounded-2xl">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined">account_circle</span>
+</div>
+<div class="flex flex-col">
+<span class="text-label-md font-bold">Пользователь</span>
+<span class="text-label-sm opacity-70">Mira ID: 8241</span>
+</div>
+</div>
+</nav>
+<!-- Mobile Top Bar -->
+<header class="md:hidden sticky top-0 bg-background flex justify-between items-center px-container-padding-mobile h-16 w-full z-40">
+<h1 class="text-headline-md font-headline-md font-bold text-primary">Mira</h1>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary">lock</span>
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</div>
+</header>
+<main class="max-w-4xl mx-auto px-container-padding-mobile md:px-container-padding-desktop py-8 animate-fade-in">
+<!-- Profile Header Section -->
+<section class="mb-10 text-center md:text-left">
+<div class="inline-flex items-center justify-center p-1 bg-secondary-container/30 rounded-full mb-4 px-4">
+<span class="material-symbols-outlined text-secondary text-sm mr-2" style="font-size: 16px;">shield</span>
+<span class="text-label-sm text-on-secondary-fixed-variant">Ваши данные защищены сквозным шифрованием</span>
+</div>
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg mb-2">Настройки и приватность</h2>
+<p class="text-body-md text-on-surface-variant max-w-lg">Mira — это ваше личное пространство. Мы не храним ваши данные в облаке: всё находится только на этом устройстве.</p>
+</section>
+<!-- Bento Grid Settings -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Cycle Settings Card -->
+<div class="md:col-span-8 bg-surface-container-lowest p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">restart_alt</span>
+</div>
+<h3 class="text-headline-sm font-headline-sm">Настройки цикла</h3>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-label-md text-on-surface-variant block">Средняя длина цикла</label>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl">
+<span class="text-body-md font-medium">28 дней</span>
+<button class="text-primary hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-label-md text-on-surface-variant block">Лютеиновая фаза</label>
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl">
+<span class="text-body-md font-medium">14 дней</span>
+<button class="text-primary hover:opacity-70 transition-opacity">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/20">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">notifications_active</span>
+<div>
+<p class="text-body-md font-medium">Напоминания</p>
+<p class="text-label-sm text-on-surface-variant">За 2 дня до начала</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Privacy Card -->
+<div class="md:col-span-4 bg-secondary-container/20 p-6 rounded-3xl border border-secondary/10 flex flex-col justify-between">
+<div>
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">encrypted</span>
+</div>
+<h3 class="text-headline-sm font-headline-sm mb-2">Безопасность</h3>
+<p class="text-label-md text-on-secondary-container leading-relaxed">
+                        Ваши данные зашифрованы и хранятся исключительно в локальном хранилище вашего смартфона. Мы не имеем к ним доступа.
+                    </p>
+</div>
+<div class="mt-6 flex items-center gap-2 text-secondary font-medium">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span class="text-label-md">Локальное хранение</span>
+</div>
+</div>
+<!-- Hidden Categories -->
+<div class="md:col-span-12 bg-surface-container-lowest p-6 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-outline-variant/10">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-tertiary-container/30 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">visibility_off</span>
+</div>
+<div>
+<h3 class="text-headline-sm font-headline-sm">Скрытые категории</h3>
+<p class="text-label-sm text-on-surface-variant">Выберите, что не показывать в интерфейсе</p>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-3">
+<button class="px-5 py-2.5 rounded-full border border-outline-variant text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span>Беременность</span>
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+<button class="px-5 py-2.5 rounded-full bg-tertiary text-on-tertiary text-label-md flex items-center gap-2">
+<span>Сексуальная активность</span>
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+<button class="px-5 py-2.5 rounded-full border border-outline-variant text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span>Симптомы менопаузы</span>
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+<button class="px-5 py-2.5 rounded-full border border-outline-variant text-label-md hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span>Настроение</span>
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+</div>
+<!-- Data Management -->
+<div class="md:col-span-12 grid grid-cols-1 sm:grid-cols-2 gap-4">
+<button class="flex items-center justify-between p-6 bg-surface-container-high/30 rounded-3xl hover:bg-surface-container-high transition-all group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant">download_for_offline</span>
+</div>
+<div class="text-left">
+<p class="text-body-md font-bold">Экспорт всех данных</p>
+<p class="text-label-sm text-on-surface-variant">Создать PDF или JSON архив</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="flex items-center justify-between p-6 bg-error-container/10 border border-error/10 rounded-3xl hover:bg-error-container/20 transition-all group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-error">delete_forever</span>
+</div>
+<div class="text-left">
+<p class="text-body-md font-bold text-error">Удалить все данные</p>
+<p class="text-label-sm text-on-error-container/70">Безвозвратное действие</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-error/40">warning</span>
+</button>
+</div>
+</div>
+<footer class="mt-16 text-center pb-12">
+<p class="text-label-sm text-on-surface-variant mb-2">Mira v2.4.0 • Сделано с заботой о приватности</p>
+<div class="flex justify-center gap-4">
+<a class="text-label-sm text-primary font-medium hover:underline" href="#">Политика конфиденциальности</a>
+<span class="text-outline-variant">•</span>
+<a class="text-label-sm text-primary font-medium hover:underline" href="#">Поддержка</a>
+</div>
+</footer>
+</main>
+<!-- Mobile Bottom Navigation -->
+<nav class="md:hidden fixed bottom-0 w-full h-16 z-50 flex justify-around items-center px-4 pb-safe bg-surface-container-lowest shadow-[0_-4px_20px_rgba(0,0,0,0.04)] rounded-t-3xl">
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-label-sm font-label-sm-mobile">Сегодня</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">edit_calendar</span>
+<span class="text-label-sm font-label-sm-mobile">Трек</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-label-sm font-label-sm-mobile">Анализ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-label-sm font-label-sm-mobile">Отчёт</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="text-label-sm font-label-sm-mobile">Профиль</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions and subtle effects
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.style.transform = 'scale(0.98)';
+            });
+            el.addEventListener('mouseup', () => {
+                el.style.transform = '';
+            });
+            el.addEventListener('mouseleave', () => {
+                el.style.transform = '';
+            });
+        });
+
+        // Simple Fade-in animation logic for content
+        window.addEventListener('load', () => {
+            const main = document.querySelector('main');
+            main.style.opacity = '0';
+            main.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+            main.style.transform = 'translateY(10px)';
+            
+            requestAnimationFrame(() => {
+                main.style.opacity = '1';
+                main.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>

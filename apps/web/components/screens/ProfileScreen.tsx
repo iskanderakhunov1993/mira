@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   UserRound, Calendar, Shield, Download, Trash2,
   ChevronRight, Lock, Bell, Heart, Database, Eye, Moon, Award, Cloud, ScanFace, EyeOff, BellRing, BookOpen, HeartPulse, Plus,
-  Pencil,
+  Pencil, RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SyncSettings } from "@/components/sync/SyncSettings";
@@ -24,9 +24,16 @@ const darkCardClass = "border-[#2E2826] bg-[#1D1816] shadow-[0_18px_48px_rgba(0,
 const darkInsetClass = "border-[#342D2A] bg-[#2A2523]";
 const limeButtonClass = "bg-[#84E600] text-[#11100F] shadow-[0_12px_30px_rgba(132,230,0,0.20)] hover:bg-[#73CC00]";
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
   return (
-    <button onClick={onToggle} className={`relative h-7 w-12 rounded-full transition ${on ? "bg-[#84E600]" : "bg-[#342D2A]"}`}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onToggle}
+      className={`relative h-7 w-12 rounded-full transition ${on ? "bg-[#84E600]" : "bg-[#342D2A]"}`}
+    >
       <div className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
     </button>
   );
@@ -56,7 +63,7 @@ function PrivacyRow({
         <p className="text-sm font-black text-[#F5F0ED]">{label}</p>
         <p className="text-xs font-semibold text-[#B7AAA4]">{desc}</p>
       </div>
-      <Toggle on={on} onToggle={() => { if (!disabled) onToggle(); }} />
+      <Toggle on={on} label={label} onToggle={() => { if (!disabled) onToggle(); }} />
     </div>
   );
 }
@@ -121,6 +128,13 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
         <h1 className="mb-6 text-2xl font-bold text-mira-text">Профиль</h1>
         <Card className={`p-6 ${darkCardClass}`}>
           <p className="text-sm text-[#B7AAA4]">Пройди онбординг чтобы настроить профиль</p>
+          <button
+            type="button"
+            onClick={() => { window.location.href = "/onboarding?restart=1"; }}
+            className="mt-4 rounded-full bg-[#84E600] px-4 py-3 text-sm font-black text-[#11100F]"
+          >
+            Пройти onboarding
+          </button>
         </Card>
       </div>
     );
@@ -181,7 +195,7 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
                 <p className="text-xs text-mira-muted">Хайд, истихада, каза, дуа</p>
               </div>
             </div>
-            <Toggle on={isActive} onToggle={() => {
+            <Toggle on={isActive} label="Исламский режим" onToggle={() => {
               persist(saveProfile(data, { ...profile, additionalMode: isActive ? "none" : "islam" }));
             }} />
           </div>
@@ -483,7 +497,7 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
                       <p className="text-xs font-semibold text-mira-text">{item.label}</p>
                       <p className="text-[11px] text-mira-muted">{item.desc}</p>
                     </div>
-                    <Toggle on={settings.items[item.id]} onToggle={() => {
+                    <Toggle on={settings.items[item.id]} label={item.label} onToggle={() => {
                       persist(saveProfile(data, {
                         ...profile,
                         reminders: {
@@ -609,7 +623,7 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
                       <p className="text-xs font-semibold text-mira-text">{item.label}</p>
                       <p className="text-[11px] text-mira-muted">{item.desc}</p>
                     </div>
-                    <Toggle on={cloudExcluded.has(item.id)} onToggle={() => {
+                    <Toggle on={cloudExcluded.has(item.id)} label={`Не хранить в облаке: ${item.label}`} onToggle={() => {
                       const next = new Set(cloudExcluded);
                       if (next.has(item.id)) next.delete(item.id);
                       else next.add(item.id);
@@ -683,7 +697,7 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
                 <button
                   type="button"
                   onClick={() => setSection("data")}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#302927] px-3 py-2 text-xs font-black text-[#F9359E] transition hover:bg-[#3A302D]"
+                  className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-[#302927] px-4 text-xs font-black text-[#F9359E] transition hover:bg-[#3A302D]"
                 >
                   <Pencil className="h-3.5 w-3.5" /> Изменить
                 </button>
@@ -724,12 +738,18 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
               {[
                 { icon: Calendar, title: "Цикл", body: `${profile.cycleConfig.cycleLength} дн., месячные ${profile.cycleConfig.periodLength} дн.`, id: "cycle" },
                 { icon: Shield, title: "Приватность", body: "PIN, облако, скрытые категории", id: "privacy" },
+                { icon: BellRing, title: "Настройки", body: "Трекеры, уведомления, экспорт", id: "settings-route" },
                 { icon: Download, title: "Отчёт и экспорт", body: "Копия данных и подготовка врачу", id: "export" },
+                { icon: RotateCcw, title: "Onboarding", body: "Пройти настройку заново", id: "restart-onboarding" },
               ].map((item) => (
                 <button
                   key={item.title}
                   type="button"
-                  onClick={() => setSection(item.id)}
+                  onClick={() => {
+                    if (item.id === "restart-onboarding") window.location.href = "/onboarding?restart=1";
+                    else if (item.id === "settings-route") window.location.href = "/settings";
+                    else setSection(item.id);
+                  }}
                   className={`rounded-[20px] border p-4 text-left transition hover:-translate-y-0.5 ${darkCardClass}`}
                 >
                   <item.icon className="h-5 w-5 text-[#F9359E]" />
@@ -767,7 +787,9 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
                 {group.items.map(item => (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => setSection(item.id)}
+                    aria-label={item.label}
                     className="flex w-full items-center gap-3 rounded-[18px] p-3 text-left transition hover:bg-[#2A2523]"
                   >
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#302927] text-[#F9359E]">
@@ -785,7 +807,9 @@ export function ProfileScreen({ data, persist, navigate }: ScreenProps) {
           ))}
 
           <button
+            type="button"
             onClick={confirmAndClearAllData}
+            aria-label="Удалить все данные"
             className="flex w-full items-center gap-3 rounded-[18px] p-3 text-left transition hover:bg-[#33201F]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#33201F] text-red-400">

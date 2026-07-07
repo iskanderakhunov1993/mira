@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira Onboarding - Категории</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .checkbox-custom:checked + .checkbox-ui {
+            background-color: #7c5357; /* primary */
+            border-color: #7c5357;
+        }
+        .checkbox-custom:checked + .checkbox-ui .check-icon {
+            display: block;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        @keyframes subtle-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .animate-float {
+            animation: subtle-float 6s ease-in-out infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-container": "#c8bbe0",
+                      "tertiary-fixed-dim": "#cdc1e5",
+                      "on-error-container": "#93000a",
+                      "surface-container-highest": "#e4e2de",
+                      "secondary": "#50625d",
+                      "surface-variant": "#e4e2de",
+                      "on-surface-variant": "#504444",
+                      "error-container": "#ffdad6",
+                      "inverse-surface": "#30312e",
+                      "inverse-on-surface": "#f2f0ed",
+                      "on-tertiary-fixed-variant": "#4b4260",
+                      "on-primary-fixed": "#301216",
+                      "inverse-primary": "#eeb9bd",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#827474",
+                      "on-tertiary-fixed": "#1f1732",
+                      "secondary-fixed-dim": "#b7cbc5",
+                      "on-primary-container": "#6b4448",
+                      "primary-fixed-dim": "#eeb9bd",
+                      "surface": "#fbf9f5",
+                      "surface-bright": "#fbf9f5",
+                      "tertiary": "#635979",
+                      "surface-tint": "#7c5357",
+                      "primary": "#7c5357",
+                      "on-secondary-fixed": "#0d1f1b",
+                      "on-surface": "#1b1c1a",
+                      "surface-container": "#efeeea",
+                      "on-secondary-fixed-variant": "#384a46",
+                      "on-background": "#1b1c1a",
+                      "on-secondary-container": "#546662",
+                      "primary-fixed": "#ffdadc",
+                      "background": "#fbf9f5",
+                      "on-primary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "surface-container-low": "#f5f3ef",
+                      "on-tertiary-container": "#534a69",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed-variant": "#623c40",
+                      "surface-dim": "#dbdad6",
+                      "surface-container-high": "#eae8e4",
+                      "secondary-fixed": "#d3e7e1",
+                      "secondary-container": "#d0e4de",
+                      "tertiary-fixed": "#eaddff",
+                      "primary-container": "#e8b4b8",
+                      "on-tertiary": "#ffffff",
+                      "outline-variant": "#d4c2c3",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target-min": "44px",
+                      "container-padding-mobile": "20px",
+                      "gutter": "16px",
+                      "container-padding-desktop": "40px",
+                      "base": "8px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "label-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                      "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface min-h-screen font-body-md overflow-x-hidden">
+<!-- Subtle Background Element -->
+<div class="fixed top-0 right-0 w-64 h-64 bg-primary-container/20 blur-[100px] -z-10 animate-float"></div>
+<div class="fixed bottom-0 left-0 w-80 h-80 bg-tertiary-container/10 blur-[100px] -z-10 animate-float" style="animation-delay: -2s;"></div>
+<!-- Onboarding Layout -->
+<main class="max-w-2xl mx-auto px-container-padding-mobile md:px-container-padding-desktop pt-12 pb-24 flex flex-col min-h-screen">
+<!-- Header Section -->
+<header class="mb-10 text-center md:text-left">
+<div class="flex items-center justify-center md:justify-start mb-6">
+<span class="text-primary font-bold text-headline-md font-headline-md tracking-tighter">Mira</span>
+</div>
+<h1 class="text-on-surface font-headline-lg-mobile md:text-headline-lg font-headline-lg mb-4">
+                Что хочешь отслеживать?
+            </h1>
+<p class="text-on-surface-variant font-body-md text-body-md max-w-md mx-auto md:mx-0">
+                Выбери только то, что важно тебе. Мы адаптируем интерфейс под твои цели.
+            </p>
+</header>
+<!-- Category Grid (Asymmetric Layout) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-grow">
+<!-- Category Card: Месячные -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input checked="" class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-primary-container/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="calendar_today">calendar_today</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Месячные</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Боль -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-secondary-container/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary" data-icon="bolt">bolt</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Боль</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Симптомы -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-tertiary-container/30 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-tertiary" data-icon="medical_services">medical_services</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Симптомы</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Настроение -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-primary-container/20 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="mood">mood</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Настроение</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Энергия -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-secondary-container/40 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="electric_bolt">electric_bolt</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Энергия</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Сон -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-tertiary-container/40 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="bedtime">bedtime</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Сон</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Секс (Private) -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300 border-2 border-primary-container/20">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-primary-container/50 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform relative">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="favorite">favorite</span>
+<span class="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Секс</span>
+<span class="text-label-sm font-label-sm text-primary">Приватно</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Заметки (Private) -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300 border-2 border-primary-container/20">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-primary-container/50 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform relative">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="edit_note">edit_note</span>
+<span class="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[10px] text-primary" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Заметки</span>
+<span class="text-label-sm font-label-sm text-primary">Приватно</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Вода -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-secondary-container/20 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-secondary" data-icon="water_drop">water_drop</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Вода</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Вес -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="scale">scale</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Вес</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+<!-- Category Card: Калории -->
+<label class="group relative cursor-pointer flex items-center p-5 rounded-3xl bg-surface-container-lowest shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:bg-surface-container-high transition-all duration-300">
+<input class="checkbox-custom hidden" type="checkbox"/>
+<div class="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="restaurant">restaurant</span>
+</div>
+<div class="flex-grow">
+<span class="font-headline-sm text-headline-sm block">Калории</span>
+</div>
+<div class="checkbox-ui w-6 h-6 border-2 border-outline-variant rounded-full flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-on-primary text-sm check-icon hidden" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</label>
+</div>
+<!-- Sticky Bottom Actions -->
+<div class="fixed bottom-0 left-0 w-full glass-card p-6 border-t border-outline-variant/10 md:relative md:bg-transparent md:border-none md:p-0 md:mt-12">
+<div class="max-w-2xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="hidden md:flex items-center text-on-surface-variant gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="text-label-md font-label-md">Твои данные зашифрованы и доступны только тебе</span>
+</div>
+<button class="w-full md:w-auto min-w-[200px] h-touch-target-min bg-primary text-on-primary rounded-full font-label-md text-label-md px-8 py-3 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all duration-200">
+                    Продолжить
+                </button>
+</div>
+</div>
+</main>
+<script>
+        // Micro-interactions for selection
+        document.querySelectorAll('label').forEach(label => {
+            const checkbox = label.querySelector('input[type="checkbox"]');
+            
+            label.addEventListener('click', () => {
+                // The toggle is handled by the browser, we just ensure UI updates
+                // and maybe play a tiny vibration or sound effect if desired
+                if (navigator.vibrate) {
+                    navigator.vibrate(5);
+                }
+            });
+        });
+
+        // Simple button interaction
+        const nextBtn = document.querySelector('button');
+        nextBtn.addEventListener('click', (e) => {
+            const ripple = document.createElement('span');
+            ripple.className = 'absolute inset-0 bg-white/20 rounded-full animate-ping';
+            nextBtn.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 500);
+            
+            // Log selected (optional implementation)
+            const selected = Array.from(document.querySelectorAll('input:checked'))
+                                 .map(el => el.closest('label').querySelector('.font-headline-sm').innerText);
+            console.log('Selected categories:', selected);
+        });
+    </script>
+</body></html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html><html lang="ru" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<title>Mira - Сегодня</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#fbf9f5",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#fbf9f5",
+                    "on-tertiary-fixed-variant": "#4b4260",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#d0e4de",
+                    "on-secondary-fixed": "#0d1f1b",
+                    "outline-variant": "#d4c2c3",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#cdc1e5",
+                    "surface-container-highest": "#e4e2de",
+                    "surface-container-high": "#eae8e4",
+                    "on-primary-fixed": "#301216",
+                    "inverse-on-surface": "#f2f0ed",
+                    "error-container": "#ffdad6",
+                    "on-error": "#ffffff",
+                    "surface": "#fbf9f5",
+                    "tertiary-container": "#c8bbe0",
+                    "primary-fixed": "#ffdadc",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#eeb9bd",
+                    "on-surface": "#1b1c1a",
+                    "on-secondary-container": "#546662",
+                    "tertiary": "#635979",
+                    "tertiary-fixed": "#eaddff",
+                    "surface-container-low": "#f5f3ef",
+                    "on-tertiary-fixed": "#1f1732",
+                    "on-primary-container": "#6b4448",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#504444",
+                    "surface-dim": "#dbdad6",
+                    "inverse-primary": "#eeb9bd",
+                    "outline": "#827474",
+                    "surface-tint": "#7c5357",
+                    "on-primary-fixed-variant": "#623c40",
+                    "on-tertiary-container": "#534a69",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#1b1c1a",
+                    "secondary": "#50625d",
+                    "surface-container": "#efeeea",
+                    "on-secondary-fixed-variant": "#384a46",
+                    "secondary-fixed": "#d3e7e1",
+                    "surface-variant": "#e4e2de",
+                    "primary-container": "#e8b4b8",
+                    "inverse-surface": "#30312e",
+                    "primary": "#7c5357",
+                    "secondary-fixed-dim": "#b7cbc5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding-mobile": "20px",
+                    "base": "8px",
+                    "container-padding-desktop": "40px",
+                    "touch-target-min": "44px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fbf9f5;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .bento-item-large {
+            grid-column: span 2;
+        }
+        .pulse-soft {
+            animation: pulse-soft 4s ease-in-out infinite;
+        }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+        .safe-pb {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- Desktop Side Navigation -->
+<nav class="hidden md:flex flex-col p-6 gap-4 h-screen fixed left-0 top-0 bg-surface-container-low border-r border-outline-variant/30 w-64 z-50">
+<div class="mb-8">
+<h1 class="text-headline-lg font-headline-lg text-primary">Mira</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Приватный спутник</p>
+</div>
+<div class="space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container font-medium rounded-xl translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-body-md font-body-md">Сегодня</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">edit_calendar</span>
+<span class="text-body-md font-body-md">Трек</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-body-md font-body-md">Анализ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-body-md font-body-md">Отчёт</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-body-md font-body-md">Профиль</span>
+</a>
+</div>
+</nav>
+<!-- Top App Bar (Mobile) -->
+<header class="md:hidden flex justify-between items-center px-container-padding-mobile h-16 w-full fixed top-0 bg-background/80 backdrop-blur-md z-40">
+<span class="text-headline-md font-headline-md font-bold text-primary">Mira</span>
+<div class="flex gap-4">
+<button class="text-primary material-symbols-outlined p-2 hover:bg-surface-container-high transition-colors rounded-full">lock</button>
+<button class="text-primary material-symbols-outlined p-2 hover:bg-surface-container-high transition-colors rounded-full">account_circle</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="min-h-screen pt-16 pb-24 md:pt-8 md:pl-72 md:pr-10 px-container-padding-mobile max-w-7xl mx-auto">
+<!-- Header Section -->
+<section class="mb-8">
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-on-surface">Привет, Анна</h2>
+<p class="text-body-md text-on-surface-variant mt-1">Вот твое состояние на сегодня.</p>
+</section><section class="mb-8 overflow-hidden">
+  <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant">
+      <span class="text-label-sm font-label-sm uppercase">Пн</span>
+      <span class="text-body-md font-bold mt-1">5</span>
+    </div>
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant">
+      <span class="text-label-sm font-label-sm uppercase">Вт</span>
+      <span class="text-body-md font-bold mt-1">6</span>
+    </div>
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant">
+      <span class="text-label-sm font-label-sm uppercase">Ср</span>
+      <span class="text-body-md font-bold mt-1">7</span>
+    </div>
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-primary text-on-primary shadow-sm">
+      <span class="text-label-sm font-label-sm uppercase">Чт</span>
+      <span class="text-body-md font-bold mt-1">8</span>
+    </div>
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant">
+      <span class="text-label-sm font-label-sm uppercase">Пт</span>
+      <span class="text-body-md font-bold mt-1">9</span>
+    </div>
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant">
+      <span class="text-label-sm font-label-sm uppercase">Сб</span>
+      <span class="text-body-md font-bold mt-1">10</span>
+    </div>
+    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 py-3 rounded-2xl bg-surface-container-low text-on-surface-variant">
+      <span class="text-label-sm font-label-sm uppercase">Вс</span>
+      <span class="text-body-md font-bold mt-1">11</span>
+    </div>
+  </div>
+</section>
+<!-- Phase Widget -->
+<section class="mb-8">
+<div class="relative w-full aspect-square max-w-md mx-auto md:mx-0 glass-card rounded-[40px] flex flex-col items-center justify-center overflow-hidden shadow-sm">
+<!-- Background Subtle Gradient/Atmosphere -->
+<div class="absolute inset-0 bg-gradient-to-br from-primary-fixed/20 to-secondary-fixed/20 -z-10"></div>
+<!-- Circular Progress Visual -->
+<div class="relative w-64 h-64 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-highest" cx="128" cy="128" fill="transparent" r="110" stroke="currentColor" stroke-width="12"></circle>
+<circle class="text-primary transition-all duration-1000 ease-out" cx="128" cy="128" fill="transparent" r="110" stroke="currentColor" stroke-dasharray="691" stroke-dashoffset="520" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider">День</span>
+<span class="text-[64px] font-bold leading-none text-primary">8</span>
+<span class="text-headline-sm font-headline-sm text-on-surface-variant">из 28</span>
+</div>
+</div>
+<div class="mt-6 text-center px-6">
+<div class="inline-flex items-center gap-2 px-4 py-1.5 bg-secondary-container text-on-secondary-container rounded-full text-label-md font-label-md mb-2">
+<span class="material-symbols-outlined text-[18px]">eco</span>
+                        Фаза фолликулярная
+                    </div>
+</div>
+</div>
+</section>
+<!-- Daily Insights Card -->
+<section class="mb-8">
+<div class="p-6 rounded-3xl bg-primary-container/30 border border-primary-container/50">
+<div class="flex items-start gap-4">
+<div class="bg-primary-container p-3 rounded-2xl text-on-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div>
+<h3 class="text-headline-sm font-headline-sm text-on-primary-container">Резюме дня</h3>
+<p class="text-body-md text-on-primary-container/90 mt-1">Сегодня вы можете чувствовать прилив энергии. Хорошее время для планирования.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Actions -->
+<section class="mb-10">
+<h3 class="text-label-md font-label-md text-on-surface-variant mb-4 uppercase tracking-widest">Быстрые действия</h3>
+<div class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex-shrink-0 flex flex-col items-center justify-center gap-2 w-24 h-24 bg-surface-container-highest rounded-3xl hover:bg-primary-container transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-primary">water_drop</span>
+<span class="text-label-sm font-label-sm text-on-surface">Месячные</span>
+</button>
+<button class="flex-shrink-0 flex flex-col items-center justify-center gap-2 w-24 h-24 bg-surface-container-highest rounded-3xl hover:bg-secondary-container transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-secondary">mood</span>
+<span class="text-label-sm font-label-sm text-on-surface">Симптомы</span>
+</button>
+<button class="flex-shrink-0 flex flex-col items-center justify-center gap-2 w-24 h-24 bg-surface-container-highest rounded-3xl hover:bg-tertiary-container transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-tertiary">favorite</span>
+<span class="text-label-sm font-label-sm text-on-surface">Секс</span>
+</button>
+<button class="flex-shrink-0 flex flex-col items-center justify-center gap-2 w-24 h-24 border-2 border-dashed border-outline-variant rounded-3xl text-outline active:scale-95 duration-150">
+<span class="material-symbols-outlined">add</span>
+<span class="text-label-sm font-label-sm">Ещё</span>
+</button>
+</div>
+</section>
+<!-- Trackers Bento Grid -->
+<section class="mb-12">
+<h3 class="text-label-md font-label-md text-on-surface-variant mb-4 uppercase tracking-widest">Трекеры здоровья</h3>
+<div class="bento-grid">
+<!-- Water Tracker -->
+<div class="p-5 glass-card rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="bg-secondary-container/50 p-2 rounded-xl text-secondary">
+<span class="material-symbols-outlined">water_full</span>
+</div>
+<span class="text-label-sm font-label-sm text-on-surface-variant">60%</span>
+</div>
+<div class="space-y-1">
+<p class="text-headline-sm font-headline-sm text-on-surface">1.2 <span class="text-body-md text-on-surface-variant">/ 2.0 л</span></p>
+<p class="text-label-md font-label-md text-on-surface-variant">Вода</p>
+</div>
+<div class="mt-4 w-full bg-surface-container h-2 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full transition-all duration-500" style="width: 60%"></div>
+</div>
+</div>
+<!-- Weight Tracker -->
+<div class="p-5 glass-card rounded-3xl shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="bg-primary-container/50 p-2 rounded-xl text-primary">
+<span class="material-symbols-outlined">monitor_weight</span>
+</div>
+<span class="text-label-sm font-label-sm text-error">-0.4 кг</span>
+</div>
+<div class="space-y-1">
+<p class="text-headline-sm font-headline-sm text-on-surface">62.5 <span class="text-body-md text-on-surface-variant">кг</span></p>
+<p class="text-label-md font-label-md text-on-surface-variant">Вес</p>
+</div>
+<div class="mt-4 flex items-end h-6 gap-1">
+<div class="bg-primary-container/40 flex-1 rounded-t-sm h-3"></div>
+<div class="bg-primary-container/40 flex-1 rounded-t-sm h-4"></div>
+<div class="bg-primary-container/40 flex-1 rounded-t-sm h-5"></div>
+<div class="bg-primary/80 flex-1 rounded-t-sm h-6"></div>
+</div>
+</div>
+<!-- Calories Tracker -->
+<div class="bento-item-large p-5 glass-card rounded-3xl shadow-sm hover:shadow-md transition-shadow flex items-center gap-6">
+<div class="relative w-20 h-20">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container" cx="40" cy="40" fill="transparent" r="34" stroke="currentColor" stroke-width="6"></circle>
+<circle class="text-tertiary" cx="40" cy="40" fill="transparent" r="34" stroke="currentColor" stroke-dasharray="213.6" stroke-dashoffset="64" stroke-linecap="round" stroke-width="6"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary">restaurant</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-end mb-1">
+<p class="text-headline-sm font-headline-sm text-on-surface">1450 <span class="text-body-md text-on-surface-variant">/ 2000 ккал</span></p>
+</div>
+<p class="text-label-md font-label-md text-on-surface-variant">Калории — Осталось 550 ккал</p>
+<div class="flex gap-2 mt-3">
+<div class="h-1 flex-1 bg-tertiary rounded-full"></div>
+<div class="h-1 flex-1 bg-tertiary rounded-full"></div>
+<div class="h-1 flex-1 bg-surface-container rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Decorative Mood Image (Asymmetric Layout) -->
+<section class="mb-12">
+<div class="flex items-center justify-between p-4 bg-secondary-fixed text-on-secondary-fixed rounded-2xl shadow-sm">
+<div class="flex items-center gap-4">
+<div class="bg-surface-container-lowest/30 p-2 rounded-xl">
+<span class="material-symbols-outlined text-2xl">self_improvement</span>
+</div>
+<div>
+<p class="text-label-md font-bold">Время для себя</p>
+<p class="text-label-sm opacity-80">Сегодня ваш день для медитации</p>
+</div>
+</div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-lowest/20 rounded-full">
+<span class="text-label-sm font-bold uppercase tracking-wider">Совет</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full h-16 z-50 flex justify-around items-center px-4 pb-safe bg-surface-container-lowest shadow-[0_-4px_20px_rgba(0,0,0,0.04)] rounded-t-3xl border-t border-surface-container">
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="text-label-sm font-label-sm">Сегодня</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">edit_calendar</span>
+<span class="text-label-sm font-label-sm">Трек</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-label-sm font-label-sm">Анализ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-label-sm font-label-sm">Отчёт</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-sm font-label-sm">Профиль</span>
+</a>
+</nav>
+<!-- FAB (Suppressed on this dashboard per rules but logic check) -->
+<!-- Not rendering FAB here as it's a content-heavy dashboard, keeping focus on bento cards -->
+<script>
+        // Micro-interactions for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.add('opacity-80');
+                setTimeout(() => this.classList.remove('opacity-80'), 200);
+            });
+        });
+
+        // Simple scroll observer for TopAppBar transparency
+        const header = document.querySelector('header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                header.classList.add('bg-background/95', 'shadow-sm');
+            } else {
+                header.classList.remove('bg-background/95', 'shadow-sm');
+            }
+        });
+    </script>
+
+
+</body></html>

@@ -17,9 +17,11 @@ export function OnlineStatus() {
     };
   }, []);
 
+  if (online) return null;
+
   return (
-    <div className={`fixed right-4 top-4 z-50 rounded-full px-3 py-1.5 text-xs font-black shadow-sm ${online ? "bg-white text-[#34C759]" : "bg-[#FFF0F0] text-[#FF6B6B]"}`}>
-      {online ? "онлайн" : "офлайн"}
+    <div className="fixed right-4 top-[calc(env(safe-area-inset-top)+12px)] z-50 rounded-full bg-[#FFF0F0] px-3 py-1.5 text-xs font-black text-[#FF6B6B] shadow-sm">
+      офлайн
     </div>
   );
 }

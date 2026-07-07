@@ -5,6 +5,9 @@ import type { MiraLocalData } from "./types";
 import { useMiraStore } from "@/store";
 import { persistedMiraStateSchema } from "@/store/schema";
 import type { CareState, CycleState, LogState, SettingsState, UserState } from "@/store/types";
+import { migrateHealthSnapshot } from "@/db/migrations";
+import type { HealthSnapshot } from "@/types/health";
+import { syncDerivedStoresFromHealthSnapshot } from "./healthSnapshotClientSync";
 
 /*
  * Гибридный sync: localStorage + Zustand — локальный источник истины,
@@ -15,6 +18,7 @@ import type { CareState, CycleState, LogState, SettingsState, UserState } from "
 
 const LAST_PULLED_KEY = "mira:lastPulledAt"; // ISO updated_at последнего успешного pull
 const CLOUD_SCHEMA_VERSION = 3;
+const HEALTH_SNAPSHOT_STORAGE_KEY = "mira-new-health-v1";
 
 type PersistedMiraState = {
   user: UserState;
@@ -27,6 +31,7 @@ type PersistedMiraState = {
 type MiraCloudPayload = MiraLocalData & {
   cloudSchemaVersion?: number;
   zustand?: PersistedMiraState;
+  healthSnapshot?: HealthSnapshot;
 };
 
 export type SyncState =
@@ -77,11 +82,12 @@ function buildCloudPayload(data: MiraLocalData): MiraCloudPayload {
     ...sanitizedLegacyData,
     cloudSchemaVersion: CLOUD_SCHEMA_VERSION,
     zustand: sanitizeStoreSnapshotForCloud(getStoreSnapshot(), sanitizedLegacyData),
+    healthSnapshot: readLocalHealthSnapshot(),
   };
 }
 
 function getLegacyDataFromCloud(payload: MiraCloudPayload): MiraLocalData {
-  const { cloudSchemaVersion: _cloudSchemaVersion, zustand: _zustand, ...legacyData } = payload;
+  const { cloudSchemaVersion: _cloudSchemaVersion, zustand: _zustand, healthSnapshot: _healthSnapshot, ...legacyData } = payload;
   return legacyData;
 }
 
@@ -104,6 +110,23 @@ function setLastPulledAt(iso: string): void {
   window.localStorage.setItem(LAST_PULLED_KEY, iso);
 }
 
+function readLocalHealthSnapshot(): HealthSnapshot | undefined {
+  if (typeof window === "undefined") return undefined;
+  const raw = window.localStorage.getItem(HEALTH_SNAPSHOT_STORAGE_KEY);
+  if (!raw) return undefined;
+
+  try {
+    return migrateHealthSnapshot(JSON.parse(raw));
+  } catch {
+    return undefined;
+  }
+}
+
+function writeLocalHealthSnapshot(snapshot: HealthSnapshot | undefined): void {
+  if (!snapshot || typeof window === "undefined") return;
+  window.localStorage.setItem(HEALTH_SNAPSHOT_STORAGE_KEY, JSON.stringify(migrateHealthSnapshot(snapshot)));
+}
+
 /** Текущий пользователь, либо null если не вошёл / sync выключен. */
 export async function getSyncUserId(): Promise<string | null> {
   if (!supabase) return null;
@@ -123,6 +146,34 @@ export async function pushData(data: MiraLocalData): Promise<string> {
     .from("user_data")
     .upsert(
       { user_id: userId, data: cloudData, data_version: data.version },
+      { onConflict: "user_id" }
+    )
+    .select("updated_at")
+    .single();
+
+  if (error) throw new Error(error.message);
+  setLastPulledAt(row.updated_at);
+  return row.updated_at;
+}
+
+/** Залить новый local-first HealthSnapshot в тот же Supabase JSONB-блоб. */
+export async function pushHealthSnapshot(snapshot: HealthSnapshot): Promise<string> {
+  if (!supabase) throw new Error("Supabase не настроен");
+  const userId = await getSyncUserId();
+  if (!userId) throw new Error("Нужно войти, чтобы синхронизировать");
+
+  const cloud = await pullData().catch(() => null);
+  const fallbackPayload = buildCloudPayload(readData());
+  const nextPayload: MiraCloudPayload = {
+    ...(cloud?.data ?? fallbackPayload),
+    cloudSchemaVersion: CLOUD_SCHEMA_VERSION,
+    healthSnapshot: migrateHealthSnapshot(snapshot),
+  };
+
+  const { data: row, error } = await supabase
+    .from("user_data")
+    .upsert(
+      { user_id: userId, data: nextPayload, data_version: nextPayload.version ?? fallbackPayload.version },
       { onConflict: "user_id" }
     )
     .select("updated_at")
@@ -177,6 +228,13 @@ export async function syncOnLoad(): Promise<MiraLocalData> {
 
   if (cloudIsNewer) {
     // На другом устройстве данные изменились — забираем себе.
+    writeLocalHealthSnapshot(cloud.data.healthSnapshot);
+    if (cloud.data.healthSnapshot) {
+      const nextLegacyData = syncDerivedStoresFromHealthSnapshot(cloud.data.healthSnapshot);
+      setLastPulledAt(cloud.updatedAt);
+      return nextLegacyData;
+    }
+
     writeData(getLegacyDataFromCloud(cloud.data));
     applyStoreSnapshot(cloud.data.zustand);
     setLastPulledAt(cloud.updatedAt);

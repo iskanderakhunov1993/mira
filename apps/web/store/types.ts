@@ -68,6 +68,7 @@ export interface DailyLog {
       oiliness: boolean;
       hairLoss: boolean;
     };
+    basalTemperature: number | null;
     libido: "none" | "low" | "medium" | "high" | null;
     context: string[];
     note: string;

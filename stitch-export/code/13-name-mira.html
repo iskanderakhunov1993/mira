@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#c8bbe0",
+                    "surface-container-low": "#f5f3ef",
+                    "outline": "#827474",
+                    "on-secondary-container": "#546662",
+                    "secondary-fixed": "#d3e7e1",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#1f1732",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed": "#301216",
+                    "primary-fixed": "#ffdadc",
+                    "inverse-surface": "#30312e",
+                    "secondary-container": "#d0e4de",
+                    "surface-dim": "#dbdad6",
+                    "secondary-fixed-dim": "#b7cbc5",
+                    "secondary": "#50625d",
+                    "surface-variant": "#e4e2de",
+                    "on-surface-variant": "#504444",
+                    "surface-tint": "#7c5357",
+                    "primary-fixed-dim": "#eeb9bd",
+                    "on-secondary-fixed": "#0d1f1b",
+                    "on-primary-container": "#6b4448",
+                    "surface-bright": "#fbf9f5",
+                    "surface-container-high": "#eae8e4",
+                    "outline-variant": "#d4c2c3",
+                    "surface-container": "#efeeea",
+                    "on-secondary-fixed-variant": "#384a46",
+                    "on-tertiary-fixed-variant": "#4b4260",
+                    "on-secondary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "background": "#fbf9f5",
+                    "on-tertiary-container": "#534a69",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-fixed-dim": "#cdc1e5",
+                    "inverse-primary": "#eeb9bd",
+                    "inverse-on-surface": "#f2f0ed",
+                    "tertiary": "#635979",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-highest": "#e4e2de",
+                    "primary-container": "#e8b4b8",
+                    "tertiary-fixed": "#eaddff",
+                    "on-primary": "#ffffff",
+                    "surface": "#fbf9f5",
+                    "on-primary-fixed-variant": "#623c40",
+                    "primary": "#7c5357",
+                    "on-surface": "#1b1c1a",
+                    "on-background": "#1b1c1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding-desktop": "40px",
+                    "base": "8px",
+                    "gutter": "16px",
+                    "container-padding-mobile": "20px",
+                    "touch-target-min": "44px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fbf9f5;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .soft-gradient-bg {
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 140%;
+            height: 140%;
+            background: radial-gradient(circle at 20% 30%, #ffdadc 0%, transparent 40%),
+                        radial-gradient(circle at 80% 20%, #d3e7e1 0%, transparent 40%),
+                        radial-gradient(circle at 50% 80%, #eaddff 0%, transparent 40%);
+            filter: blur(80px);
+            z-index: -1;
+            animation: drift 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes drift {
+            from { transform: rotate(0deg) scale(1); }
+            to { transform: rotate(5deg) scale(1.1); }
+        }
+
+        .input-focus-glow:focus {
+            box-shadow: 0 0 0 4px rgba(211, 231, 225, 0.5);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-background relative flex items-center justify-center">
+<!-- Soft Ambient Background Animation -->
+<div class="soft-gradient-bg"></div>
+<!-- Main Onboarding Container -->
+<main class="w-full max-w-md px-container-padding-mobile md:px-0 z-10">
+<div class="glass-card rounded-[32px] p-8 md:p-10 shadow-[0px_8px_32px_rgba(0,0,0,0.04)] flex flex-col items-center text-center">
+<!-- Branding / Icon Area -->
+<div class="mb-8 w-16 h-16 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">face_4</span>
+</div>
+<!-- Header Section -->
+<div class="mb-8">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-3">
+                    Как к тебе обращаться?
+                </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px] mx-auto">
+                    Имя нужно только для того, чтобы Mira могла персонализировать твои уведомления и отчеты.
+                </p>
+</div>
+<!-- Input Section -->
+<div class="w-full space-y-6 mb-10">
+<div class="relative w-full">
+<label class="block text-left font-label-md text-label-md text-on-surface-variant mb-2 ml-4" for="user_name">
+                        Твое имя или никнейм
+                    </label>
+<input autocomplete="off" class="w-full h-14 px-6 bg-surface-container-lowest/60 border-none rounded-full text-body-lg font-body-lg text-on-surface placeholder:text-on-surface-variant/40 transition-all duration-300 input-focus-glow" id="user_name" placeholder="Например, Анна" type="text"/>
+</div>
+<!-- Chips/Quick Options (Optional interaction) -->
+<div class="flex flex-wrap justify-center gap-2">
+<button class="px-4 py-2 rounded-full border-[1.5px] border-secondary text-secondary font-label-md text-label-md hover:bg-secondary/5 transition-colors">
+                        Подруга
+                    </button>
+<button class="px-4 py-2 rounded-full border-[1.5px] border-secondary text-secondary font-label-md text-label-md hover:bg-secondary/5 transition-colors">
+                        Дорогая
+                    </button>
+<button class="px-4 py-2 rounded-full border-[1.5px] border-secondary text-secondary font-label-md text-label-md hover:bg-secondary/5 transition-colors">
+                        Mira
+                    </button>
+</div>
+</div>
+<!-- Actions Section -->
+<div class="w-full flex flex-col gap-4">
+<button class="w-full h-[56px] rounded-full bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-2 shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200" id="btn_continue">
+                    Продолжить
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<button class="w-full h-[48px] rounded-full text-secondary font-label-md text-label-md hover:bg-secondary-container/30 transition-colors active:scale-95" id="btn_skip">
+                    Можно пропустить
+                </button>
+</div>
+</div>
+<!-- Privacy & Security Note -->
+<p class="mt-8 text-center font-label-sm text-label-sm text-on-surface-variant/70 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px]">verified_user</span>
+            Твои данные в безопасности и зашифрованы
+        </p>
+</main>
+<!-- Decorative Elements (Mobile Optimized) -->
+<div class="absolute bottom-10 left-10 md:left-20 w-32 h-32 opacity-20 pointer-events-none">
+<div class="w-full h-full rounded-full bg-tertiary-container/40 blur-xl"></div>
+</div>
+<div class="absolute top-10 right-10 md:right-20 w-48 h-48 opacity-20 pointer-events-none">
+<div class="w-full h-full rounded-full bg-secondary-container/40 blur-2xl"></div>
+</div>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('user_name');
+            const continueBtn = document.getElementById('btn_continue');
+            const skipBtn = document.getElementById('btn_skip');
+            const chips = document.querySelectorAll('button.px-4.py-2');
+
+            // Handle chip clicks
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    nameInput.value = chip.textContent.trim();
+                    nameInput.focus();
+                    
+                    // Simple highlight effect
+                    chips.forEach(c => c.classList.remove('bg-secondary', 'text-on-secondary'));
+                    chip.classList.add('bg-secondary', 'text-on-secondary');
+                });
+            });
+
+            // Handle continue
+            continueBtn.addEventListener('click', () => {
+                const name = nameInput.value.trim();
+                if (name) {
+                    console.log('Proceeding with name:', name);
+                    // Add success animation before navigating
+                    continueBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">refresh</span>';
+                    setTimeout(() => {
+                        alert(`Добро пожаловать, ${name}!`);
+                    }, 500);
+                } else {
+                    nameInput.classList.add('ring-2', 'ring-error');
+                    setTimeout(() => nameInput.classList.remove('ring-2', 'ring-error'), 1000);
+                }
+            });
+
+            // Handle skip
+            skipBtn.addEventListener('click', () => {
+                console.log('User skipped name entry');
+                alert('Вы решили пропустить этот шаг. Мы будем обращаться к вам нейтрально.');
+            });
+
+            // Typing effect on placeholder or auto-focus
+            setTimeout(() => {
+                nameInput.focus();
+            }, 800);
+        });
+    </script>
+</body></html>

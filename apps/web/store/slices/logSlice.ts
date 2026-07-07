@@ -63,6 +63,7 @@ function mergeDailyLog(existing: DailyLog | undefined, incoming: DailyLog): Dail
         oiliness: existing.symptoms.skin.oiliness || incoming.symptoms.skin.oiliness,
         hairLoss: existing.symptoms.skin.hairLoss || incoming.symptoms.skin.hairLoss,
       },
+      basalTemperature: keepNullable(existing.symptoms.basalTemperature ?? null, incoming.symptoms.basalTemperature ?? null),
       libido: keepNullable(existing.symptoms.libido, incoming.symptoms.libido),
       context: uniqueValues(existing.symptoms.context, incoming.symptoms.context),
       note: [existing.symptoms.note, incoming.symptoms.note]

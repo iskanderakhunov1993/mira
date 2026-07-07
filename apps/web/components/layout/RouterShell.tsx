@@ -11,6 +11,7 @@ import { startStoreCloudSync, syncOnLoad } from "@/lib/sync";
 import { scheduleReminders } from "@/services/reminder.service";
 
 const hiddenShellPrefixes = ["/auth"];
+const hiddenTabBarPaths = ["/onboarding"];
 
 function shouldHideShell(pathname: string) {
   return hiddenShellPrefixes.some((prefix) => pathname.startsWith(prefix));
@@ -19,6 +20,7 @@ function shouldHideShell(pathname: string) {
 export function RouterShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideShell = shouldHideShell(pathname);
+  const hideTabBar = hiddenTabBarPaths.includes(pathname);
 
   useEffect(() => {
     scheduleReminders();
@@ -45,10 +47,10 @@ export function RouterShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mira-app-page min-h-screen bg-transparent pb-24">
+    <div className={`mira-app-page min-h-screen bg-transparent ${hideTabBar ? "pb-0" : "pb-32"}`}>
       {children}
 
-      <AppTabBar />
+      {!hideTabBar && <AppTabBar />}
       <InstallPrompt />
       <OnlineStatus />
       <UpdatePrompt />

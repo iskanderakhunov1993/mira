@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ru"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Mira — Настройка цикла</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#c8bbe0",
+                        "surface-container-low": "#f5f3ef",
+                        "outline": "#827474",
+                        "on-secondary-container": "#546662",
+                        "secondary-fixed": "#d3e7e1",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#1f1732",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#301216",
+                        "primary-fixed": "#ffdadc",
+                        "inverse-surface": "#30312e",
+                        "secondary-container": "#d0e4de",
+                        "surface-dim": "#dbdad6",
+                        "secondary-fixed-dim": "#b7cbc5",
+                        "secondary": "#50625d",
+                        "surface-variant": "#e4e2de",
+                        "on-surface-variant": "#504444",
+                        "surface-tint": "#7c5357",
+                        "primary-fixed-dim": "#eeb9bd",
+                        "on-secondary-fixed": "#0d1f1b",
+                        "on-primary-container": "#6b4448",
+                        "surface-bright": "#fbf9f5",
+                        "surface-container-high": "#eae8e4",
+                        "outline-variant": "#d4c2c3",
+                        "surface-container": "#efeeea",
+                        "on-secondary-fixed-variant": "#384a46",
+                        "on-tertiary-fixed-variant": "#4b4260",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "background": "#fbf9f5",
+                        "on-tertiary-container": "#534a69",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#cdc1e5",
+                        "inverse-primary": "#eeb9bd",
+                        "inverse-on-surface": "#f2f0ed",
+                        "tertiary": "#635979",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2de",
+                        "primary-container": "#e8b4b8",
+                        "tertiary-fixed": "#eaddff",
+                        "on-primary": "#ffffff",
+                        "surface": "#fbf9f5",
+                        "on-primary-fixed-variant": "#623c40",
+                        "primary": "#7c5357",
+                        "on-surface": "#1b1c1a",
+                        "on-background": "#1b1c1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-desktop": "40px",
+                        "base": "8px",
+                        "gutter": "16px",
+                        "container-padding-mobile": "20px",
+                        "touch-target-min": "44px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #fbf9f5;
+            color: #1b1c1a;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .picker-wheel {
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .picker-wheel::-webkit-scrollbar {
+            display: none;
+        }
+        .picker-item {
+            scroll-snap-align: center;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom radio styling for the pickers */
+        input[type="radio"]:checked + label {
+            background-color: #e8b4b8;
+            color: #6b4448;
+        }
+        .fade-mask {
+            mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md">
+<!-- Atmospheric Background Animation -->
+<div class="fixed inset-0 -z-10 overflow-hidden">
+
+</div>
+<!-- Onboarding Flow - No Shell Navigation per "The Destination Rule" -->
+<main class="min-h-screen flex flex-col items-center justify-center p-container-padding-mobile md:p-container-padding-desktop">
+<div class="w-full max-w-md flex flex-col gap-8">
+<!-- Logo Section -->
+<div class="text-center">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary italic mb-2">Mira</h1>
+<div class="h-1 w-12 bg-primary-container mx-auto rounded-full"></div>
+</div>
+<!-- Step 1: Cycle Length -->
+<section class="glass-card rounded-[24px] p-6 shadow-[0px_4px_20px_0px_rgba(0,0,0,0.04)] transform transition-all duration-500" id="cycle-step">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Сколько обычно длится цикл?</h2>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8">Если не знаешь, оставим 28 дней — это можно изменить позже</p>
+<div class="relative h-48 flex items-center justify-center overflow-hidden fade-mask">
+<div class="absolute inset-x-0 h-12 border-y border-primary-container/50 pointer-events-none"></div>
+<div class="picker-wheel w-full h-full overflow-y-auto flex flex-col items-center py-20 gap-4" id="cycle-picker">
+<!-- Values generated via JS for cleaner HTML -->
+</div>
+<div class="absolute right-4 pointer-events-none font-label-md text-label-md text-on-surface-variant">дней</div>
+</div>
+</section>
+<!-- Step 2: Period Duration -->
+<section class="glass-card rounded-[24px] p-6 shadow-[0px_4px_20px_0px_rgba(0,0,0,0.04)] transform transition-all duration-500" id="period-step">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Сколько обычно длятся месячные?</h2>
+</div>
+<p class="font-body-md text-on-surface-variant mb-8">Можно изменить в профиле</p>
+<div class="relative h-48 flex items-center justify-center overflow-hidden fade-mask">
+<div class="absolute inset-x-0 h-12 border-y border-primary-container/50 pointer-events-none"></div>
+<div class="picker-wheel w-full h-full overflow-y-auto flex flex-col items-center py-20 gap-4" id="period-picker">
+<!-- Values generated via JS -->
+</div>
+<div class="absolute right-4 pointer-events-none font-label-md text-label-md text-on-surface-variant">дней</div>
+</div>
+</section>
+<!-- Final Action -->
+<div class="flex flex-col gap-4 mt-4">
+<button class="w-full h-[56px] bg-primary-container text-on-primary-container font-headline-sm text-headline-sm rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-sm" onclick="submitOnboarding()">
+                    Готово
+                </button>
+<!-- Progress Indicator -->
+<div class="flex justify-center gap-2">
+<div class="w-8 h-1.5 bg-primary rounded-full"></div>
+<div class="w-2 h-1.5 bg-primary/20 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Decorative Illustration Element -->
+<div class="mt-12 hidden md:block opacity-60">
+<div class="w-64 h-64 rounded-full bg-gradient-to-tr from-primary-fixed to-secondary-fixed blur-3xl"></div>
+</div>
+</main>
+<script>
+        // Data generation for pickers
+        function setupPicker(elementId, range, defaultValue) {
+            const container = document.getElementById(elementId);
+            const [min, max] = range;
+            
+            for (let i = min; i <= max; i++) {
+                const item = document.createElement('div');
+                item.className = 'picker-item h-12 flex items-center justify-center shrink-0 w-full transition-all duration-300';
+                item.innerHTML = `
+                    <button class="picker-value font-headline-md text-headline-md text-on-surface-variant/40 transition-all duration-300" onclick="scrollToValue(this, ${i})">
+                        ${i}
+                    </button>
+                `;
+                container.appendChild(item);
+            }
+
+            // Scroll to default
+            setTimeout(() => {
+                const targetIndex = defaultValue - min;
+                const targetElement = container.children[targetIndex];
+                container.scrollTop = targetElement.offsetTop - container.offsetTop - (container.clientHeight / 2) + (targetElement.clientHeight / 2);
+                updateActiveStyles(container);
+            }, 100);
+
+            container.addEventListener('scroll', () => {
+                clearTimeout(container.scrollTimeout);
+                container.scrollTimeout = setTimeout(() => updateActiveStyles(container), 50);
+            });
+        }
+
+        function scrollToValue(btn, val) {
+            const container = btn.closest('.picker-wheel');
+            const item = btn.parentElement;
+            container.scrollTo({
+                top: item.offsetTop - container.offsetTop - (container.clientHeight / 2) + (item.clientHeight / 2),
+                behavior: 'smooth'
+            });
+        }
+
+        function updateActiveStyles(container) {
+            const center = container.scrollTop + container.clientHeight / 2;
+            const items = container.querySelectorAll('.picker-value');
+            
+            items.forEach(item => {
+                const rect = item.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                const itemCenter = rect.top + rect.height / 2;
+                const containerCenter = containerRect.top + containerRect.height / 2;
+                
+                const distance = Math.abs(containerCenter - itemCenter);
+                
+                if (distance < 24) {
+                    item.classList.add('text-primary', 'font-bold', 'scale-125');
+                    item.classList.remove('text-on-surface-variant/40');
+                } else {
+                    item.classList.remove('text-primary', 'font-bold', 'scale-125');
+                    item.classList.add('text-on-surface-variant/40');
+                }
+            });
+        }
+
+        function submitOnboarding() {
+            // Visual feedback on completion
+            const btn = document.querySelector('button[onclick="submitOnboarding()"]');
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span>';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                // In a real app, this would route to dashboard
+                document.body.style.opacity = '0';
+                document.body.style.transition = 'opacity 0.8s ease-out';
+                console.log('Onboarding complete. Cycle configured.');
+            }, 800);
+        }
+
+        // Initialize pickers
+        window.addEventListener('DOMContentLoaded', () => {
+            setupPicker('cycle-picker', [20, 45], 28);
+            setupPicker('period-picker', [2, 10], 5);
+        });
+    </script>
+</body></html>

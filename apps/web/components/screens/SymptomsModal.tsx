@@ -221,6 +221,7 @@ function createEmptyLog(date: string, cycleDay: number): DailyLog {
       energy: null,
       sleep: { quality: null, hours: null, wokeUp: null, wokeUpReason: null },
       skin: { acne: false, acneCount: null, dryness: false, oiliness: false, hairLoss: false },
+      basalTemperature: null,
       libido: null,
       context: [],
       note: "",

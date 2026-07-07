@@ -1,0 +1,267 @@
+<!DOCTYPE html><html class="light" lang="ru"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Mira — Слушай себя без тревоги</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-container": "#c8bbe0",
+                    "tertiary-fixed-dim": "#cdc1e5",
+                    "on-error-container": "#93000a",
+                    "surface-container-highest": "#e4e2de",
+                    "secondary": "#50625d",
+                    "surface-variant": "#e4e2de",
+                    "on-surface-variant": "#504444",
+                    "error-container": "#ffdad6",
+                    "inverse-surface": "#30312e",
+                    "inverse-on-surface": "#f2f0ed",
+                    "on-tertiary-fixed-variant": "#4b4260",
+                    "on-primary-fixed": "#301216",
+                    "inverse-primary": "#eeb9bd",
+                    "surface-container-lowest": "#ffffff",
+                    "outline": "#827474",
+                    "on-tertiary-fixed": "#1f1732",
+                    "secondary-fixed-dim": "#b7cbc5",
+                    "on-primary-container": "#6b4448",
+                    "primary-fixed-dim": "#eeb9bd",
+                    "surface": "#fbf9f5",
+                    "surface-bright": "#fbf9f5",
+                    "tertiary": "#635979",
+                    "surface-tint": "#7c5357",
+                    "primary": "#7c5357",
+                    "on-secondary-fixed": "#0d1f1b",
+                    "on-surface": "#1b1c1a",
+                    "surface-container": "#efeeea",
+                    "on-secondary-fixed-variant": "#384a46",
+                    "on-background": "#1b1c1a",
+                    "on-secondary-container": "#546662",
+                    "primary-fixed": "#ffdadc",
+                    "background": "#fbf9f5",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#f5f3ef",
+                    "on-tertiary-container": "#534a69",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#623c40",
+                    "surface-dim": "#dbdad6",
+                    "surface-container-high": "#eae8e4",
+                    "secondary-fixed": "#d3e7e1",
+                    "secondary-container": "#d0e4de",
+                    "tertiary-fixed": "#eaddff",
+                    "primary-container": "#e8b4b8",
+                    "on-tertiary": "#ffffff",
+                    "outline-variant": "#d4c2c3",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "touch-target-min": "44px",
+                    "container-padding-mobile": "20px",
+                    "gutter": "16px",
+                    "container-padding-desktop": "40px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #fbf9f5;
+            color: #1b1c1a;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .soft-gradient-bg {
+            background: radial-gradient(circle at 70% 20%, #e8b4b8 0%, rgba(251, 249, 245, 0) 50%),
+                        radial-gradient(circle at 10% 80%, #d0e4de 0%, rgba(251, 249, 245, 0) 50%);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex flex-col items-center">
+<!-- Top Navigation Anchor (Manual suppression of SideNav/BottomNav for Onboarding) -->
+<header class="w-full h-16 flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop z-50">
+<div class="text-headline-md font-headline-md font-bold text-primary">Mira</div>
+<div class="flex gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-primary hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">lock</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center px-container-padding-mobile md:px-container-padding-desktop py-12 gap-12 relative" style="opacity: 1; transform: translateY(0px); transition: 1s cubic-bezier(0.22, 1, 0.36, 1);">
+<!-- Decorative Atmospheric Elements -->
+<div class="absolute inset-0 soft-gradient-bg opacity-40 pointer-events-none"></div>
+<!-- Visual Composition (Asymmetric) -->
+<div class="w-full md:w-1/2 flex flex-col justify-center items-start text-left z-10">
+<div class="mb-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary-container/30 text-on-secondary-container">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span class="text-label-md font-label-md">100% Приватно</span>
+</div>
+<h1 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-on-surface mb-4 max-w-md leading-tight">
+                Слушай себя без тревоги
+            </h1>
+<p class="text-body-lg font-body-lg text-on-surface-variant mb-10 max-w-sm">
+                Mira сохраняет факты, а не ставит диагнозы. Твой бережный спутник в женском здоровье.
+            </p>
+<div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+<button class="h-[52px] px-8 bg-primary text-on-primary font-label-md rounded-full hover:opacity-90 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2">
+                    Начать
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="h-[52px] px-8 border-1.5 border-outline-variant text-on-surface-variant font-label-md rounded-full hover:bg-surface-container-low transition-colors flex items-center justify-center">
+                    Узнать больше
+                </button>
+</div>
+<!-- Trust / Privacy Indicators -->
+<div class="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-6 opacity-80">
+<div class="flex items-start gap-3">
+<div class="p-2 rounded-xl bg-tertiary-container/20 text-tertiary">
+<span class="material-symbols-outlined">fingerprint</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface">Анонимно</p>
+<p class="text-label-sm font-label-sm-mobile text-on-surface-variant">Данные хранятся только у вас</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="p-2 rounded-xl bg-secondary-container/20 text-secondary">
+<span class="material-symbols-outlined">ecg_heart</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface">Без оценки</p>
+<p class="text-label-sm font-label-sm-mobile text-on-surface-variant">Только объективная статистика</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Featured Imagery / Bento-style preview -->
+<div class="w-full md:w-1/2 relative min-h-[400px] md:min-h-[600px] flex items-center justify-center">
+<!-- Main visual card -->
+<div class="relative w-full max-w-[420px] aspect-[4/5] rounded-[48px] overflow-hidden shadow-2xl z-20 glass-card">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A serene, ethereal digital painting of a woman standing in a lush, minimalist botanical garden at sunrise. The lighting is soft and golden, illuminating delicate sage-green plants and soft rose-colored flowers. The overall aesthetic is calm, breathable, and supportive, using a pastel palette of warm cream, soft lavender, and gentle rose. The style is modern minimalist with a focus on sanctuary and emotional well-being." style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuAAZ_S4NTbXky5wB0tlTn79j-7QF21NimSeZLxOukRmq3wQ0Tz46MlcfAQYmDGV6vqsnIr52HBBMNGAlph3TqUDqusJWAMe0ybQGEs_2EV3uWB2KFMwVosrDpcVrKMp6chr5a23WxOANQwg3bHyokK6gmDBMnnkt8lHbATSQwsYeZgktFKJf7flU2pTCecohquSZso68Hb3ihcShBmhTi71wc2IQ7Urq3tBYCxEyJwhUOiudtToEuBmP-TVvj6r4YZ0ztZA-6irlRfY&quot;);"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background/40 to-transparent"></div>
+</div>
+<!-- Floating Data Snippets (Glassmorphism) -->
+<div class="absolute top-[10%] -right-4 md:-right-8 p-6 glass-card rounded-[32px] shadow-lg z-30 animate-float w-48 hidden sm:block" style="transform: translate(1.23438px, 9.51172px);">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-primary">analytics</span>
+</div>
+<span class="text-label-sm font-label-sm-mobile text-on-surface">Цикл</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-2/3"></div>
+</div>
+<p class="mt-2 text-label-md font-label-md text-primary">Фаза сияния</p>
+</div>
+<div class="absolute bottom-[15%] -left-4 md:-left-12 p-6 glass-card rounded-[32px] shadow-lg z-30 animate-float w-56 hidden sm:block" style="animation-delay: -3s; transform: translate(-1.85156px, -14.2676px);">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-secondary">sentiment_satisfied</span>
+<span class="text-label-md font-label-md text-on-surface">Настроение: Спокойное</span>
+</div>
+<div class="flex gap-2">
+<div class="h-3 w-3 rounded-full bg-secondary"></div>
+<div class="h-3 w-3 rounded-full bg-secondary-container"></div>
+<div class="h-3 w-3 rounded-full bg-secondary-container"></div>
+</div>
+</div>
+<!-- Atmospheric circle -->
+<div class="absolute -bottom-10 -right-10 w-64 h-64 bg-tertiary-container/30 rounded-full blur-3xl z-0"></div>
+</div>
+</main>
+<!-- Footer Identity -->
+<footer class="w-full py-8 px-container-padding-mobile flex flex-col items-center gap-4 border-t border-outline-variant/10">
+<p class="text-label-sm font-label-sm-mobile text-on-surface-variant text-center max-w-md">
+            Mira — ваш приватный спутник. Мы не передаем данные третьим лицам и используем сквозное шифрование.
+        </p>
+<div class="flex gap-6">
+<a class="text-label-sm font-label-sm-mobile text-primary hover:underline" href="#">Условия</a>
+<a class="text-label-sm font-label-sm-mobile text-primary hover:underline" href="#">Приватность</a>
+</div>
+</footer>
+<script>
+        // Simple parallax effect for floating cards
+        document.addEventListener('mousemove', (e) => {
+            const amount = 20;
+            const x = (e.clientX / window.innerWidth - 0.5) * amount;
+            const y = (e.clientY / window.innerHeight - 0.5) * amount;
+            
+            const floats = document.querySelectorAll('.animate-float');
+            floats.forEach((el, index) => {
+                const multiplier = index === 0 ? 1 : -1.5;
+                el.style.transform = `translate(${x * multiplier}px, ${y * multiplier}px)`;
+            });
+        });
+
+        // Entrance animation
+        window.addEventListener('DOMContentLoaded', () => {
+            const mainContent = document.querySelector('main');
+            mainContent.style.opacity = '0';
+            mainContent.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                mainContent.style.transition = 'all 1s cubic-bezier(0.22, 1, 0.36, 1)';
+                mainContent.style.opacity = '1';
+                mainContent.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
+
+
+</body></html>

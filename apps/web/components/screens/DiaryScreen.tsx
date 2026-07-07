@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type React from "react";
 import {
   Apple,
@@ -23,6 +23,7 @@ import {
   TestTube2,
   ThermometerSun,
   Utensils,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ScreenProps } from "./types";
@@ -41,6 +42,11 @@ type TrackCategory = {
   title: string;
   subtitle?: string;
   items: TrackItem[];
+};
+
+type TrackCategoryPrefs = {
+  order: string[];
+  hidden: string[];
 };
 
 const toneClass: Record<TrackTone, { chip: string; active: string; icon: string; iconActive: string }> = {
@@ -162,7 +168,51 @@ const trackCategories: TrackCategory[] = [
   },
 ];
 
-const optionById = new Map([menstrualCategory, ...trackCategories].flatMap((category) => category.items.map((item) => [item.id, item])));
+const allTrackCategories = [menstrualCategory, ...trackCategories];
+const categoryByTitle = new Map(allTrackCategories.map((category) => [category.title, category]));
+const defaultCategoryPrefs: TrackCategoryPrefs = {
+  order: allTrackCategories.map((category) => category.title),
+  hidden: [],
+};
+const categoryPrefsStorageKey = "mira.track.categoryPrefs.v1";
+
+const optionById = new Map(allTrackCategories.flatMap((category) => category.items.map((item) => [item.id, item])));
+
+function normalizeCategoryPrefs(value?: Partial<TrackCategoryPrefs> | null): TrackCategoryPrefs {
+  const validTitles = new Set(allTrackCategories.map((category) => category.title));
+  const savedOrder = Array.isArray(value?.order) ? value.order.filter((title) => validTitles.has(title)) : [];
+  const savedHidden = Array.isArray(value?.hidden) ? value.hidden.filter((title) => validTitles.has(title)) : [];
+  const missingTitles = defaultCategoryPrefs.order.filter((title) => !savedOrder.includes(title));
+
+  return {
+    order: [...savedOrder, ...missingTitles],
+    hidden: Array.from(new Set(savedHidden)),
+  };
+}
+
+function readCategoryPrefs(): TrackCategoryPrefs {
+  if (typeof window === "undefined") return defaultCategoryPrefs;
+  try {
+    const raw = window.localStorage.getItem(categoryPrefsStorageKey);
+    if (!raw) return defaultCategoryPrefs;
+    return normalizeCategoryPrefs(JSON.parse(raw) as Partial<TrackCategoryPrefs>);
+  } catch {
+    return defaultCategoryPrefs;
+  }
+}
+
+function writeCategoryPrefs(prefs: TrackCategoryPrefs) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(categoryPrefsStorageKey, JSON.stringify(prefs));
+}
+
+function getOrderedCategories(prefs: TrackCategoryPrefs) {
+  const hidden = new Set(prefs.hidden);
+  return prefs.order
+    .map((title) => categoryByTitle.get(title))
+    .filter((category): category is TrackCategory => Boolean(category))
+    .filter((category) => !hidden.has(category.title));
+}
 
 function DropletsIcon(props: React.ComponentProps<typeof Droplet>) {
   return (
@@ -196,6 +246,7 @@ function createEmptyLog(date: string, cycleDay: number): DailyLog {
       energy: null,
       sleep: { quality: null, hours: null, wokeUp: null, wokeUpReason: null },
       skin: { acne: false, acneCount: null, dryness: false, oiliness: false, hairLoss: false },
+      basalTemperature: null,
       libido: null,
       context: [],
       note: "",
@@ -347,28 +398,159 @@ function FeelingShortcut({ item, selected, onClick }: { item: TrackItem; selecte
   );
 }
 
+function CategorySettingsPanel({
+  open,
+  prefs,
+  onClose,
+  onChange,
+  onReset,
+}: {
+  open: boolean;
+  prefs: TrackCategoryPrefs;
+  onClose: () => void;
+  onChange: (prefs: TrackCategoryPrefs) => void;
+  onReset: () => void;
+}) {
+  if (!open) return null;
+
+  const hidden = new Set(prefs.hidden);
+  const visibleCount = prefs.order.length - hidden.size;
+
+  function move(title: string, direction: -1 | 1) {
+    const currentIndex = prefs.order.indexOf(title);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= prefs.order.length) return;
+    const nextOrder = [...prefs.order];
+    const [item] = nextOrder.splice(currentIndex, 1);
+    nextOrder.splice(nextIndex, 0, item);
+    onChange({ ...prefs, order: nextOrder });
+  }
+
+  function toggleVisibility(title: string) {
+    const nextHidden = hidden.has(title)
+      ? prefs.hidden.filter((item) => item !== title)
+      : [...prefs.hidden, title];
+    onChange({ ...prefs, hidden: nextHidden });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/35 px-3 pb-3 backdrop-blur-sm sm:items-center">
+      <div className="max-h-[86vh] w-full max-w-[680px] overflow-hidden rounded-[30px] bg-white text-[#1A1A1A] shadow-[0_24px_70px_rgba(0,0,0,0.24)]">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#EFEFEF] bg-white px-5 py-5">
+          <div>
+            <h2 className="text-2xl font-black leading-tight">Настроить категории</h2>
+            <p className="mt-1 text-sm font-bold leading-relaxed text-[#8E8E93]">
+              Скрывай лишнее и двигай важное выше. Данные сохраняются как раньше.
+            </p>
+            <p className="mt-2 inline-flex rounded-full bg-[#FDECF3] px-3 py-1 text-xs font-black text-[#F64F86]">
+              Показано {visibleCount} из {prefs.order.length} категорий
+            </p>
+          </div>
+          <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F1F1F1]" onClick={onClose} aria-label="Закрыть настройки категорий">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="max-h-[58vh] space-y-3 overflow-y-auto px-5 py-4">
+          {prefs.order.map((title, index) => {
+            const category = categoryByTitle.get(title);
+            if (!category) return null;
+            const isHidden = hidden.has(title);
+
+            return (
+              <div key={title} className={`rounded-[22px] border px-4 py-4 ${isHidden ? "border-[#EFEFEF] bg-[#F7F7F7] opacity-70" : "border-[#F1E3EA] bg-[#FFF8FB]"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-base font-black">{category.title}</p>
+                    <p className="mt-1 text-xs font-bold text-[#8E8E93]">{category.items.length} пунктов</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`rounded-full px-3 py-2 text-xs font-black ${isHidden ? "bg-[#F64F86] text-white" : "bg-white text-[#F64F86]"}`}
+                    onClick={() => toggleVisibility(title)}
+                  >
+                    {isHidden ? "Добавить" : "Убрать"}
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    className="rounded-2xl bg-white px-3 py-2 text-sm font-black text-[#1A1A1A] disabled:opacity-35"
+                    onClick={() => move(title, -1)}
+                  >
+                    Выше
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === prefs.order.length - 1}
+                    className="rounded-2xl bg-white px-3 py-2 text-sm font-black text-[#1A1A1A] disabled:opacity-35"
+                    onClick={() => move(title, 1)}
+                  >
+                    Ниже
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 border-t border-[#EFEFEF] px-5 py-4">
+          <Button type="button" variant="outline" className="h-12 rounded-2xl font-black" onClick={onReset}>
+            Сбросить
+          </Button>
+          <Button type="button" className="h-12 rounded-2xl bg-[#F64F86] font-black text-white hover:bg-[#E83F78]" onClick={onClose}>
+            Готово
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DiaryScreen({ navigate }: ScreenProps) {
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
+  const [categoryPrefs, setCategoryPrefs] = useState<TrackCategoryPrefs>(defaultCategoryPrefs);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const logs = useMiraStore((state) => state.logs.dailyLogs);
   const cycleDay = useMiraStore((state) => state.cycle.currentDay);
   const setDailyLog = useMiraStore((state) => state.setDailyLog);
   const topItems = trackCategories
     .flatMap((category) => category.items)
     .filter((item) => ["mood_calm", "mood_joy", "discharge_creamy", "discharge_watery"].includes(item.id));
+  const selectedSexCount = selectedIds.filter((id) => id.startsWith("sex_") || id.startsWith("libido_")).length;
+  const hasPrivateNote = Boolean(note.trim());
+  const hasSensitiveData = selectedSexCount > 0 || hasPrivateNote;
+
+  useEffect(() => {
+    setCategoryPrefs(readCategoryPrefs());
+  }, []);
+
+  const orderedCategories = useMemo(() => getOrderedCategories(categoryPrefs), [categoryPrefs]);
 
   const visibleCategories = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return trackCategories;
-    return trackCategories
+    if (!normalized) return orderedCategories;
+    return orderedCategories
       .map((category) => ({
         ...category,
         items: category.items.filter((item) => item.label.toLowerCase().includes(normalized)),
       }))
       .filter((category) => category.items.length > 0);
-  }, [query]);
+  }, [orderedCategories, query]);
+
+  function updateCategoryPrefs(nextPrefs: TrackCategoryPrefs) {
+    const normalized = normalizeCategoryPrefs(nextPrefs);
+    setCategoryPrefs(normalized);
+    writeCategoryPrefs(normalized);
+  }
+
+  function resetCategoryPrefs() {
+    updateCategoryPrefs(defaultCategoryPrefs);
+  }
 
   function toggle(id: string) {
     setSaved(false);
@@ -387,11 +569,11 @@ export function DiaryScreen({ navigate }: ScreenProps) {
     }
     setDailyLog(updatedLog);
     setSaved(true);
-    window.setTimeout(() => setSaved(false), 1800);
+    navigate("today");
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-[720px] bg-[#F1F1F1] pb-56 text-[#1A1A1A]">
+    <div className="mira-track-light mx-auto min-h-screen max-w-[720px] bg-[#F1F1F1] pb-56 text-[#1A1A1A]">
       <div className="sticky top-0 z-20 bg-[#F1F1F1]/95 px-5 pb-4 pt-3 backdrop-blur-xl">
         <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-[#BDBDBD]" />
         <header className="flex items-center justify-between">
@@ -427,14 +609,26 @@ export function DiaryScreen({ navigate }: ScreenProps) {
           </div>
         </section>
 
-        <div className="flex items-center">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-[30px] font-black">Категории</h2>
+          <button
+            type="button"
+            className="min-h-11 rounded-full bg-white px-4 text-sm font-black text-[#F64F86] shadow-[0_8px_20px_rgba(20,20,20,0.04)]"
+            onClick={() => setSettingsOpen(true)}
+          >
+            Настроить
+          </button>
         </div>
 
         {visibleCategories.map((category) => (
           <section key={category.title} className="rounded-[28px] bg-white px-5 py-6 text-[#1A1A1A] shadow-[0_12px_32px_rgba(20,20,20,0.04)]">
             <h3 className="text-[26px] font-black leading-tight text-[#1A1A1A]">{category.title}</h3>
             {category.subtitle && <p className="mt-2 text-base font-semibold text-[#8E8E93]">{category.subtitle}</p>}
+            {category.title === "Секс и сексуальное желание" && (
+              <p className="mt-3 rounded-[18px] bg-[#FFF8FB] px-4 py-3 text-sm font-bold leading-relaxed text-[#8E3A5A]">
+                Приватно: секс не попадёт в отчёт врачу без вашего выбора.
+              </p>
+            )}
             <div className="mt-5 flex flex-wrap gap-3">
               {category.items.map((item) => (
                 <TrackChip key={item.id} item={item} selected={selectedIds.includes(item.id)} onClick={() => toggle(item.id)} />
@@ -464,12 +658,18 @@ export function DiaryScreen({ navigate }: ScreenProps) {
         </section>
       </main>
 
-      <footer className="fixed inset-x-0 bottom-24 z-50 px-5">
-        <div className="mx-auto grid max-w-[720px] grid-cols-[1fr_auto] items-center gap-3 rounded-[28px] bg-white/95 px-4 py-3 shadow-[0_-14px_34px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+      <footer className="fixed inset-x-0 bottom-0 z-50 px-5 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+        <div className="mx-auto grid max-w-[720px] gap-4 rounded-[30px] bg-white/96 px-5 py-4 shadow-[0_-14px_34px_rgba(0,0,0,0.10)] backdrop-blur-xl">
           <div>
-            <p className="text-sm font-black text-[#1A1A1A]">{selectedIds.length ? `Выбрано: ${selectedIds.length}` : note.trim() ? "Есть заметка" : "Выберите отметки"}</p>
-            <p className="mt-0.5 text-xs font-bold text-[#8E8E93]">
-              {saved ? "Сохранено в Анализ и Отчёт. Секс и заметки скрыты по умолчанию." : "Секс и личные заметки скрыты из Report по умолчанию."}
+            <p className="text-base font-black text-[#1A1A1A]">{selectedIds.length ? `Выбрано: ${selectedIds.length}` : note.trim() ? "Есть заметка" : "Выберите отметки"}</p>
+            <p className="mt-1 text-sm font-bold leading-relaxed text-[#8E8E93]">
+              {saved
+                ? "Сохранено в Анализ и Отчёт. Секс и заметки скрыты по умолчанию."
+                : hasSensitiveData
+                  ? "Эти отметки попадут в Аналитику. Секс и личные заметки скрыты из отчёта по умолчанию."
+                  : selectedIds.length || note.trim()
+                    ? "Эти отметки попадут в Аналитику и смогут попасть в отчёт врачу."
+                    : "Секс и личные заметки скрыты из Report по умолчанию."}
             </p>
             {saved && (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -485,13 +685,21 @@ export function DiaryScreen({ navigate }: ScreenProps) {
           <Button
             type="button"
             disabled={selectedIds.length === 0 && !note.trim()}
-            className="h-13 rounded-full bg-[#F64F86] px-6 font-black text-white hover:bg-[#E83F78] disabled:bg-[#E8E8E8] disabled:text-[#9D9D9D]"
+            className="h-16 w-full rounded-full bg-[#F64F86] px-8 text-lg font-black text-white shadow-[0_14px_30px_rgba(246,79,134,0.24)] hover:bg-[#E83F78] disabled:bg-[#E8E8E8] disabled:text-[#9D9D9D] disabled:shadow-none"
             onClick={save}
           >
             {saved ? "Сохранено" : "Сохранить"}
           </Button>
         </div>
       </footer>
+
+      <CategorySettingsPanel
+        open={settingsOpen}
+        prefs={categoryPrefs}
+        onClose={() => setSettingsOpen(false)}
+        onChange={updateCategoryPrefs}
+        onReset={resetCategoryPrefs}
+      />
     </div>
   );
 }

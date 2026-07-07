@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -16,7 +16,6 @@ import {
   MessageSquare,
   Moon,
   Pill,
-  Printer,
   Scale,
   Shield,
   Sparkles,
@@ -204,7 +203,13 @@ function summarizeCareData(data: MiraLocalData, cutoffStr: string) {
 export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(3);
   const [showFullReport, setShowFullReport] = useState(true);
-  const [includedSections, setIncludedSections] = useState<Record<ReportSectionId, boolean>>(defaultReportSections);
+  const [includedSections, setIncludedSections] = useState<Record<ReportSectionId, boolean>>(() => ({
+    ...defaultReportSections,
+    sex: data.profile?.reportSexDefault ?? defaultReportSections.sex,
+  }));
+  const [textExportUrl, setTextExportUrl] = useState<string | null>(null);
+  const [textExportName, setTextExportName] = useState<string | null>(null);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const report = useMemo(() => {
     const profile = data.profile;
@@ -343,7 +348,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
       "",
       "КОНТЕКСТ",
       `— Вода: ${report.care.waterEntries.length} дней с отметками, мало воды: ${report.care.lowWaterDays} дней`,
-      `— Питание: ${report.care.mealDays} дней с отметками`,
       "",
       "ЧТО ОБСУДИТЬ",
       ...(getVisiblePersonalItems(report.focusItems).length ? getVisiblePersonalItems(report.focusItems).map(item => `— ${item}`) : ["— Явных повторяющихся сигналов в выбранном периоде мало"]),
@@ -353,9 +357,10 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         ? (report.symptomCounts.length ? report.symptomCounts.map(([symptom, count]) => `— ${symptom}: ${count}`) : ["— нет частых симптомов"])
         : ["— скрыто пользователем"]),
       "",
-      includedSections.sex ? "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ" : "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ: скрыто пользователем",
       ...(includedSections.sex
         ? [
+          "",
+          "СЕКС И СВЯЗАННЫЕ СИМПТОМЫ",
           `Дней с отметкой: ${report.intimacyEntries.length}`,
           `Риски/дискомфорт: ${report.intimacyRiskEntries.map(entry => `${entry.date}: ${[
             entry.intimacy?.protection ? protectionLabels[entry.intimacy.protection] : null,
@@ -399,9 +404,28 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
     setIncludedSections(prev => ({ ...prev, [id]: !prev[id] }));
   }
 
-  function handleCopyQuestions() {
+  async function handleCopyQuestions() {
     const text = report.questions.map((question, index) => `${index + 1}. ${question}`).join("\n");
-    void navigator.clipboard?.writeText(text);
+    if (!text) {
+      setExportNotice("Вопросов врачу пока нет: Mira добавит их, когда появится больше данных.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard?.writeText(text);
+      setExportNotice("Вопросы врачу скопированы.");
+    } catch {
+      setExportNotice("Не удалось скопировать вопросы в этом браузере. Можно скачать TXT или скопировать весь отчёт ниже.");
+    }
+  }
+
+  function saveTextExportUrl(url: string, fileName: string) {
+    setTextExportUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    setTextExportName(fileName);
+    setExportNotice("Отчёт подготовлен. Если загрузка не появилась в браузере, открой TXT ниже.");
   }
 
   function getVisiblePersonalItems(items: string[]) {
@@ -420,19 +444,29 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
   function handleExportText() {
     const blob = new Blob([generateTextReport()], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
+    const fileName = `mira-doctor-report-${new Date().toISOString().slice(0, 10)}.txt`;
+    saveTextExportUrl(url, fileName);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mira-doctor-report-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = fileName;
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
     a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function handlePrintPdf() {
-    setShowFullReport(true);
-    window.print();
+  function handleOpenTextExport() {
+    const url = textExportUrl;
+    if (!url) return;
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      window.location.href = url;
+    }
+  }
+
+  function handleCopyFullReport() {
+    void navigator.clipboard?.writeText(generateTextReport());
+    setExportNotice("Текст отчёта скопирован. Можно вставить его в заметки или документ.");
   }
 
   const doctorScript = getDoctorScript(data);
@@ -447,6 +481,12 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
   const reportIsAlmostEmpty = report.entries.length < 2 && labs.length === 0;
   const selectedSectionsCount = reportSectionLabels.filter(section => includedSections[section.id]).length;
 
+  useEffect(() => {
+    return () => {
+      if (textExportUrl) URL.revokeObjectURL(textExportUrl);
+    };
+  }, [textExportUrl]);
+
   if (!hasCycleData) {
     return (
       <div>
@@ -456,7 +496,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           body="Добавь дату последних месячных, чтобы получить прогноз и основу для отчёта врачу."
           onProfile={() => navigate("profile")}
           onExportText={handleExportText}
-          onPrintPdf={handlePrintPdf}
         />
       </div>
     );
@@ -472,7 +511,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           onCheckIn={onCheckIn}
           onPeriod={onCheckIn}
           onExportText={handleExportText}
-          onPrintPdf={handlePrintPdf}
         />
       </div>
     );
@@ -532,17 +570,20 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
-          <Button type="button" onClick={handlePrintPdf} className="rounded-[18px] bg-[#84E600] font-black text-[#11100F] hover:bg-[#73CC00]">
-            <Printer className="h-4 w-4" /> PDF / печать
-          </Button>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
           <Button type="button" variant="outline" onClick={handleExportText} className="rounded-[18px] border-[#342D2A] bg-[#251F1D] font-black text-[#F5F0ED] hover:bg-[#2A2523]">
             <Download className="h-4 w-4" /> Скачать TXT
           </Button>
           <Button type="button" variant="outline" onClick={handleCopyQuestions} className="rounded-[18px] border-[#342D2A] bg-[#251F1D] font-black text-[#F5F0ED] hover:bg-[#2A2523]">
-            <Copy className="h-4 w-4" /> Вопросы
+            <Copy className="h-4 w-4" /> Скопировать вопросы
           </Button>
         </div>
+        <ExportFallbackPanel
+          notice={exportNotice}
+          fileName={textExportName}
+          onOpen={handleOpenTextExport}
+          onCopy={handleCopyFullReport}
+        />
       </Card>
 
       <Card className="mb-5 rounded-[24px] border-[#2E2826] bg-[#1D1816] p-5 text-[#F5F0ED] print:hidden">
@@ -595,7 +636,7 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
               Выбери данные для отчёта врачу
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-[#8E8E93]">
-              Ты сама контролируешь, что попадёт в PDF/TXT. Личные заметки и секс выключены по умолчанию.
+              Ты сама контролируешь, что попадёт в TXT. Личные заметки и секс выключены по умолчанию.
             </p>
           </div>
           <div className="rounded-2xl bg-[#F4F0FA] px-4 py-3 text-sm font-black text-[#8B6FB3]">
@@ -653,22 +694,25 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" onClick={handlePrintPdf}>
-                <Printer className="h-4 w-4" /> Скачать PDF
-              </Button>
               <Button type="button" variant="outline" onClick={handleExportText}>
                 <Download className="h-4 w-4" /> Скачать TXT
               </Button>
               <Button type="button" variant="outline" onClick={handleCopyQuestions}>
-                <Copy className="h-4 w-4" /> Вопросы
+                <Copy className="h-4 w-4" /> Скопировать вопросы
               </Button>
             </div>
           </div>
+          <ExportFallbackPanel
+            notice={exportNotice}
+            fileName={textExportName}
+            onOpen={handleOpenTextExport}
+            onCopy={handleCopyFullReport}
+          />
         </div>
         <div className="mt-4 grid gap-2 md:grid-cols-3">
           {[
             ["Зачем", "Не вспоминать симптомы на приёме по памяти."],
-            ["Что сделать", "Выбрать период, проверить приватность и скачать PDF/TXT."],
+            ["Что сделать", "Выбрать период, проверить приватность и скачать TXT."],
             ["Что получишь", "Факты, даты, повторы, анализы и вопросы врачу."],
           ].map(([label, text]) => (
             <div key={label} className="rounded-2xl bg-[#FAF8F5] px-3 py-2">
@@ -1099,9 +1143,6 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
         )}
 
         <div className="flex gap-3 print:hidden">
-          <Button type="button" className="flex-1" onClick={handlePrintPdf}>
-            <Printer className="h-4 w-4" /> Скачать PDF
-          </Button>
           <Button type="button" variant="outline" className="flex-1" onClick={handleExportText}>
             <Download className="h-4 w-4" /> Скачать TXT
           </Button>
@@ -1109,6 +1150,46 @@ export function ReportScreen({ data, navigate, onCheckIn }: ScreenProps) {
             <Copy className="h-4 w-4" /> Скопировать вопросы врачу
           </Button>
         </div>
+        <ExportFallbackPanel
+          notice={exportNotice}
+          fileName={textExportName}
+          onOpen={handleOpenTextExport}
+          onCopy={handleCopyFullReport}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ExportFallbackPanel({
+  notice,
+  fileName,
+  onOpen,
+  onCopy,
+}: {
+  notice: string | null;
+  fileName: string | null;
+  onOpen: () => void;
+  onCopy: () => void;
+}) {
+  if (!notice) return null;
+
+  return (
+    <div className="mt-3 rounded-2xl border border-[#8B6FB3]/20 bg-white/85 p-3 text-[#1A1A1A] print:hidden">
+      <div className="flex items-start gap-2">
+        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#8B6FB3]" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black">{notice}</p>
+          {fileName && <p className="mt-1 break-all text-[11px] font-semibold text-[#8E8E93]">{fileName}</p>}
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" size="sm" onClick={onOpen}>
+          <FileText className="h-4 w-4" /> Открыть TXT
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCopy}>
+          <Copy className="h-4 w-4" /> Скопировать отчёт
+        </Button>
       </div>
     </div>
   );
@@ -1188,7 +1269,6 @@ function ReportEmptyState({
   onPeriod,
   onProfile,
   onExportText,
-  onPrintPdf,
 }: {
   title: string;
   body: string;
@@ -1196,34 +1276,26 @@ function ReportEmptyState({
   onPeriod?: () => void;
   onProfile?: () => void;
   onExportText?: () => void;
-  onPrintPdf?: () => void;
 }) {
   return (
-    <Card className="border-[#8B6FB3]/10 bg-white p-6 shadow-[0_12px_32px_rgba(45,38,64,0.05)]">
+    <Card className="border-[#2E2826] bg-[#1D1816] p-6 text-[#F5F0ED] shadow-[0_12px_32px_rgba(0,0,0,0.18)]">
       <div className="flex items-start gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F4F0FA] text-[#8B6FB3]">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#2A2523] text-[#F5F0ED]">
           <FileText className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-black text-[#1A1A1A]">{title}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-[#8E8E93]">{body}</p>
+          <h2 className="text-xl font-black text-[#F5F0ED]">{title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-[#B7AAA4]">{body}</p>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            {onCheckIn && <Button onClick={onCheckIn}>Добавить состояние</Button>}
-            {onPeriod && <Button variant="outline" onClick={onPeriod}>Отметить месячные</Button>}
-            {onProfile && <Button onClick={onProfile}>Добавить дату</Button>}
+            {onCheckIn && <Button className="bg-[#8B6FB3] text-white" onClick={onCheckIn}>Добавить состояние</Button>}
+            {onPeriod && <Button className="border-[#F5F0ED] text-[#F5F0ED]" variant="outline" onClick={onPeriod}>Отметить месячные</Button>}
+            {onProfile && <Button className="bg-[#8B6FB3] text-white" onClick={onProfile}>Добавить дату</Button>}
           </div>
-          {(onPrintPdf || onExportText) && (
+          {onExportText && (
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              {onPrintPdf && (
-                <Button type="button" variant="outline" onClick={onPrintPdf}>
-                  <Printer className="h-4 w-4" /> PDF / печать
-                </Button>
-              )}
-              {onExportText && (
-                <Button type="button" variant="outline" onClick={onExportText}>
-                  <Download className="h-4 w-4" /> Скачать TXT
-                </Button>
-              )}
+              <Button type="button" className="border-[#F5F0ED] text-[#F5F0ED]" variant="outline" onClick={onExportText}>
+                <Download className="h-4 w-4" /> Скачать TXT
+              </Button>
             </div>
           )}
         </div>

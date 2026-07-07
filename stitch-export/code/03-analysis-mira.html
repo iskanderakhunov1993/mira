@@ -1,0 +1,324 @@
+<!DOCTYPE html><html class="light" lang="ru" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport">
+<title>Mira - Анализ</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#fbf9f5",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#fbf9f5",
+                        "on-tertiary-fixed-variant": "#4b4260",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#d0e4de",
+                        "on-secondary-fixed": "#0d1f1b",
+                        "outline-variant": "#d4c2c3",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#cdc1e5",
+                        "surface-container-highest": "#e4e2de",
+                        "surface-container-high": "#eae8e4",
+                        "on-primary-fixed": "#301216",
+                        "inverse-on-surface": "#f2f0ed",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "surface": "#fbf9f5",
+                        "tertiary-container": "#c8bbe0",
+                        "primary-fixed": "#ffdadc",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#eeb9bd",
+                        "on-surface": "#1b1c1a",
+                        "on-secondary-container": "#546662",
+                        "tertiary": "#635979",
+                        "tertiary-fixed": "#eaddff",
+                        "surface-container-low": "#f5f3ef",
+                        "on-tertiary-fixed": "#1f1732",
+                        "on-primary-container": "#6b4448",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#504444",
+                        "surface-dim": "#dbdad6",
+                        "inverse-surface": "#30312e",
+                        "primary": "#7c5357",
+                        "secondary-fixed-dim": "#b7cbc5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-mobile": "20px",
+                        "base": "8px",
+                        "container-padding-desktop": "40px",
+                        "touch-target-min": "44px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col md:flex-row">
+<!-- SideNavBar (Desktop Only) -->
+<aside class="hidden md:flex flex-col p-6 gap-4 h-screen fixed left-0 top-0 w-64 bg-surface-container-low border-r border-outline-variant/30 z-40">
+<div class="mb-8">
+<h1 class="text-headline-lg font-headline-lg text-primary">Mira</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Приватный спутник</p>
+</div>
+<nav class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-body-md font-body-md">Сегодня</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">edit_calendar</span>
+<span class="text-body-md font-body-md">Трек</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container text-on-secondary-container font-medium rounded-xl translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-body-md font-body-md">Анализ</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-body-md font-body-md">Отчёт</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-body-md font-body-md">Профиль</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-outline-variant/20 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-container/30 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A soft-focus, minimalist portrait of a woman in profile, illuminated by warm morning sunlight, representing a personal and private user avatar for a health application. The aesthetic is clean and serene with a soft cream background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6kPYJ367KwUnOz_TiwBXbLqyJGL8f85PeOP_WZLIttMPUTqvuIB3TQ32I3qia3fph7OnYHrgo7glE-5JuPx8lH8gCpZmX2O_KPvEEHA1l5X2_3rWDMjB6ARW7JfFA-TNluD3JFjVpUq_nZKtlB0EiXUJsfX4tLWe906aeZ0Axb4tDJvJzioQS5Zt_lVcAAf3leh9QNyefRVZ8ys3qqBzP7o1nRfIQKOr3wKpwBM5f0hnFHwM0aJX286Ngw5v3_SIPnM9M-RhQceD4">
+</div>
+<div class="flex flex-col">
+<span class="text-label-md font-label-md font-bold">Анна</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">Премиум доступ</span>
+</div>
+</div>
+</aside>
+<!-- TopAppBar (Mobile Only) -->
+<header class="md:hidden flex justify-between items-center px-container-padding-mobile h-16 w-full fixed top-0 bg-background z-40">
+<h1 class="text-headline-md font-headline-md font-bold text-primary">Mira</h1>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary">lock</span>
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 mt-16 md:mt-0 md:ml-64 pb-24 md:pb-8 px-container-padding-mobile md:px-container-padding-desktop">
+<div class="max-w-4xl mx-auto py-8">
+<!-- Page Title -->
+<div class="mb-8">
+<h2 class="text-headline-lg-mobile md:text-headline-lg font-headline-lg text-on-surface">Анализ циклов</h2>
+<div class="flex items-center gap-2 mt-2 text-secondary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-label-md font-label-md">Надёжность прогнозов: Основано на 6 циклах</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Mira Observation Card (Primary Insight) -->
+<div class="md:col-span-8 group">
+<div class="bg-surface-container-lowest rounded-3xl p-8 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-outline-variant/10 relative overflow-hidden h-full flex flex-col justify-between transition-all hover:shadow-md" style="transform: scale(1);">
+<div class="relative z-10">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 bg-primary-fixed rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<span class="text-label-md font-label-md font-bold text-primary uppercase tracking-wider">Mira заметила</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-on-surface-variant mb-4 leading-relaxed">
+                                Обычно за 2 дня до начала цикла ваша энергия снижается.
+                            </h3>
+<div class="bg-secondary-container/30 rounded-2xl p-4 inline-block">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-secondary">info</span>
+<div>
+<p class="text-label-md font-label-md font-bold text-on-secondary-container mb-1">Почему это важно?</p>
+<p class="text-body-md font-body-md text-on-secondary-container">Это помогает планировать нагрузку и быть бережнее к себе в эти дни.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Abstract Visual Element -->
+<div class="absolute -right-12 -bottom-12 w-48 h-48 bg-primary-container/20 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-700"></div>
+<div class="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-[120px]">bolt</span>
+</div>
+</div>
+</div>
+<!-- Reliability Metric Card -->
+<div class="md:col-span-4 h-full">
+<div class="bg-surface-container-low rounded-3xl p-6 h-full flex flex-col border border-outline-variant/10">
+<span class="text-label-md font-label-md text-on-surface-variant mb-6">Статистика данных</span>
+<div class="flex flex-col items-center justify-center flex-1 py-4">
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90">
+<circle class="text-surface-container-highest" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-secondary transition-all duration-1000" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" stroke-dasharray="364.4" stroke-dashoffset="100" stroke-width="8"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="text-headline-lg font-headline-lg text-on-surface">6</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant">циклов</span>
+</div>
+</div>
+<p class="mt-6 text-center text-body-md font-body-md text-on-surface-variant">
+                                Ваши прогнозы уточняются с каждой новой отметкой.
+                            </p>
+</div>
+</div>
+</div>
+<!-- Secondary Insights Row -->
+<div class="md:col-span-6">
+<div class="bg-surface-container-lowest rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-outline-variant/10 flex gap-4 items-start" style="transform: scale(1);">
+<div class="p-3 bg-tertiary-container/30 rounded-2xl text-tertiary">
+<span class="material-symbols-outlined">nightlight</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant mb-1">Сон и ритм</p>
+<p class="text-body-md font-body-md text-on-surface">Пока мало данных для глубокого анализа качества сна. Продолжайте отмечать симптомы.</p>
+</div>
+</div>
+</div>
+<div class="md:col-span-6">
+<div class="bg-surface-container-lowest rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-outline-variant/10 flex gap-4 items-start" style="transform: scale(1);">
+<div class="p-3 bg-secondary-container/30 rounded-2xl text-secondary">
+<span class="material-symbols-outlined">mood</span>
+</div>
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant mb-1">Эмоциональный фон</p>
+<p class="text-body-md font-body-md text-on-surface">Настроение стабильное в текущей фазе. Mira следит за изменениями.</p>
+</div>
+</div>
+</div>
+<!-- Educational Content Card -->
+<div class="md:col-span-12">
+<div class="glass-card rounded-3xl overflow-hidden flex flex-col md:flex-row min-h-[280px] border border-white/40 p-10 md:p-12 transition-all hover:shadow-lg">
+<div class="flex flex-col justify-center w-full max-w-2xl">
+<span class="text-label-sm font-label-sm text-primary/60 font-bold mb-4 uppercase tracking-[0.2em]">Образование</span>
+<h4 class="text-headline-lg font-headline-lg text-on-surface mb-4 leading-tight">Гормоны и продуктивность</h4>
+<p class="text-body-lg font-body-lg text-on-surface-variant/80 mb-8 leading-relaxed">Узнайте, как меняется ваша концентрация внимания в зависимости от дня цикла, и как использовать это в работе.</p>
+<button class="bg-primary text-on-primary px-10 h-12 rounded-full font-label-md text-label-md self-start hover:opacity-90 transition-all active:scale-95 shadow-sm">
+Читать статью
+</button>
+</div>
+</div>
+</div>
+<!-- Disclaimer Footer -->
+<div class="md:col-span-12 mt-4 px-4">
+<div class="flex items-start gap-4 p-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low/50">
+<span class="material-symbols-outlined text-on-surface-variant opacity-60">verified_user</span>
+<p class="text-label-sm font-label-sm text-on-surface-variant leading-relaxed">
+                            Анализ Mira носит ознакомительный характер и основан на введённых вами данных. Это не является медицинским диагнозом. При возникновении сомнений проконсультируйтесь со специалистом.
+                        </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full h-16 z-50 flex justify-around items-center px-4 pb-safe bg-surface-container-lowest shadow-[0_-4px_20px_rgba(0,0,0,0.04)] rounded-t-3xl">
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-label-sm font-label-sm-mobile">Сегодня</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">edit_calendar</span>
+<span class="text-label-sm font-label-sm-mobile">Трек</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="text-label-sm font-label-sm-mobile">Анализ</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-label-sm font-label-sm-mobile">Отчёт</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-sm font-label-sm-mobile">Профиль</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for cards
+        document.querySelectorAll('.bg-surface-container-lowest').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+
+        // Add visual feedback to interactive elements
+        const navItems = document.querySelectorAll('nav a, aside nav a');
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                // In a real app, this would handle navigation
+                // e.preventDefault();
+            });
+        });
+    </script>
+
+
+</body></html>

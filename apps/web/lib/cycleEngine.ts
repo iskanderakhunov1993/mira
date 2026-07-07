@@ -8,6 +8,15 @@ import type { UserProfile, CyclePhase } from "./types";
 
 const MS_DAY = 86_400_000;
 
+function dateKey(date = new Date()): string {
+  const d = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return d.toISOString().slice(0, 10);
+}
+
+function diffDays(from: string, to: string): number {
+  return Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / MS_DAY);
+}
+
 export type CycleNorm = {
   /** Эффективная длина цикла: медиана реальных, либо онбординг-оценка */
   cycleLength: number;
@@ -35,22 +44,32 @@ export type CycleNorm = {
 };
 
 /** Отсортированный массив реальных стартов месячных (по возрастанию). */
+function collapseCloseStarts(starts: string[]): string[] {
+  const normalized: string[] = [];
+
+  for (const start of starts.sort()) {
+    const previous = normalized[normalized.length - 1];
+    if (previous && Math.abs(diffDays(previous, start)) < 10) continue;
+    normalized.push(start);
+  }
+
+  return normalized;
+}
+
 function getStarts(profile: UserProfile | undefined): string[] {
   if (!profile) return [];
   const history = profile.cycleConfig.periodStarts ?? [];
   const set = new Set(history);
   // онбординг-дата тоже считается стартом, если истории нет
   if (profile.cycleConfig.periodStart) set.add(profile.cycleConfig.periodStart);
-  return Array.from(set).sort();
+  return collapseCloseStarts(Array.from(set));
 }
 
 /** Длины завершённых циклов = разницы между соседними стартами. */
 function observedLengths(starts: string[]): number[] {
   const lengths: number[] = [];
   for (let i = 1; i < starts.length; i++) {
-    const diff = Math.round(
-      (new Date(starts[i]).getTime() - new Date(starts[i - 1]).getTime()) / MS_DAY
-    );
+    const diff = diffDays(starts[i - 1], starts[i]);
     // отсекаем мусор (двойные отметки, опечатки)
     if (diff >= 15 && diff <= 60) lengths.push(diff);
   }
@@ -64,7 +83,7 @@ function median(nums: number[]): number {
   return s.length % 2 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
 }
 
-export function getCycleNorm(profile: UserProfile | undefined): CycleNorm {
+export function getCycleNorm(profile: UserProfile | undefined, now = new Date()): CycleNorm {
   const fallbackLength = profile?.cycleConfig.cycleLength ?? 28;
   const starts = getStarts(profile);
   const lengths = observedLengths(starts);
@@ -72,13 +91,10 @@ export function getCycleNorm(profile: UserProfile | undefined): CycleNorm {
   const cycleLength = lengths.length >= 1 ? median(lengths) : fallbackLength;
   const lastPeriodStart = starts.length > 0
     ? starts[starts.length - 1]
-    : (profile?.cycleConfig.periodStart ?? new Date().toISOString().slice(0, 10));
+    : (profile?.cycleConfig.periodStart ?? dateKey(now));
 
   // день цикла от последнего реального старта
-  const daysSince = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(lastPeriodStart).getTime()) / MS_DAY)
-  );
+  const daysSince = Math.max(0, diffDays(lastPeriodStart, dateKey(now)));
 
   // Если прошло меньше длины цикла — обычный ход.
   // Если больше — задержка (не «новый цикл»): день продолжает расти,
@@ -144,9 +160,9 @@ export function recordPeriodStart(profile: UserProfile, date: string): UserProfi
   const history = profile.cycleConfig.periodStarts ?? [];
   // не добавляем дубль в пределах 10 дней от существующего старта
   const tooClose = history.some(
-    h => Math.abs(new Date(h).getTime() - new Date(date).getTime()) < 10 * MS_DAY
+    h => Math.abs(diffDays(h, date)) < 10
   );
-  const next = tooClose ? history : [...history, date].sort();
+  const next = tooClose ? collapseCloseStarts(history) : collapseCloseStarts([...history, date]);
 
   return {
     ...profile,

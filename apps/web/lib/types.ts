@@ -209,6 +209,7 @@ export type UserProfile = {
   privateMarks: boolean;
   hiddenMode?: boolean;
   deviceUnlockEnabled?: boolean;
+  reportSexDefault?: boolean;
   cloudSyncExclude?: CloudSyncCategory[];
   partnerShare?: PartnerShareSettings;
   reminders?: PersonalReminderSettings;
