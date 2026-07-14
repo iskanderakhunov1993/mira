@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.log
+mobile-*.png
+.DS_Store

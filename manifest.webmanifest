@@ -1,0 +1,17 @@
+{
+  "name": "Mira",
+  "short_name": "Mira",
+  "description": "Трекер цикла, воды и настроения",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fff7f8",
+  "theme_color": "#fff7f8",
+  "icons": [
+    {
+      "src": "/mira-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
