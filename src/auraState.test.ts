@@ -114,8 +114,31 @@ describe('Mira unified state', () => {
       cycleDay: 10,
       personalMin: 27,
       personalMax: 29,
+      daysLate: 0,
       forecast: { start: '2026-08-01', end: '2026-08-03', confidence: 'personal', cyclesUsed: 3 },
     });
+  });
+
+  it('does not invent a forecast from a single period start', () => {
+    const state = sanitizeAuraState({
+      ...createEmptyAuraState(),
+      periodStarts: ['2026-07-05'],
+    });
+    const metrics = getAuraCycleMetrics(state, '2026-07-14');
+    expect(metrics.cycleDay).toBe(10);
+    expect(metrics.completedCycles).toBe(0);
+    expect(metrics.forecast).toBeNull();
+    expect(metrics.daysLate).toBe(0);
+  });
+
+  it('keeps an overdue forecast visible instead of rolling it into a virtual future cycle', () => {
+    const state = sanitizeAuraState({
+      ...createEmptyAuraState(),
+      periodStarts: ['2026-05-10', '2026-06-08'],
+    });
+    const metrics = getAuraCycleMetrics(state, '2026-07-15');
+    expect(metrics.forecast).toMatchObject({ start: '2026-07-05', end: '2026-07-09', cyclesUsed: 1 });
+    expect(metrics.daysLate).toBe(6);
   });
 
   it('migrates the previous AppState without losing daily records', () => {

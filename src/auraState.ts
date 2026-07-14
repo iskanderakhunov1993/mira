@@ -411,13 +411,14 @@ export function setAuraPeriodStart(state: AuraState, date: string, marked: boole
 
 export function addDays(isoDate: string, days: number): string {
   const [year, month, day] = isoDate.split('-').map(Number);
-  return toIsoDate(new Date(year, month - 1, day + days));
+  const result = new Date(Date.UTC(year, month - 1, day + days));
+  return `${result.getUTCFullYear()}-${String(result.getUTCMonth() + 1).padStart(2, '0')}-${String(result.getUTCDate()).padStart(2, '0')}`;
 }
 
 export function daysBetween(start: string, end: string): number {
   const [startYear, startMonth, startDay] = start.split('-').map(Number);
   const [endYear, endMonth, endDay] = end.split('-').map(Number);
-  return Math.round((new Date(endYear, endMonth - 1, endDay).getTime() - new Date(startYear, startMonth - 1, startDay).getTime()) / 86_400_000);
+  return Math.round((Date.UTC(endYear, endMonth - 1, endDay) - Date.UTC(startYear, startMonth - 1, startDay)) / 86_400_000);
 }
 
 const median = (values: number[]): number => {
@@ -436,6 +437,7 @@ export type AuraCycleMetrics = {
   expectedLength: number | null;
   personalMin: number | null;
   personalMax: number | null;
+  daysLate: number;
   forecast: null | {
     start: string;
     end: string;
@@ -453,17 +455,11 @@ export function getAuraCycleMetrics(state: AuraState, today = AURA_TODAY): AuraC
   const lastStart = starts[starts.length - 1] ?? null;
   const cycleDay = lastStart ? daysBetween(lastStart, today) + 1 : null;
   let forecast: AuraCycleMetrics['forecast'] = null;
-  if (lastStart && expectedLength) {
+  if (lastStart && expectedLength && recent.length >= 1) {
     const minLength = recent.length >= 2 ? Math.min(...recent) : Math.max(18, expectedLength - 2);
     const maxLength = recent.length >= 2 ? Math.max(...recent) : Math.min(60, expectedLength + 2);
-    let start = addDays(lastStart, minLength);
-    let end = addDays(lastStart, maxLength);
-    let guard = 0;
-    while (end < today && guard < 24) {
-      start = addDays(start, expectedLength);
-      end = addDays(end, expectedLength);
-      guard += 1;
-    }
+    const start = addDays(lastStart, minLength);
+    const end = addDays(lastStart, maxLength);
     forecast = {
       start,
       end,
@@ -471,6 +467,7 @@ export function getAuraCycleMetrics(state: AuraState, today = AURA_TODAY): AuraC
       cyclesUsed: recent.length,
     };
   }
+  const daysLate = forecast && forecast.end < today ? daysBetween(forecast.end, today) : 0;
   return {
     starts,
     cycleLengths,
@@ -480,6 +477,7 @@ export function getAuraCycleMetrics(state: AuraState, today = AURA_TODAY): AuraC
     expectedLength,
     personalMin: recent.length >= 3 ? Math.min(...recent) : null,
     personalMax: recent.length >= 3 ? Math.max(...recent) : null,
+    daysLate,
     forecast,
   };
 }
