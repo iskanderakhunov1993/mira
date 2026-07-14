@@ -1,5 +1,15 @@
-export const AURA_STORAGE_KEY = 'luna-flow-aura-v2';
-export const AURA_TODAY = '2026-07-14';
+export const AURA_STORAGE_KEY = 'mira-state-v3';
+export const LEGACY_AURA_STORAGE_KEY = 'luna-flow-aura-v2';
+export const LEGACY_APP_STORAGE_KEY = 'luna-flow-state-v1';
+
+export const toIsoDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const AURA_TODAY = toIsoDate(new Date());
 
 export type AuraModuleId = 'cycle' | 'mood' | 'sleep' | 'daily' | 'activity' | 'intimate' | 'nutrition' | 'body' | 'note';
 export type AuraHomeCardId = 'hormonoscope' | 'cycloscope' | 'rhythm' | 'recommendation' | 'knowledge';
@@ -59,7 +69,7 @@ export type AuraDayEntry = {
 };
 
 export type AuraState = {
-  version: 2;
+  version: 3;
   selectedDate: string;
   entries: Record<string, AuraDayEntry>;
   periodStarts: string[];
@@ -80,62 +90,52 @@ export type AuraState = {
   };
 };
 
-const entry = (value: Partial<AuraDayEntry>): AuraDayEntry => ({
+const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const clamp = (value: unknown, min: number, max: number): number | undefined => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.max(min, Math.min(max, numeric)) : undefined;
+};
+
+export function isValidAuraDate(value: unknown, today = AURA_TODAY): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(year, month - 1, day);
+  return toIsoDate(parsed) === value && value <= today;
+}
+
+const entry = (value: Partial<AuraDayEntry>, date = AURA_TODAY): AuraDayEntry => ({
   symptoms: [],
   moods: [],
   nutrition: [],
   contexts: [],
-  updatedAt: `${AURA_TODAY}T09:41:00`,
+  updatedAt: `${date}T09:41:00`,
   ...value,
 });
 
 export const defaultAuraState: AuraState = {
-  version: 2,
+  version: 3,
   selectedDate: AURA_TODAY,
-  periodStarts: ['2026-05-10', '2026-06-08', '2026-07-05'],
-  entries: {
-    '2026-06-08': entry({ period: 'medium', symptoms: [{ id: 'pain', label: 'Боль внизу живота', severity: 2, affectsLife: false }] }),
-    '2026-06-10': entry({ period: 'light', symptoms: [{ id: 'pain', label: 'Боль внизу живота', severity: 3, affectsLife: true }], rating: 2 }),
-    '2026-07-05': entry({ period: 'medium', moods: ['Спокойствие'], rating: 3 }),
-    '2026-07-09': entry({ period: 'light', rating: 4, water: 1600, temperature: 36.5, weight: 58.8 }),
-    '2026-07-11': entry({ symptoms: [{ id: 'fatigue', label: 'Усталость', severity: 1, affectsLife: false }], energy: 3, sleepHours: 6.8, sleepQuality: 'Обычное', temperature: 36.6, weight: 58.7 }),
-    '2026-07-12': entry({ symptoms: [{ id: 'pain', label: 'Боль внизу живота', severity: 3, affectsLife: true }], rating: 2, moods: ['Тревога'] }),
-    '2026-07-13': entry({ rating: 4, moods: ['Спокойствие', 'Радость'], energy: 4, water: 1800, sleepHours: 7.2, sleepQuality: 'Хорошее', temperature: 36.7, weight: 58.5 }),
-    '2026-07-14': entry({
-      rating: 3,
-      symptoms: [{ id: 'pain', label: 'Боль внизу живота', severity: 2, affectsLife: false }],
-      moods: [],
-      energy: 3,
-      sleepHours: 7.5,
-      sleepQuality: 'Хорошее',
-      water: 1200,
-      steps: 6420,
-      calories: 1780,
-      temperature: 36.6,
-      weight: 58.4,
-      nutrition: [],
-      contexts: [],
-    }),
-  },
+  periodStarts: [],
+  entries: {},
   modules: {
     cycle: true,
     mood: true,
     sleep: true,
     daily: true,
-    activity: true,
+    activity: false,
     intimate: false,
-    nutrition: true,
-    body: true,
+    nutrition: false,
+    body: false,
     note: true,
   },
   homeCards: {
-    hormonoscope: true,
-    cycloscope: true,
+    hormonoscope: false,
+    cycloscope: false,
     rhythm: true,
     recommendation: true,
     knowledge: true,
   },
-  savedArticles: ['cycle-length'],
+  savedArticles: [],
   notifications: false,
   onboarding: {
     completed: false,
@@ -152,61 +152,219 @@ export const defaultAuraState: AuraState = {
   },
 };
 
-const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+const moduleIds = Object.keys(defaultAuraState.modules) as AuraModuleId[];
+const homeCardIds = Object.keys(defaultAuraState.homeCards) as AuraHomeCardId[];
 const intimacyComfortValues: AuraIntimacyComfort[] = ['comfortable', 'discomfort', 'pain'];
 const intimacyAfterValues: AuraIntimacyAfter[] = ['none', 'pain', 'bleeding', 'discharge'];
 const intimacyDesireValues: AuraIntimacyDesire[] = ['lower', 'usual', 'higher'];
+const periodValues: AuraDayEntry['period'][] = ['none', 'light', 'medium', 'heavy'];
+const sleepQualityValues: NonNullable<AuraDayEntry['sleepQuality']>[] = ['Плохое', 'Обычное', 'Хорошее'];
+
+function sanitizeSymptoms(value: unknown): AuraSymptom[] {
+  if (!Array.isArray(value)) return [];
+  const result = new Map<string, AuraSymptom>();
+  for (const raw of value) {
+    if (!isObject(raw) || typeof raw.id !== 'string' || typeof raw.label !== 'string') continue;
+    const severity = clamp(raw.severity, 1, 3);
+    if (!severity) continue;
+    const id = raw.id.slice(0, 80);
+    result.set(id, {
+      id,
+      label: raw.label.slice(0, 120),
+      severity: Math.round(severity) as 1 | 2 | 3,
+      affectsLife: raw.affectsLife === true,
+    });
+  }
+  return [...result.values()];
+}
+
+function sanitizeEntry(date: string, raw: Record<string, unknown>): AuraDayEntry {
+  const rating = clamp(raw.rating, 1, 5);
+  const energy = clamp(raw.energy, 1, 5);
+  const water = clamp(raw.water, 0, 20_000);
+  const steps = clamp(raw.steps, 0, 100_000);
+  const calories = clamp(raw.calories, 0, 10_000);
+  const sleepHours = clamp(raw.sleepHours, 0, 24);
+  const temperature = clamp(raw.temperature, 34, 43);
+  const weight = clamp(raw.weight, 20, 300);
+  const period = typeof raw.period === 'string' && periodValues.includes(raw.period as AuraDayEntry['period']) ? raw.period as AuraDayEntry['period'] : undefined;
+  const sleepQuality = typeof raw.sleepQuality === 'string' && sleepQualityValues.includes(raw.sleepQuality as NonNullable<AuraDayEntry['sleepQuality']>) ? raw.sleepQuality as AuraDayEntry['sleepQuality'] : undefined;
+  return entry({
+    rating: rating ? Math.round(rating) : undefined,
+    period,
+    symptoms: sanitizeSymptoms(raw.symptoms),
+    symptomsChecked: typeof raw.symptomsChecked === 'boolean' ? raw.symptomsChecked : undefined,
+    moods: Array.isArray(raw.moods) ? raw.moods.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 80)) : [],
+    energy: energy ? Math.round(energy) : undefined,
+    sleepHours,
+    sleepQuality,
+    water: water === undefined ? undefined : Math.round(water),
+    steps: steps === undefined ? undefined : Math.round(steps),
+    activity: typeof raw.activity === 'string' ? raw.activity.slice(0, 120) : undefined,
+    intimate: raw.intimate === true ? true : undefined,
+    intimacyComfort: typeof raw.intimacyComfort === 'string' && intimacyComfortValues.includes(raw.intimacyComfort as AuraIntimacyComfort) ? raw.intimacyComfort as AuraIntimacyComfort : undefined,
+    intimacyAfter: Array.isArray(raw.intimacyAfter) ? raw.intimacyAfter.filter((item): item is AuraIntimacyAfter => typeof item === 'string' && intimacyAfterValues.includes(item as AuraIntimacyAfter)) : [],
+    intimacyDesire: typeof raw.intimacyDesire === 'string' && intimacyDesireValues.includes(raw.intimacyDesire as AuraIntimacyDesire) ? raw.intimacyDesire as AuraIntimacyDesire : undefined,
+    intimacyNote: typeof raw.intimacyNote === 'string' ? raw.intimacyNote.slice(0, 1000) : undefined,
+    nutrition: Array.isArray(raw.nutrition) ? raw.nutrition.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 80)) : [],
+    calories: calories === undefined ? undefined : Math.round(calories),
+    temperature,
+    weight,
+    careItems: Array.isArray(raw.careItems) ? raw.careItems.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 80)) : [],
+    recommendedActivityDone: raw.recommendedActivityDone === true ? true : undefined,
+    b6Prescribed: raw.b6Prescribed === true ? true : undefined,
+    b6Taken: raw.b6Prescribed === true && raw.b6Taken === true ? true : undefined,
+    note: typeof raw.note === 'string' ? raw.note.slice(0, 5000) : undefined,
+    contexts: Array.isArray(raw.contexts) ? raw.contexts.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 80)) : [],
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt.slice(0, 40) : `${date}T09:41:00`,
+  }, date);
+}
 
 export function sanitizeAuraState(value: unknown): AuraState {
   if (!isObject(value)) return structuredClone(defaultAuraState);
   const candidate = value as Partial<AuraState>;
-  const sanitizedEntries = isObject(candidate.entries)
-    ? Object.fromEntries(Object.entries(candidate.entries).flatMap(([date, raw]) => {
-      if (!isObject(raw)) return [];
-      return [[date, entry({
-        ...raw,
-        symptoms: Array.isArray(raw.symptoms) ? raw.symptoms as AuraSymptom[] : [],
-        symptomsChecked: typeof raw.symptomsChecked === 'boolean' ? raw.symptomsChecked : undefined,
-        moods: Array.isArray(raw.moods) ? raw.moods.filter((item): item is string => typeof item === 'string') : [],
-        nutrition: Array.isArray(raw.nutrition) ? raw.nutrition.filter((item): item is string => typeof item === 'string') : [],
-        contexts: Array.isArray(raw.contexts) ? raw.contexts.filter((item): item is string => typeof item === 'string') : [],
-        careItems: Array.isArray(raw.careItems) ? raw.careItems.filter((item): item is string => typeof item === 'string') : [],
-        intimate: raw.intimate === true ? true : undefined,
-        intimacyComfort: typeof raw.intimacyComfort === 'string' && intimacyComfortValues.includes(raw.intimacyComfort as AuraIntimacyComfort) ? raw.intimacyComfort as AuraIntimacyComfort : undefined,
-        intimacyAfter: Array.isArray(raw.intimacyAfter) ? raw.intimacyAfter.filter((item): item is AuraIntimacyAfter => typeof item === 'string' && intimacyAfterValues.includes(item as AuraIntimacyAfter)) : [],
-        intimacyDesire: typeof raw.intimacyDesire === 'string' && intimacyDesireValues.includes(raw.intimacyDesire as AuraIntimacyDesire) ? raw.intimacyDesire as AuraIntimacyDesire : undefined,
-        intimacyNote: typeof raw.intimacyNote === 'string' ? raw.intimacyNote.slice(0, 1000) : undefined,
-      } as Partial<AuraDayEntry>)]];
-    }))
-    : structuredClone(defaultAuraState.entries);
+  const entries = isObject(candidate.entries)
+    ? Object.fromEntries(Object.entries(candidate.entries).flatMap(([date, raw]) => isValidAuraDate(date) && isObject(raw) ? [[date, sanitizeEntry(date, raw)]] : []))
+    : {};
+  const rawModules: Record<string, unknown> = isObject(candidate.modules) ? candidate.modules : {};
+  const rawHomeCards: Record<string, unknown> = isObject(candidate.homeCards) ? candidate.homeCards : {};
+  const rawOnboarding: Record<string, unknown> = isObject(candidate.onboarding) ? candidate.onboarding : {};
+  const rawAttention: Record<string, unknown> = isObject(candidate.attention) ? candidate.attention : {};
+  const rawPrivacy: Record<string, unknown> = isObject(candidate.privacy) ? candidate.privacy : {};
+  const cycleLength = clamp(rawOnboarding.cycleLength, 18, 60);
+  const periodLength = clamp(rawOnboarding.periodLength, 1, 14);
+  const selectedDate = isValidAuraDate(candidate.selectedDate) ? candidate.selectedDate : AURA_TODAY;
   return {
-    ...structuredClone(defaultAuraState),
-    ...candidate,
-    version: 2,
-    entries: sanitizedEntries,
-    modules: { ...defaultAuraState.modules, ...(isObject(candidate.modules) ? candidate.modules : {}) },
-    homeCards: { ...defaultAuraState.homeCards, ...(isObject(candidate.homeCards) ? candidate.homeCards : {}) },
-    privacy: { ...defaultAuraState.privacy, ...(isObject(candidate.privacy) ? candidate.privacy : {}) },
+    version: 3,
+    selectedDate,
+    entries,
+    periodStarts: Array.isArray(candidate.periodStarts)
+      ? Array.from(new Set(candidate.periodStarts.filter((item): item is string => isValidAuraDate(item)))).sort()
+      : [],
+    modules: Object.fromEntries(moduleIds.map((id) => [id, typeof rawModules[id] === 'boolean' ? rawModules[id] : defaultAuraState.modules[id]])) as Record<AuraModuleId, boolean>,
+    homeCards: Object.fromEntries(homeCardIds.map((id) => [id, typeof rawHomeCards[id] === 'boolean' ? rawHomeCards[id] : defaultAuraState.homeCards[id]])) as Record<AuraHomeCardId, boolean>,
+    savedArticles: Array.isArray(candidate.savedArticles) ? Array.from(new Set(candidate.savedArticles.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 120)))) : [],
+    notifications: candidate.notifications === true,
     onboarding: {
-      ...defaultAuraState.onboarding,
-      ...(isObject(candidate.onboarding) ? candidate.onboarding : {}),
-      focus: isObject(candidate.onboarding) && Array.isArray(candidate.onboarding.focus)
-        ? candidate.onboarding.focus.filter((item): item is AuraModuleId => typeof item === 'string' && item in defaultAuraState.modules)
-        : [],
+      completed: rawOnboarding.completed === true,
+      goal: ['today', 'forecast', 'patterns', 'doctor'].includes(String(rawOnboarding.goal)) ? rawOnboarding.goal as AuraOnboardingGoal : undefined,
+      lastPeriod: isValidAuraDate(rawOnboarding.lastPeriod) ? rawOnboarding.lastPeriod : undefined,
+      cyclePattern: ['stable', 'changes', 'irregular', 'unknown'].includes(String(rawOnboarding.cyclePattern)) ? rawOnboarding.cyclePattern as AuraCyclePattern : undefined,
+      cycleLength: cycleLength ? Math.round(cycleLength) : undefined,
+      periodLength: periodLength ? Math.round(periodLength) : undefined,
+      periodLengthUnknown: rawOnboarding.periodLengthUnknown === true,
+      focus: Array.isArray(rawOnboarding.focus) ? rawOnboarding.focus.filter((item): item is AuraModuleId => typeof item === 'string' && moduleIds.includes(item as AuraModuleId)) : [],
+      reminders: rawOnboarding.reminders === true,
     },
-    attention: { ...defaultAuraState.attention, ...(isObject(candidate.attention) ? candidate.attention : {}) },
-    savedArticles: Array.isArray(candidate.savedArticles) ? candidate.savedArticles.filter((item): item is string => typeof item === 'string') : [],
-    periodStarts: Array.isArray(candidate.periodStarts) ? candidate.periodStarts.filter((item): item is string => typeof item === 'string') : [],
+    privacy: {
+      localOnly: true,
+      sensitiveExport: rawPrivacy.sensitiveExport === true,
+    },
+    attention: {
+      dismissedUntil: isValidAuraDate(rawAttention.dismissedUntil, '9999-12-31') ? rawAttention.dismissedUntil : undefined,
+      evidenceKey: typeof rawAttention.evidenceKey === 'string' ? rawAttention.evidenceKey.slice(0, 5000) : undefined,
+      lastShownAt: isValidAuraDate(rawAttention.lastShownAt) ? rawAttention.lastShownAt : undefined,
+      showCount: Math.round(clamp(rawAttention.showCount, 0, 10_000) ?? 0),
+    },
   };
+}
+
+export function parseImportedAuraState(value: unknown): AuraState {
+  if (!isObject(value) || !isObject(value.entries) || !Array.isArray(value.periodStarts)) throw new Error('Invalid backup');
+  return sanitizeAuraState(value);
+}
+
+function periodStartsFromDays(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const days = Array.from(new Set(value.filter((item): item is string => isValidAuraDate(item)))).sort();
+  return days.filter((date, index) => index === 0 || daysBetween(days[index - 1], date) > 1);
+}
+
+const legacyMoodLabels: Record<string, string> = {
+  great: 'Радость',
+  calm: 'Спокойствие',
+  sensitive: 'Чувствительность',
+  tired: 'Усталость',
+  low: 'Грусть',
+};
+
+export function migrateLegacyAppState(value: unknown): AuraState | null {
+  if (!isObject(value) || !isObject(value.profile) || !isObject(value.entries)) return null;
+  const legacyEntries = Object.fromEntries(Object.entries(value.entries).flatMap(([date, raw]) => {
+    if (!isValidAuraDate(date) || !isObject(raw)) return [];
+    const symptoms = Array.isArray(raw.symptoms) ? raw.symptoms.filter((item): item is string => typeof item === 'string').map((label, index) => ({
+      id: label === 'Боль внизу живота' ? 'pain' : `legacy-${index}-${label.slice(0, 24)}`,
+      label,
+      severity: Math.round(clamp(isObject(raw.symptomSeverity) ? raw.symptomSeverity[label] : undefined, 1, 3) ?? 1) as 1 | 2 | 3,
+      affectsLife: raw.symptomsAffectDailyLife === true,
+    })) : [];
+    const moods = Array.isArray(raw.moods) ? raw.moods.filter((item): item is string => typeof item === 'string') : typeof raw.mood === 'string' && legacyMoodLabels[raw.mood] ? [legacyMoodLabels[raw.mood]] : [];
+    const flow = clamp(raw.flow, 0, 3);
+    const flowMap: AuraDayEntry['period'][] = ['none', 'light', 'medium', 'heavy'];
+    const qualityMap: Record<string, AuraDayEntry['sleepQuality']> = { poor: 'Плохое', okay: 'Обычное', good: 'Хорошее' };
+    return [[date, sanitizeEntry(date, {
+      rating: raw.dayRating,
+      period: flow === undefined ? undefined : flowMap[Math.round(flow)],
+      symptoms,
+      symptomsChecked: raw.symptomsChecked,
+      moods,
+      energy: raw.energy,
+      sleepHours: raw.sleepHours,
+      sleepQuality: typeof raw.sleepQuality === 'string' ? qualityMap[raw.sleepQuality] : undefined,
+      water: raw.waterMl,
+      steps: raw.steps,
+      calories: raw.calories,
+      temperature: raw.basalTemperature,
+      weight: raw.weightKg,
+      intimate: raw.hadSex === true ? true : undefined,
+      nutrition: Array.isArray(raw.digestion) ? raw.digestion : [],
+      contexts: Array.isArray(raw.contextTags) ? raw.contextTags : [],
+      note: raw.note,
+      updatedAt: `${date}T09:41:00`,
+    })]];
+  }));
+  const profile = value.profile;
+  const periodStarts = periodStartsFromDays(value.periodDays);
+  return sanitizeAuraState({
+    ...defaultAuraState,
+    entries: legacyEntries,
+    periodStarts,
+    savedArticles: Array.isArray(value.savedArticles) ? value.savedArticles : [],
+    notifications: profile.reminderEnabled === true,
+    onboarding: {
+      completed: value.onboardingComplete === true,
+      lastPeriod: periodStarts[periodStarts.length - 1],
+      cycleLength: profile.cycleLength,
+      periodLength: profile.periodLength,
+      periodLengthUnknown: false,
+      focus: ['cycle', 'mood', 'sleep', 'daily', 'note'],
+      reminders: profile.reminderEnabled === true,
+    },
+  });
 }
 
 export function loadAuraState(): AuraState {
   try {
-    const stored = localStorage.getItem(AURA_STORAGE_KEY);
-    return stored ? sanitizeAuraState(JSON.parse(stored)) : structuredClone(defaultAuraState);
+    const current = localStorage.getItem(AURA_STORAGE_KEY);
+    if (current) return sanitizeAuraState(JSON.parse(current));
+    const oldAura = localStorage.getItem(LEGACY_AURA_STORAGE_KEY);
+    if (oldAura) {
+      const migrated = sanitizeAuraState(JSON.parse(oldAura));
+      persistAuraState(migrated);
+      return migrated;
+    }
+    const oldApp = localStorage.getItem(LEGACY_APP_STORAGE_KEY);
+    if (oldApp) {
+      const migrated = migrateLegacyAppState(JSON.parse(oldApp));
+      if (migrated) {
+        persistAuraState(migrated);
+        return migrated;
+      }
+    }
   } catch {
-    return structuredClone(defaultAuraState);
+    // Fall through to a genuinely empty, safe state.
   }
+  return structuredClone(defaultAuraState);
 }
 
 export function persistAuraState(state: AuraState): boolean {
@@ -218,22 +376,22 @@ export function persistAuraState(state: AuraState): boolean {
   }
 }
 
-export function emptyAuraEntry(): AuraDayEntry {
-  return entry({ updatedAt: `${AURA_TODAY}T09:41:00` });
+export function clearAllMiraStorage(): void {
+  localStorage.removeItem(AURA_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_AURA_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_APP_STORAGE_KEY);
+}
+
+export function emptyAuraEntry(date = AURA_TODAY): AuraDayEntry {
+  return entry({}, date);
 }
 
 export function createEmptyAuraState(): AuraState {
-  return {
-    ...structuredClone(defaultAuraState),
-    entries: {},
-    periodStarts: [],
-    savedArticles: [],
-    onboarding: structuredClone(defaultAuraState.onboarding),
-    attention: { showCount: 0 },
-  };
+  return structuredClone(defaultAuraState);
 }
 
 export function setAuraPeriodStart(state: AuraState, date: string, marked: boolean): AuraState {
+  if (!isValidAuraDate(date)) return state;
   const periodStarts = marked
     ? Array.from(new Set([...state.periodStarts, date])).sort()
     : state.periodStarts.filter((item) => item !== date);
@@ -244,11 +402,95 @@ export function setAuraPeriodStart(state: AuraState, date: string, marked: boole
     entries: {
       ...state.entries,
       [date]: {
-        ...(state.entries[date] ?? emptyAuraEntry()),
-        updatedAt: `${date}T09:41:00`,
+        ...(state.entries[date] ?? emptyAuraEntry(date)),
+        updatedAt: new Date().toISOString(),
       },
     },
   };
+}
+
+export function addDays(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  return toIsoDate(new Date(year, month - 1, day + days));
+}
+
+export function daysBetween(start: string, end: string): number {
+  const [startYear, startMonth, startDay] = start.split('-').map(Number);
+  const [endYear, endMonth, endDay] = end.split('-').map(Number);
+  return Math.round((new Date(endYear, endMonth - 1, endDay).getTime() - new Date(startYear, startMonth - 1, startDay).getTime()) / 86_400_000);
+}
+
+const median = (values: number[]): number => {
+  const sorted = [...values].sort((left, right) => left - right);
+  if (!sorted.length) return 0;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+};
+
+export type AuraCycleMetrics = {
+  starts: string[];
+  cycleLengths: number[];
+  completedCycles: number;
+  lastStart: string | null;
+  cycleDay: number | null;
+  expectedLength: number | null;
+  personalMin: number | null;
+  personalMax: number | null;
+  forecast: null | {
+    start: string;
+    end: string;
+    confidence: 'preliminary' | 'growing' | 'personal';
+    cyclesUsed: number;
+  };
+};
+
+export function getAuraCycleMetrics(state: AuraState, today = AURA_TODAY): AuraCycleMetrics {
+  const starts = state.periodStarts.filter((date) => isValidAuraDate(date, today)).sort();
+  const cycleLengths = starts.slice(1).map((start, index) => daysBetween(starts[index], start)).filter((length) => length >= 18 && length <= 60);
+  const recent = cycleLengths.slice(-6);
+  const fallback = Math.round(clamp(state.onboarding.cycleLength, 18, 60) ?? 28);
+  const expectedLength = starts.length ? (recent.length ? median(recent) : fallback) : null;
+  const lastStart = starts[starts.length - 1] ?? null;
+  const cycleDay = lastStart ? daysBetween(lastStart, today) + 1 : null;
+  let forecast: AuraCycleMetrics['forecast'] = null;
+  if (lastStart && expectedLength) {
+    const minLength = recent.length >= 2 ? Math.min(...recent) : Math.max(18, expectedLength - 2);
+    const maxLength = recent.length >= 2 ? Math.max(...recent) : Math.min(60, expectedLength + 2);
+    let start = addDays(lastStart, minLength);
+    let end = addDays(lastStart, maxLength);
+    let guard = 0;
+    while (end < today && guard < 24) {
+      start = addDays(start, expectedLength);
+      end = addDays(end, expectedLength);
+      guard += 1;
+    }
+    forecast = {
+      start,
+      end,
+      confidence: recent.length >= 3 ? 'personal' : recent.length >= 1 ? 'growing' : 'preliminary',
+      cyclesUsed: recent.length,
+    };
+  }
+  return {
+    starts,
+    cycleLengths,
+    completedCycles: cycleLengths.length,
+    lastStart,
+    cycleDay: cycleDay && cycleDay > 0 ? cycleDay : null,
+    expectedLength,
+    personalMin: recent.length >= 3 ? Math.min(...recent) : null,
+    personalMax: recent.length >= 3 ? Math.max(...recent) : null,
+    forecast,
+  };
+}
+
+function cycleStartForDate(starts: string[], date: string): string | null {
+  let current: string | null = null;
+  for (const start of starts) {
+    if (start > date) break;
+    current = start;
+  }
+  return current;
 }
 
 export type AttentionEvidence = {
@@ -262,13 +504,17 @@ export type AttentionEvidence = {
 };
 
 export function deriveAttentionEvidence(state: AuraState): AttentionEvidence {
+  const starts = getAuraCycleMetrics(state).starts;
   const painEntries = Object.entries(state.entries)
-    .flatMap(([date, day]) => day.symptoms.filter((symptom) => symptom.id === 'pain').map((symptom) => ({ date, ...symptom })))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .flatMap(([date, day]) => day.symptoms
+      .filter((symptom) => symptom.id === 'pain' && symptom.severity >= 2)
+      .map((symptom) => ({ date, cycleStart: cycleStartForDate(starts, date), ...symptom })))
+    .filter((item) => Boolean(item.cycleStart))
+    .sort((left, right) => left.date.localeCompare(right.date));
   const severeDays = painEntries.filter((item) => item.severity === 3).length;
   const impactDays = painEntries.filter((item) => item.affectsLife).length;
-  const cycles = new Set(painEntries.map((item) => item.date.slice(0, 7))).size;
-  const key = painEntries.map((item) => `${item.date}:${item.severity}:${Number(item.affectsLife)}`).join('|');
+  const cycles = new Set(painEntries.map((item) => item.cycleStart)).size;
+  const key = painEntries.map((item) => `${item.date}:${item.cycleStart}:${item.severity}:${Number(item.affectsLife)}`).join('|');
   return {
     eligible: painEntries.length >= 3 && cycles >= 2 && (severeDays >= 2 || impactDays >= 2),
     painDays: painEntries.length,
@@ -285,11 +531,4 @@ export function shouldShowAttention(state: AuraState, today = AURA_TODAY): boole
   if (!evidence.eligible) return false;
   if (state.attention.evidenceKey !== evidence.key) return true;
   return Boolean(state.attention.dismissedUntil && state.attention.dismissedUntil <= today);
-}
-
-export function addDays(isoDate: string, days: number): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  const date = new Date(year, month - 1, day + days);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

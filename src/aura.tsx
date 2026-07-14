@@ -57,15 +57,17 @@ import {
 import './aura.css';
 import { StartupGate } from './StartupSplash';
 import {
-  AURA_STORAGE_KEY,
   AURA_TODAY,
   addDays,
+  clearAllMiraStorage,
   createEmptyAuraState,
+  daysBetween,
   deriveAttentionEvidence,
   emptyAuraEntry,
+  getAuraCycleMetrics,
   loadAuraState,
+  parseImportedAuraState,
   persistAuraState,
-  sanitizeAuraState,
   setAuraPeriodStart,
   shouldShowAttention,
   type AuraDayEntry,
@@ -142,17 +144,41 @@ const dayRatings: Array<{ label: string; icon: LucideIcon }> = [
   { label: 'Отлично', icon: Laugh },
 ];
 
+const ruMonths = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const ruMonthTitles = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const ruWeekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+function localDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatRuDate(value: string, withYear = false) {
+  const date = localDate(value);
+  return `${date.getDate()} ${ruMonths[date.getMonth()]}${withYear ? ` ${date.getFullYear()}` : ''}`;
+}
+
+function formatRuRange(start?: string, end?: string) {
+  if (!start || !end) return 'Ориентир появится позже';
+  const from = localDate(start);
+  const to = localDate(end);
+  return from.getMonth() === to.getMonth()
+    ? `${from.getDate()}–${to.getDate()} ${ruMonths[to.getMonth()]}`
+    : `${formatRuDate(start)} – ${formatRuDate(end)}`;
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>('today');
   const [analyticsSection, setAnalyticsSection] = useState<AnalyticsSection>('overview');
   const [wellbeingMode, setWellbeingMode] = useState<WellbeingMode>('summary');
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [data, setData] = useState<AuraState>(() => loadAuraState());
-  const [scenario, setScenario] = useState<PrototypeScenario>('history');
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [persistStatus, setPersistStatus] = useState<PersistStatus>('saved');
   const [toast, setToast] = useState('');
   const attentionInitialized = useRef(false);
+  const cycleMetrics = useMemo(() => getAuraCycleMetrics(data), [data]);
+  const scenario: PrototypeScenario = cycleMetrics.completedCycles >= 2 ? 'history' : cycleMetrics.starts.length ? 'first' : 'empty';
 
   useEffect(() => {
     if (attentionInitialized.current) return;
@@ -188,6 +214,10 @@ function App() {
   };
 
   const patchEntry = (date: string, patch: Partial<AuraDayEntry>) => {
+    if (date > AURA_TODAY) {
+      setToast('Будущую дату можно посмотреть, но запись появится только в этот день.');
+      return;
+    }
     changeData((current) => ({
       ...current,
       selectedDate: date,
@@ -244,9 +274,8 @@ function App() {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      const imported = sanitizeAuraState(JSON.parse(await file.text()));
+      const imported = parseImportedAuraState(JSON.parse(await file.text()));
       setData(imported);
-      setScenario('history');
       setOverlay(null);
       setToast('Копия восстановлена');
     } catch {
@@ -257,9 +286,8 @@ function App() {
   };
 
   const deleteAllData = () => {
-    localStorage.removeItem(AURA_STORAGE_KEY);
+    clearAllMiraStorage();
     setData(createEmptyAuraState());
-    setScenario('empty');
     setOverlay(null);
     setToast('Локальные данные удалены');
   };
@@ -272,9 +300,9 @@ function App() {
           <div><strong>Mira</strong><small>Aura Metrics</small></div>
         </div>
         <div className="lab-note">
-          <span>Выбранная концепция</span>
-          <strong>03 · Aura Metrics</strong>
-          <p>Отдельный прототип. Рабочее приложение не изменено.</p>
+          <span>Рабочее приложение</span>
+          <strong>Mira · единые данные</strong>
+          <p>Все экраны используют одну локальную историю.</p>
         </div>
         <nav className="lab-menu" aria-label="Экраны прототипа">
           {labScreens.map(({ id, label, icon: Icon }) => (
@@ -291,9 +319,9 @@ function App() {
 
       <main className="lab-canvas">
         <div className="canvas-heading">
-          <div><span>Интерактивный дизайн-прототип</span><h1>{labScreens.find((item) => item.id === screen)?.label}</h1></div>
+          <div><span>Интерактивное приложение</span><h1>{labScreens.find((item) => item.id === screen)?.label}</h1></div>
           <div className="canvas-pills scenario-pills" aria-label="Сценарий данных">
-            {([['history', 'История'], ['first', 'Первый цикл'], ['empty', 'Нет данных']] as const).map(([id, label]) => <button key={id} className={scenario === id ? 'active' : ''} onClick={() => setScenario(id)}>{label}</button>)}
+            <span>{scenario === 'history' ? `${cycleMetrics.completedCycles} завершённых цикла` : scenario === 'first' ? 'Первый цикл' : 'Нет данных'}</span>
           </div>
         </div>
 
@@ -361,7 +389,7 @@ function App() {
           {overlay === 'delete-confirm' && <ConfirmDelete onCancel={() => setOverlay('data-controls')} onConfirm={deleteAllData} />}
           {overlay === 'feedback' && <FeedbackSheet onClose={() => setOverlay(null)} onSubmit={() => { setOverlay(null); setToast('Спасибо! Форма обратной связи готова к отправке'); }} />}
           {overlay === 'support' && <SupportSheet onClose={() => setOverlay(null)} onNotify={setToast} />}
-          {overlay === 'period-start' && <PeriodStartSheet marked={data.periodStarts.includes(AURA_TODAY)} onClose={() => setOverlay(null)} onChooseDate={() => { setOverlay(null); open('calendar'); }} onConfirm={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, true)); setOverlay(null); setToast('14 июля отмечено как начало нового цикла'); }} onRemove={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, false)); setOverlay(null); setToast('Отметка о начале цикла удалена'); }} />}
+          {overlay === 'period-start' && <PeriodStartSheet marked={data.periodStarts.includes(AURA_TODAY)} onClose={() => setOverlay(null)} onChooseDate={() => { setOverlay(null); open('calendar'); }} onConfirm={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, true)); setOverlay(null); setToast(`${formatRuDate(AURA_TODAY)} отмечено как начало нового цикла`); }} onRemove={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, false)); setOverlay(null); setToast('Отметка о начале цикла удалена'); }} />}
           {overlay === 'quick-symptoms' && <QuickSymptomsSheet day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onSave={(patch) => { patchEntry(AURA_TODAY, patch); setOverlay(null); setToast('Самочувствие на сегодня сохранено'); }} />}
           {toast && <div className="aura-toast" role="status"><Check />{toast}</div>}
           {!['onboarding', 'article', 'report', 'profile', 'calendar'].includes(screen) && <BottomNav screen={screen} onOpen={open} />}
@@ -581,7 +609,7 @@ function DateWheelPicker({ value, onChange }: { value?: string; onChange: (value
   </div>;
 }
 
-function AppHeader({ title = '14 июля', onProfile, onCalendar }: { title?: string; onProfile?: () => void; onCalendar?: () => void }) {
+function AppHeader({ title = formatRuDate(AURA_TODAY), onProfile, onCalendar }: { title?: string; onProfile?: () => void; onCalendar?: () => void }) {
   return <header className="app-header">
     <button className="avatar-button" onClick={onProfile} aria-label="Профиль"><span>Л</span></button>
     <div><small className="app-header-brand"><MiraMark /> Сегодня</small><h1>{title}</h1></div>
@@ -590,7 +618,11 @@ function AppHeader({ title = '14 июля', onProfile, onCalendar }: { title?: s
 }
 
 function DateStrip() {
-  return <div className="date-strip">{[['П', '11'], ['С', '12'], ['В', '13'], ['П', '14'], ['В', '15'], ['С', '16'], ['Ч', '17']].map(([day, date], index) => <button key={date} className={index === 3 ? 'active' : ''}><small>{day}</small><strong>{date}</strong>{index === 3 && <i />}</button>)}</div>;
+  return <div className="date-strip">{Array.from({ length: 7 }, (_, index) => addDays(AURA_TODAY, index - 3)).map((value) => {
+    const date = localDate(value);
+    const active = value === AURA_TODAY;
+    return <button key={value} className={active ? 'active' : ''} disabled={!active}><small>{ruWeekdays[date.getDay()].slice(0, 1)}</small><strong>{date.getDate()}</strong>{active && <i />}</button>;
+  })}</div>;
 }
 
 function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDailyPlan, onOpenHomeSettings, onOpenPeriodStart, onOpenQuickSymptoms }: { data: AuraState; scenario: PrototypeScenario; onOpen: (screen: Screen) => void; onPatchEntry: (date: string, patch: Partial<AuraDayEntry>) => void; onShowAttention: () => void; onOpenDailyPlan: () => void; onOpenHomeSettings: () => void; onOpenPeriodStart: () => void; onOpenQuickSymptoms: () => void }) {
@@ -599,18 +631,25 @@ function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDa
   const todayPain = day.symptoms.find((symptom) => symptom.id === 'pain');
   const gentleMovement = Boolean(todayPain && (todayPain.severity === 3 || todayPain.affectsLife));
   const attention = deriveAttentionEvidence(data);
-  const forecast = scenario === 'empty' ? { title: 'Когда начались месячные?', text: 'После первой даты появится день цикла. Прогноз потребует больше истории.' } : scenario === 'first' ? { title: 'Прогноз пока предварительный', text: 'Ориентир появится по вашей оценке и станет точнее после завершённого цикла.' } : { title: 'Цикл продолжается', text: 'Следующие месячные ориентировочно 28–31 июля.' };
+  const metrics = getAuraCycleMetrics(data);
+  const range = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
+  const forecast = scenario === 'empty'
+    ? { title: 'Когда начались месячные?', text: 'После первой даты появится день цикла. Прогноз потребует больше истории.' }
+    : scenario === 'first'
+      ? { title: 'Прогноз пока предварительный', text: `Первый ориентир — ${range}. Он станет точнее после завершённых циклов.` }
+      : { title: 'Цикл продолжается', text: `Следующие месячные ориентировочно ${range}.` };
+  const timelineProgress = Math.min(96, Math.max(5, ((metrics.cycleDay ?? 1) / (metrics.expectedLength ?? 28)) * 100));
   return <div className="screen today-screen">
     <AppHeader onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
     <DateStrip />
     <section className="cycle-status-card">
       <div className="cycle-status-main">
-        <div className="cycle-day-value"><strong>{scenario === 'empty' ? '—' : scenario === 'first' ? '3' : '18'}</strong><span>{scenario === 'empty' ? 'день пока неизвестен' : 'день цикла'}</span></div>
+        <div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'день пока неизвестен'}</span></div>
         <div className="cycle-status-copy"><h2>{forecast.title}</h2><p>{forecast.text}</p></div>
       </div>
       {scenario !== 'empty' ? <div className="cycle-timeline">
-        <div className="cycle-timeline-track"><span className="period-part" /><i style={{ left: scenario === 'first' ? '10%' : '57%' }} /></div>
-        <div className="cycle-timeline-labels"><span>Месячные</span><strong>Сегодня</strong><span>Ориентир 28–31 июля</span></div>
+        <div className="cycle-timeline-track"><span className="period-part" /><i style={{ left: `${timelineProgress}%` }} /></div>
+        <div className="cycle-timeline-labels"><span>Начало цикла</span><strong>Сегодня</strong><span>{range}</span></div>
       </div> : <button className="cycle-empty-action" onClick={onOpenPeriodStart}><Plus /> Добавить первый день месячных</button>}
       <button className="cycle-method" onClick={() => onOpen('calendar')}><Info /> Как работает ориентир</button>
     </section>
@@ -631,7 +670,7 @@ function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDa
       </div>
     </section>}
     {(data.homeCards.hormonoscope || data.homeCards.cycloscope) && <section className="scope-grid">
-      {data.homeCards.hormonoscope && <article className="scope-card hormone"><span className="scope-icon"><Sparkle /></span><small>Hormonoscope</small><h2>{scenario === 'empty' ? 'Нужна дата цикла' : 'Фаза спокойного темпа'}</h2><p>{scenario === 'empty' ? 'Добавьте начало месячных, чтобы получить контекст.' : 'Сегодня полезно оставить больше пространства для отдыха.'}</p><button>Почему так <ChevronRight /></button></article>}
+      {data.homeCards.hormonoscope && <article className="scope-card hormone"><span className="scope-icon"><Sparkle /></span><small>Hormonoscope · календарный ориентир</small><h2>{scenario === 'empty' ? 'Нужна дата цикла' : `${metrics.cycleDay}-й день цикла`}</h2><p>{scenario === 'empty' ? 'Добавьте начало месячных, чтобы получить контекст.' : 'Это календарный контекст, а не измерение уровня гормонов.'}</p><button>Почему так <ChevronRight /></button></article>}
       {data.homeCards.cycloscope && <article className="scope-card cyclo"><span className="scope-icon"><InfinityIcon /></span><small>Cycloscope</small><h2>День для мягкого фокуса</h2><p>Короткий ориентир для настроения, не медицинский прогноз.</p><button>На сегодня <ChevronRight /></button></article>}
     </section>}
     {data.homeCards.rhythm && <section className="surface">
@@ -804,22 +843,42 @@ function MetricCard({ icon: Icon, tone, label, value, note }: { icon: LucideIcon
 }
 
 function Calendar({ data, scenario, onSelectDate, onBack, onOpenDiary }: { data: AuraState; scenario: PrototypeScenario; onSelectDate: (date: string) => void; onBack: () => void; onOpenDiary: () => void }) {
-  const days = Array.from({ length: 35 }, (_, index) => index < 2 || index > 32 ? null : index - 1);
-  const selectedDay = Number(data.selectedDate.slice(8));
+  const selected = localDate(data.selectedDate);
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const leading = (new Date(year, month, 1).getDay() + 6) % 7;
+  const monthDays = new Date(year, month + 1, 0).getDate();
+  const days = Array.from({ length: Math.ceil((leading + monthDays) / 7) * 7 }, (_, index) => {
+    const day = index - leading + 1;
+    return day >= 1 && day <= monthDays ? day : null;
+  });
+  const selectedDay = selected.getDate();
   const selectedEntry = data.entries[data.selectedDate];
+  const metrics = getAuraCycleMetrics(data);
+  const forecastRange = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
+  const confidence = metrics.forecast?.confidence;
+  const monthIso = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const isForecast = (date: string) => Boolean(metrics.forecast && date >= metrics.forecast.start && date <= metrics.forecast.end);
+  const isPeriod = (date: string) => data.periodStarts.includes(date) || Boolean(data.entries[date]?.period && data.entries[date]?.period !== 'none');
+  const selectedLabel = `${formatRuDate(data.selectedDate)}${data.selectedDate === AURA_TODAY ? ' · сегодня' : ''}`;
   return <div className="screen calendar-screen">
     <TopBack title="Календарь" onBack={onBack} action={<button className="round-button"><Info /></button>} />
     <section className="calendar-summary aura-hero">
-      <span className="glass-label"><Sparkle /> {scenario === 'history' ? 'Личный диапазон' : 'Данных пока мало'}</span><h2>{scenario === 'history' ? '28–31 июля' : scenario === 'first' ? 'Предварительный ориентир' : 'Прогноз появится позже'}</h2><p>{scenario === 'history' ? 'Диапазон рассчитан по 5 завершённым циклам.' : 'Добавляйте фактические даты — пустые дни не считаются отсутствием месячных.'}</p>
-      <div className="confidence-line"><span style={{ width: scenario === 'history' ? '74%' : scenario === 'first' ? '28%' : '0%' }} /></div><small>Уверенность растёт с новыми завершёнными циклами</small>
+      <span className="glass-label"><Sparkle /> {confidence === 'personal' ? 'Личный диапазон' : 'Данных пока мало'}</span><h2>{forecastRange}</h2><p>{metrics.completedCycles ? `Диапазон рассчитан по ${metrics.completedCycles} завершённым циклам.` : 'Добавляйте фактические даты — пустые дни не считаются отсутствием месячных.'}</p>
+      <div className="confidence-line"><span style={{ width: confidence === 'personal' ? '78%' : confidence === 'growing' ? '52%' : confidence === 'preliminary' ? '28%' : '0%' }} /></div><small>Уверенность растёт с новыми завершёнными циклами</small>
     </section>
     <section className="surface month-card">
-      <div className="month-title"><button><ChevronLeft /></button><h2>Июль 2026</h2><button><ChevronRight /></button></div>
+      <div className="month-title"><button onClick={() => setVisibleMonth(new Date(year, month - 1, 1))} aria-label="Предыдущий месяц"><ChevronLeft /></button><h2>{ruMonthTitles[month]} {year}</h2><button onClick={() => setVisibleMonth(new Date(year, month + 1, 1))} aria-label="Следующий месяц"><ChevronRight /></button></div>
       <div className="weekdays">{['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => <span key={day}>{day}</span>)}</div>
-      <div className="month-grid">{days.map((day, index) => day ? <button key={index} onClick={() => onSelectDate(`2026-07-${String(day).padStart(2, '0')}`)} className={`${scenario !== 'empty' && day >= 5 && day <= 9 ? 'period' : ''} ${scenario === 'history' && day >= 28 && day <= 31 ? 'forecast' : ''} ${day === 14 ? 'today' : ''} ${data.entries[`2026-07-${String(day).padStart(2, '0')}`] ? 'has-entry' : ''} ${day === selectedDay ? 'selected' : ''}`}><span>{day}</span></button> : <i key={index} />)}</div>
+      <div className="month-grid">{days.map((day, index) => {
+        if (!day) return <i key={index} />;
+        const date = monthIso(day);
+        return <button key={date} onClick={() => onSelectDate(date)} className={`${isPeriod(date) ? 'period' : ''} ${isForecast(date) ? 'forecast' : ''} ${date === AURA_TODAY ? 'today' : ''} ${data.entries[date] ? 'has-entry' : ''} ${date === data.selectedDate ? 'selected' : ''}`}><span>{day}</span></button>;
+      })}</div>
       <div className="calendar-legend"><span><i className="period" /> Месячные</span><span><i className="forecast" /> Прогноз</span><span><i className="entry" /> Есть запись</span></div>
     </section>
-    <section className="surface selected-day-card"><div><span className="eyebrow">Выбрано</span><h2>{selectedDay} июля{selectedDay === 14 ? ' · сегодня' : ''}</h2><p>{selectedEntry ? `${selectedEntry.symptoms.length ? 'Симптомы, ' : ''}${selectedEntry.sleepHours ? 'сон, ' : ''}${selectedEntry.water ? 'вода' : 'запись'} сохранены.` : 'Пока нет записи. Можно добавить только то, что помните.'}</p></div><button className="primary-button small" onClick={onOpenDiary}>{selectedEntry ? 'Редактировать день' : 'Добавить запись'} <ChevronRight /></button></section>
+    <section className="surface selected-day-card"><div><span className="eyebrow">Выбрано</span><h2>{selectedLabel}</h2><p>{selectedEntry ? `${selectedEntry.symptoms.length ? 'Симптомы, ' : ''}${selectedEntry.sleepHours ? 'сон, ' : ''}${selectedEntry.water ? 'вода' : 'запись'} сохранены.` : data.selectedDate > AURA_TODAY ? 'Будущую дату можно посмотреть, но нельзя заполнять заранее.' : 'Пока нет записи. Можно добавить только то, что помните.'}</p></div><button className="primary-button small" disabled={data.selectedDate > AURA_TODAY} onClick={onOpenDiary}>{selectedEntry ? 'Редактировать день' : 'Добавить запись'} <ChevronRight /></button></section>
   </div>;
 }
 
@@ -832,7 +891,7 @@ function Diary({ data, persistStatus, onPatchEntry, onOpenCalendar, onOpenSettin
   const setPain = (severity: 0 | 1 | 2 | 3) => update({ symptoms: severity === 0 ? day.symptoms.filter((symptom) => symptom.id !== 'pain') : [...day.symptoms.filter((symptom) => symptom.id !== 'pain'), { id: 'pain', label: 'Боль внизу живота', severity, affectsLife: pain?.affectsLife ?? false }] });
   const statusCopy = persistStatus === 'saving' ? 'Сохраняем изменения…' : persistStatus === 'error' ? 'Не удалось сохранить' : 'Все изменения сохранены';
   return <div className="screen diary-screen">
-    <AppHeader title={data.selectedDate === AURA_TODAY ? '14 июля' : `${Number(data.selectedDate.slice(8))} июля`} onCalendar={onOpenCalendar} />
+    <AppHeader title={formatRuDate(data.selectedDate)} onCalendar={onOpenCalendar} />
     <div className={`save-status ${persistStatus}`} >{persistStatus === 'error' ? <CircleAlert /> : persistStatus === 'saving' ? <Save /> : <Check />} {statusCopy}</div>
     <section className="surface diary-rating">
       <div className="section-heading"><div><span className="eyebrow">Быстрая отметка</span><h2>Как прошёл день?</h2></div><span className="soft-status">{day.rating ? dayRatings[day.rating - 1]?.label : 'Не отмечено'}</span></div>
@@ -1155,14 +1214,15 @@ function IntimacyEditor({ day, onChange }: { day: AuraDayEntry; onChange: (patch
 
 function Analytics({ data, scenario, section, setSection, mode, setMode, onOpenDiary, onOpenReport }: { data: AuraState; scenario: PrototypeScenario; section: AnalyticsSection; setSection: (section: AnalyticsSection) => void; mode: WellbeingMode; setMode: (mode: WellbeingMode) => void; onOpenDiary: () => void; onOpenReport: () => void }) {
   const entryCount = Object.keys(data.entries).length;
+  const metrics = getAuraCycleMetrics(data);
   return <div className="screen analytics-screen">
-    <header className="analytics-header"><div><span className="eyebrow">Личная картина</span><h1>Аналитика</h1></div><button className="period-select">{scenario === 'history' ? '3 цикла' : 'С начала'} <ChevronDown /></button></header>
+    <header className="analytics-header"><div><span className="eyebrow">Личная картина</span><h1>Аналитика</h1></div><button className="period-select">{metrics.completedCycles ? `${metrics.completedCycles} цикла` : 'С начала'} <ChevronDown /></button></header>
     <div className="analytics-tabs">{([['overview', 'Главное'], ['cycle', 'Цикл'], ['wellbeing', 'Самочувствие'], ['history', 'Записи']] as const).map(([id, label]) => <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}>{label}</button>)}</div>
-    {scenario !== 'history' ? <AnalyticsDataState scenario={scenario} entryCount={scenario === 'empty' ? 0 : 1} onOpenDiary={onOpenDiary} /> : <>
-      {section === 'overview' && <AnalyticsOverview setSection={setSection} />}
-      {section === 'cycle' && <CycleAnalytics />}
-      {section === 'wellbeing' && <WellbeingAnalytics mode={mode} setMode={setMode} />}
-      {section === 'history' && <HistoryAnalytics />}
+    {scenario !== 'history' ? <AnalyticsDataState scenario={scenario} entryCount={entryCount} onOpenDiary={onOpenDiary} /> : <>
+      {section === 'overview' && <AnalyticsOverview data={data} setSection={setSection} />}
+      {section === 'cycle' && <CycleAnalytics data={data} />}
+      {section === 'wellbeing' && <WellbeingAnalytics data={data} mode={mode} setMode={setMode} />}
+      {section === 'history' && <HistoryAnalytics data={data} />}
       <section className="report-cta"><span><FileHeart /></span><div><small>Для консультации</small><strong>Отчёт из ваших отметок</strong><p>Только сохранённые факты — без диагнозов.</p></div><button onClick={onOpenReport}><ChevronRight /></button></section>
     </>}
   </div>;
@@ -1188,85 +1248,106 @@ function AnalyticsDataState({ scenario, entryCount, onOpenDiary }: { scenario: E
   </div>;
 }
 
-function AnalyticsOverview({ setSection }: { setSection: (section: AnalyticsSection) => void }) {
+function AnalyticsOverview({ data, setSection }: { data: AuraState; setSection: (section: AnalyticsSection) => void }) {
+  const metrics = getAuraCycleMetrics(data);
+  const evidence = deriveAttentionEvidence(data);
+  const ratings = Object.values(data.entries).flatMap((day) => day.rating ? [day.rating] : []);
+  const averageRating = ratings.length ? (ratings.reduce((sum, value) => sum + value, 0) / ratings.length).toFixed(1).replace('.', ',') : '—';
+  const range = metrics.personalMin && metrics.personalMax ? `${metrics.personalMin}–${metrics.personalMax}` : '—';
+  const entryDates = Object.keys(data.entries).sort().slice(-14);
   return <div className="analytics-content">
     <section className="aura-hero analytics-aura">
-      <span className="glass-label"><Sparkle /> Повторяется в циклах</span><h2>Боль чаще отмечалась ближе к началу цикла</h2><p>Наблюдение основано на 4 отметках в 2 из 3 последних циклов.</p>
-      <div className="hero-data"><span><strong>4</strong><small>записи</small></span><span><strong>2 из 3</strong><small>средняя выраженность</small></span><span><strong>2</strong><small>цикла</small></span></div>
+      <span className="glass-label"><Sparkle /> {evidence.eligible ? 'Повторяется в циклах' : 'Только сохранённые факты'}</span><h2>{evidence.eligible ? 'Боль повторялась в нескольких циклах' : 'История цикла уже видна'}</h2><p>{evidence.eligible ? `Наблюдение основано на ${evidence.painDays} отметках в ${evidence.cycles} циклах.` : `Доступно ${metrics.completedCycles} завершённых цикла. Для наблюдений о симптомах нужно больше повторов.`}</p>
+      <div className="hero-data"><span><strong>{evidence.painDays}</strong><small>дней с болью</small></span><span><strong>{evidence.severeDays}</strong><small>сильные</small></span><span><strong>{evidence.cycles}</strong><small>цикла с болью</small></span></div>
       <button onClick={() => setSection('wellbeing')}>Открыть симптомы <ChevronRight /></button>
     </section>
-    <div className="overview-metrics"><article><span className="metric-icon rose"><Droplet /></span><small>День цикла</small><strong>18</strong><p>Сегодня</p></article><article><span className="metric-icon violet"><CalendarRange /></span><small>Обычно для вас</small><strong>27–30</strong><p>4 из 5 циклов</p></article><article><span className="metric-icon indigo"><Smile /></span><small>Самочувствие</small><strong>3,8</strong><p>из 5 · 10 записей</p></article></div>
+    <div className="overview-metrics"><article><span className="metric-icon rose"><Droplet /></span><small>День цикла</small><strong>{metrics.cycleDay ?? '—'}</strong><p>Сегодня</p></article><article><span className="metric-icon violet"><CalendarRange /></span><small>Ваш диапазон</small><strong>{range}</strong><p>{metrics.completedCycles} завершённых</p></article><article><span className="metric-icon indigo"><Smile /></span><small>Самочувствие</small><strong>{averageRating}</strong><p>{ratings.length ? `из 5 · ${ratings.length} записей` : 'ещё не отмечено'}</p></article></div>
     <section className="surface chart-card">
-      <div className="section-heading"><div><span className="eyebrow">Последние циклы</span><h2>Динамика длины</h2></div><span className="range-status outside">1 выше диапазона</span></div>
-      <CycleLineChart compact />
+      <div className="section-heading"><div><span className="eyebrow">Последние циклы</span><h2>Динамика длины</h2></div><span className="soft-status">{metrics.completedCycles} цикла</span></div>
+      <CycleLineChart lengths={metrics.cycleLengths} compact />
     </section>
     <section className="surface rhythm-card">
-      <div className="section-heading"><div><span className="eyebrow">Последние 14 дней</span><h2>Ваш ритм</h2></div><span className="soft-status">8 дней</span></div>
-      <div className="rhythm-days">{Array.from({ length: 14 }, (_, index) => <span key={index} className={`${[1,2,5,7,8,10,12,13].includes(index) ? 'filled' : ''} ${index === 13 ? 'today' : ''}`}><small>{index + 1}</small><i>{[2,7].includes(index) ? <Droplet /> : [5,10,13].includes(index) ? <Heart /> : [1,8,12].includes(index) ? <Smile /> : null}</i></span>)}</div>
+      <div className="section-heading"><div><span className="eyebrow">Последние 14 записей</span><h2>Ваш ритм</h2></div><span className="soft-status">{entryDates.length} дней</span></div>
+      <div className="rhythm-days">{entryDates.map((date) => { const day = data.entries[date]; return <span key={date} className={`filled ${date === AURA_TODAY ? 'today' : ''}`}><small>{Number(date.slice(8))}</small><i>{day.period && day.period !== 'none' ? <Droplet /> : day.symptoms.length ? <Heart /> : day.rating ? <Smile /> : null}</i></span>; })}</div>
       <p className="chart-caption"><i /> Пунктир и пустые дни означают отсутствие записи, а не отсутствие симптома.</p>
     </section>
   </div>;
 }
 
-function CycleAnalytics() {
+function CycleAnalytics({ data }: { data: AuraState }) {
+  const metrics = getAuraCycleMetrics(data);
+  const recentStarts = metrics.starts.slice(-6).reverse();
+  const range = metrics.personalMin && metrics.personalMax ? `${metrics.personalMin}–${metrics.personalMax} дней` : 'собирается';
   return <div className="analytics-content">
-    <div className="metric-banner"><div><span className="metric-icon rose"><Droplet /></span><small>Текущий цикл</small><strong>18-й день</strong></div><div><small>Обычно для вас</small><strong>27–30 дней</strong><p>4 из 5 последних циклов</p></div></div>
+    <div className="metric-banner"><div><span className="metric-icon rose"><Droplet /></span><small>Текущий цикл</small><strong>{metrics.cycleDay ? `${metrics.cycleDay}-й день` : 'Не начат'}</strong></div><div><small>Ваш недавний диапазон</small><strong>{range}</strong><p>{metrics.completedCycles} завершённых цикла</p></div></div>
     <section className="surface chart-card tall">
-      <div className="section-heading"><div><span className="eyebrow">5 завершённых циклов</span><h2>Длина цикла</h2></div><button className="info-button"><Info /></button></div>
-      <CycleLineChart />
-      <div className="chart-legend"><span><i className="line" /> Ваши циклы</span><span><i className="band" /> Обычно для вас</span><span><i className="outside" /> Вне диапазона</span></div>
-      <div className="range-explanation"><span className="range-ok"><Check /></span><div><strong>4 цикла — в вашем обычном диапазоне</strong><p>Цикл длительностью 31 день оказался немного длиннее вашей недавней истории. Одна такая отметка сама по себе не означает проблему.</p></div></div>
+      <div className="section-heading"><div><span className="eyebrow">{metrics.completedCycles} завершённых циклов</span><h2>Длина цикла</h2></div><button className="info-button" aria-label="О расчёте"><Info /></button></div>
+      <CycleLineChart lengths={metrics.cycleLengths} />
+      <div className="chart-legend"><span><i className="line" /> Ваши циклы</span><span><i className="band" /> Ваш недавний диапазон</span></div>
+      <div className="range-explanation"><span className="range-ok"><Check /></span><div><strong>Сравнение только с вашей историей</strong><p>Это не медицинская норма. Изменение одного цикла само по себе не является диагнозом.</p></div></div>
     </section>
-    <section className="surface period-comparison-card">
-      <div className="section-heading"><div><span className="eyebrow">Сравнение · 5 циклов</span><h2>Длительность месячных</h2></div><span className="range-status usual">Обычно 4–5 дней</span></div>
-      <div className="period-bars" role="img" aria-label="Длительность месячных в пяти циклах: 4, 5, 5, 4 и 6 дней. Четыре цикла в обычном личном диапазоне 4–5 дней, один цикл выше диапазона">
-        <i className="period-personal-band" aria-hidden="true" />
-        {[4,5,5,4,6].map((value, index) => <div key={index} className={value > 5 ? 'outside' : 'usual'}><span style={{ height: `${value * 14}px` }}>{value > 5 && <em>выше</em>}<strong>{value}</strong></span><small>{index + 1}</small></div>)}
-      </div>
-      <div className="chart-legend period-range-legend"><span><i className="period-usual" /> Обычно для вас</span><span><i className="outside" /> Дольше диапазона</span></div>
-      <div className="range-explanation period-explanation"><span className="range-ok"><Check /></span><div><strong>4 цикла — в вашем обычном диапазоне</strong><p>В одном цикле месячные длились 6 дней — на день дольше вашей недавней истории. Одна такая отметка сама по себе не означает проблему.</p></div></div>
-      <p className="chart-caption">Показаны только сохранённые дни месячных. Это личное сравнение, а не медицинская норма.</p>
-    </section>
-    <section className="surface cycle-history"><div className="section-heading"><h2>История циклов</h2><button className="mini-link">Все</button></div>{[['8 июня', '29 дней', '5 дней'], ['10 мая', '28 дней', '4 дня'], ['9 апреля', '31 день', '5 дней']].map(row => <button key={row[0]}><span><strong>{row[0]}</strong><small>Начало цикла</small></span><span><strong>{row[1]}</strong><small>Месячные · {row[2]}</small></span><ChevronRight /></button>)}</section>
+    <section className="surface cycle-history"><div className="section-heading"><h2>История циклов</h2><span className="soft-status">{recentStarts.length}</span></div>{recentStarts.map((start) => {
+      const index = metrics.starts.indexOf(start);
+      const length = index < metrics.starts.length - 1 ? daysBetween(start, metrics.starts[index + 1]) : null;
+      return <button key={start}><span><strong>{formatRuDate(start)}</strong><small>Начало цикла</small></span><span><strong>{length ? `${length} дней` : 'Текущий'}</strong><small>{length ? 'завершён' : `${metrics.cycleDay ?? '—'}-й день`}</small></span><ChevronRight /></button>;
+    })}</section>
   </div>;
 }
 
-function CycleLineChart({ compact = false }: { compact?: boolean }) {
-  return <svg className={`cycle-line-chart ${compact ? 'compact' : ''}`} viewBox="0 0 360 190" role="img" aria-label="Длина пяти последних циклов: 27, 29, 28, 31 и 28 дней. Четыре цикла находятся в обычном личном диапазоне 27–30 дней, один цикл выше диапазона">
+function CycleLineChart({ lengths, compact = false }: { lengths: number[]; compact?: boolean }) {
+  if (lengths.length < 2) return <div className="chart-empty"><ChartSpline /><strong>Нужно ещё два завершённых цикла</strong><small>После этого появится динамика длины.</small></div>;
+  const values = lengths.slice(-6);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(4, max - min);
+  const x = (index: number) => 40 + index * (260 / Math.max(1, values.length - 1));
+  const y = (value: number) => 150 - ((value - min) / spread) * 90;
+  const points = values.map((value, index) => `${x(index)},${y(value)}`).join(' ');
+  return <svg className={`cycle-line-chart ${compact ? 'compact' : ''}`} viewBox="0 0 360 190" role="img" aria-label={`Длина последних циклов: ${values.join(', ')} дней`}>
     <defs><linearGradient id="auraArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fba0e3" stopOpacity=".34"/><stop offset="1" stopColor="#fba0e3" stopOpacity="0"/></linearGradient></defs>
-    <rect x="32" y="80" width="300" height="76" rx="18" fill="#fde6f8" />
+    <rect x="32" y="58" width="300" height="100" rx="18" fill="#fde6f8" />
     {[45,85,125,165].map(y => <line key={y} x1="30" x2="335" y1={y} y2={y} stroke="#e4deea" strokeWidth="1" />)}
-    <path d="M40 145 L105 103 L170 125 L235 62 L300 124 L300 170 L40 170 Z" fill="url(#auraArea)" />
-    <polyline points="40,145 105,103 170,125 235,62 300,124" fill="none" stroke="#fba0e3" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-    {!compact && <g><rect x="188" y="10" width="94" height="22" rx="11" fill="#fff4dd"/><text x="235" y="24.5" textAnchor="middle" fill="#8c6635" fontSize="8" fontWeight="700">выше диапазона</text></g>}
-    {[['40','145','27'],['105','103','29'],['170','125','28'],['235','62','31'],['300','124','28']].map(([x,y,label], index) => <g key={x}><circle cx={x} cy={y} r={index === 3 ? '9' : '7'} fill="#fff" stroke={index === 3 ? '#c7843f' : '#fba0e3'} strokeWidth="4"/><text x={x} y={Number(y)-15} textAnchor="middle" fill={index === 3 ? '#8c6635' : '#3b2842'} fontSize="12" fontWeight="700">{label}</text><text x={x} y="186" textAnchor="middle" fill="#94899e" fontSize="10">{index + 1}</text></g>)}
+    <polyline points={points} fill="none" stroke="#fba0e3" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    {values.map((value, index) => <g key={`${value}-${index}`}><circle cx={x(index)} cy={y(value)} r="7" fill="#fff" stroke="#fba0e3" strokeWidth="4"/><text x={x(index)} y={y(value)-15} textAnchor="middle" fill="#3b2842" fontSize="12" fontWeight="700">{value}</text><text x={x(index)} y="186" textAnchor="middle" fill="#94899e" fontSize="10">{index + 1}</text></g>)}
   </svg>;
 }
 
-function WellbeingAnalytics({ mode, setMode }: { mode: WellbeingMode; setMode: (mode: WellbeingMode) => void }) {
+function WellbeingAnalytics({ data, mode, setMode }: { data: AuraState; mode: WellbeingMode; setMode: (mode: WellbeingMode) => void }) {
   return <div className="analytics-content">
     <div className="mode-tabs">{([['summary', 'Состояние', Smile], ['symptoms', 'Симптомы', Heart], ['sleep', 'Сон', Moon], ['habits', 'Привычки', CircleGauge]] as const).map(([id,label,Icon]) => <button key={id} className={mode === id ? 'active' : ''} onClick={() => setMode(id)}><Icon /><span>{label}</span></button>)}</div>
-    {mode === 'summary' && <WellbeingSummary />}
-    {mode === 'symptoms' && <SymptomsAnalytics />}
-    {mode === 'sleep' && <SleepAnalytics />}
-    {mode === 'habits' && <HabitsAnalytics />}
+    {mode === 'summary' && <WellbeingSummary data={data} />}
+    {mode === 'symptoms' && <SymptomsAnalytics data={data} />}
+    {mode === 'sleep' && <SleepAnalytics data={data} />}
+    {mode === 'habits' && <HabitsAnalytics data={data} />}
   </div>;
 }
 
-function WellbeingSummary() {
+function WellbeingSummary({ data }: { data: AuraState }) {
+  const recent = Object.entries(data.entries).sort(([left], [right]) => left.localeCompare(right)).slice(-30);
+  const ratings = recent.flatMap(([, day]) => day.rating ? [day.rating] : []);
+  const energy = recent.flatMap(([, day]) => day.energy ? [day.energy] : []);
+  const painDays = recent.filter(([, day]) => day.symptoms.some((symptom) => symptom.id === 'pain')).length;
+  const average = (values: number[]) => values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1).replace('.', ',') : '—';
+  const moods = new Map<string, number>();
+  recent.forEach(([, day]) => day.moods.forEach((mood) => moods.set(mood, (moods.get(mood) ?? 0) + 1)));
+  const frequentMoods = [...moods.entries()].sort((left, right) => right[1] - left[1]).slice(0, 4);
   return <>
-    <section className="aura-hero wellbeing-hero"><span className="glass-label"><Smile /> Последние 30 дней</span><h2>Самочувствие было устойчивым</h2><p>Средняя оценка 3,8 из 5 по 10 сохранённым дням.</p><div className="wellbeing-score"><strong>3,8</strong><span>из 5</span></div></section>
-    <div className="two-metrics"><article><small>Энергия</small><strong>3,6 <span>из 5</span></strong><p>9 записей</p></article><article><small>Дней с болью</small><strong>4</strong><p>из 10 отмеченных</p></article></div>
-    <section className="surface chart-card"><div className="section-heading"><div><span className="eyebrow">Динамика</span><h2>Оценка дня</h2></div><div className="mini-segment"><button className="active">30 дней</button><button>Цикл</button></div></div><MoodAreaChart /><p className="chart-caption">Показаны только дни, когда вы сохранили оценку.</p></section>
-    <section className="surface"><div className="section-heading"><div><span className="eyebrow">10 отметок</span><h2>Частые состояния</h2></div></div><div className="mood-composition"><span style={{ flex: 4 }} className="calm">Спокойствие · 4</span><span style={{ flex: 3 }} className="joy">Радость · 3</span><span style={{ flex: 2 }} className="tired">Усталость · 2</span><span style={{ flex: 1 }} className="anxious">Тревога · 1</span></div></section>
+    <section className="aura-hero wellbeing-hero"><span className="glass-label"><Smile /> Последние 30 записей</span><h2>{ratings.length ? 'Ваши оценки дня' : 'Пока нет оценки самочувствия'}</h2><p>{ratings.length ? `Средняя оценка ${average(ratings)} из 5 по ${ratings.length} сохранённым дням.` : 'Поставьте оценку дня — пустые даты не будут считаться плохим самочувствием.'}</p><div className="wellbeing-score"><strong>{average(ratings)}</strong><span>из 5</span></div></section>
+    <div className="two-metrics"><article><small>Энергия</small><strong>{average(energy)} <span>из 5</span></strong><p>{energy.length} записей</p></article><article><small>Дней с болью</small><strong>{painDays}</strong><p>из {recent.length} записанных дней</p></article></div>
+    <section className="surface chart-card"><div className="section-heading"><div><span className="eyebrow">Динамика</span><h2>Оценка дня</h2></div><span className="soft-status">{ratings.length} оценок</span></div><MoodAreaChart values={ratings} /><p className="chart-caption">Показаны только дни, когда вы сохранили оценку.</p></section>
+    <section className="surface"><div className="section-heading"><div><span className="eyebrow">{[...moods.values()].reduce((sum, count) => sum + count, 0)} отметок</span><h2>Частые состояния</h2></div></div>{frequentMoods.length ? <div className="mood-composition">{frequentMoods.map(([label, count], index) => <span key={label} style={{ flex: count }} className={['calm','joy','tired','anxious'][index]}>{label} · {count}</span>)}</div> : <div className="chart-empty"><Smile /><strong>Состояния ещё не отмечены</strong><small>Они появятся здесь после сохранения.</small></div>}</section>
   </>;
 }
 
-function MoodAreaChart() {
-  return <svg className="mood-chart" viewBox="0 0 360 170"><defs><linearGradient id="moodFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fba0e3" stopOpacity=".55"/><stop offset="1" stopColor="#fba0e3" stopOpacity="0"/></linearGradient></defs>{[35,75,115,155].map(y => <line key={y} x1="18" x2="342" y1={y} y2={y} stroke="#f1ddea"/>)}<path d="M20 125 C55 100 75 118 105 78 S160 103 195 67 S250 102 280 58 S320 76 340 50 L340 160 L20 160 Z" fill="url(#moodFill)"/><path d="M20 125 C55 100 75 118 105 78 S160 103 195 67 S250 102 280 58 S320 76 340 50" fill="none" stroke="#fba0e3" strokeWidth="4" strokeLinecap="round"/></svg>;
+function MoodAreaChart({ values }: { values: number[] }) {
+  if (values.length < 2) return <div className="chart-empty"><ChartSpline /><strong>Нужно минимум две оценки</strong><small>График появится без заполнения пропущенных дней.</small></div>;
+  const recent = values.slice(-12);
+  const points = recent.map((value, index) => `${20 + index * (320 / Math.max(1, recent.length - 1))},${150 - (value - 1) * 28}`).join(' ');
+  return <svg className="mood-chart" viewBox="0 0 360 170" role="img" aria-label={`Оценки дня: ${recent.join(', ')}`}>{[35,75,115,155].map(y => <line key={y} x1="18" x2="342" y1={y} y2={y} stroke="#f1ddea"/>)}<polyline points={points} fill="none" stroke="#fba0e3" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>{recent.map((value, index) => <circle key={index} cx={20 + index * (320 / Math.max(1, recent.length - 1))} cy={150 - (value - 1) * 28} r="5" fill="#fff" stroke="#fba0e3" strokeWidth="3"/>)}</svg>;
 }
 
-function SymptomsAnalytics() {
+function SymptomsAnalytics({ data }: { data: AuraState }) {
+  const evidence = deriveAttentionEvidence(data);
   return <>
     <section className="symptom-hero surface"><div className="section-heading"><div><span className="eyebrow">Чаще всего</span><h2>Боль внизу живота</h2></div><span className="soft-status coral">4 отметки</span></div><div className="severity-arc"><div className="arc-segments"><span className="arc-zero"/><span className="arc-one"/><span className="arc-two active"/><span className="arc-three"/></div><div className="arc-value"><strong>2</strong><span>из 3</span><small>средняя выраженность</small></div></div><div className="impact-row"><span><Timer /><strong>2 из 4</strong><small>мешала обычным делам</small></span><span><ListChecks /><strong>2 цикла</strong><small>повторялась</small></span></div></section>
     <section className="surface"><div className="section-heading"><div><span className="eyebrow">По дням цикла</span><h2>Когда отмечалась боль</h2></div><button className="info-button"><Info /></button></div><div className="cycle-heatmap"><div className="phase-labels"><span>Месячные</span><span>Первая половина</span><span>Вторая половина</span></div><div className="heat-days">{Array.from({ length: 31 }, (_, index) => <i key={index} className={[1,2,5,27].includes(index) ? `level-${index === 2 ? 3 : 2}` : ''} title={`${index + 1}-й день`} />)}</div><div className="heat-axis"><span>1</span><span>7</span><span>14</span><span>21</span><span>28</span></div></div><p className="chart-caption">Сопоставлено по 2 циклам. Это наблюдение, а не медицинский вывод.</p></section>
@@ -1274,16 +1355,21 @@ function SymptomsAnalytics() {
   </>;
 }
 
-function SleepAnalytics() {
+function SleepAnalytics({ data }: { data: AuraState }) {
+  const sleep = Object.entries(data.entries).sort(([left], [right]) => left.localeCompare(right)).flatMap(([date, day]) => day.sleepHours === undefined ? [] : [{ date, hours: day.sleepHours, quality: day.sleepQuality }]).slice(-12);
+  const averageSleep = sleep.length ? (sleep.reduce((sum, item) => sum + item.hours, 0) / sleep.length).toFixed(1).replace('.', ',') : '—';
+  const goodSleep = sleep.filter((item) => item.quality === 'Хорошее').length;
+  const minSleep = sleep.length ? Math.min(...sleep.map((item) => item.hours)).toFixed(1).replace('.', ',') : '—';
+  const maxSleep = sleep.length ? Math.max(...sleep.map((item) => item.hours)).toFixed(1).replace('.', ',') : '—';
   return <>
-    <section className="aura-hero sleep-hero"><span className="glass-label"><Moon /> 12 ночей</span><h2>В среднем 7,4 часа</h2><p>Качество сна отмечено как хорошее в 7 случаях.</p><div className="sleep-moon" /></section>
-    <div className="two-metrics"><article><small>Личный диапазон</small><strong>6,8–8,1 <span>ч</span></strong><p>по сохранённым ночам</p></article><article><small>Хорошее качество</small><strong>7</strong><p>из 12 ночей</p></article></div>
-    <section className="surface"><div className="section-heading"><div><span className="eyebrow">Последние 12 записей</span><h2>Длительность сна</h2></div></div><div className="sleep-bars">{[7.1,8,6.5,7.8,7.3,8.1,6.9,7.6,7.2,7.9,6.8,7.5].map((value,index) => <div key={index}><span style={{ height: `${value*12}px` }} className={value >= 7.5 ? 'good' : value < 7 ? 'low' : ''}><b>{value}</b></span><small>{index+1}</small></div>)}</div><div className="personal-band"><i /> Ваш недавний диапазон, не медицинская норма</div></section>
+    <section className="aura-hero sleep-hero"><span className="glass-label"><Moon /> {sleep.length} ночей</span><h2>{sleep.length ? `В среднем ${averageSleep} часа` : 'Сон ещё не отмечен'}</h2><p>{sleep.length ? `Хорошее качество отмечено в ${goodSleep} случаях.` : 'Добавьте длительность и ощущение после сна.'}</p><div className="sleep-moon" /></section>
+    <div className="two-metrics"><article><small>Недавний диапазон</small><strong>{minSleep}–{maxSleep} <span>ч</span></strong><p>по сохранённым ночам</p></article><article><small>Хорошее качество</small><strong>{goodSleep}</strong><p>из {sleep.length} ночей</p></article></div>
+    <section className="surface"><div className="section-heading"><div><span className="eyebrow">Последние {sleep.length} записей</span><h2>Длительность сна</h2></div></div>{sleep.length ? <div className="sleep-bars">{sleep.map((item,index) => <div key={item.date}><span style={{ height: `${item.hours*12}px` }}><b>{item.hours}</b></span><small>{index+1}</small></div>)}</div> : <div className="chart-empty"><Moon /><strong>График появится после первой отметки</strong><small>Пустые дни не считаются нулём.</small></div>}<div className="personal-band"><i /> Ваш недавний диапазон, не медицинская норма</div></section>
     <section className="observation-soft"><span><Sparkle /></span><div><small>Пока собираем пары данных</small><strong>Сон и самочувствие</strong><p>Добавьте ещё 2 оценки дня, чтобы сравнить их со сном без преждевременных выводов.</p></div></section>
   </>;
 }
 
-function HabitsAnalytics() {
+function HabitsAnalytics({ data }: { data: AuraState }) {
   const [habit, setHabit] = useState('water');
   const habitOptions: Array<{ id: string; label: string; icon: LucideIcon }> = [
     { id: 'water', label: 'Вода', icon: GlassWater },
@@ -1291,24 +1377,39 @@ function HabitsAnalytics() {
     { id: 'activity', label: 'Активность', icon: Activity },
     { id: 'body', label: 'Тело', icon: Thermometer },
   ];
+  const recent = Object.entries(data.entries).sort(([left], [right]) => left.localeCompare(right)).slice(-7);
+  const water = recent.map(([date, day]) => ({ date, value: day.water }));
+  const waterValues = water.flatMap((item) => item.value === undefined ? [] : [item.value]);
+  const averageWater = waterValues.length ? Math.round(waterValues.reduce((sum, value) => sum + value, 0) / waterValues.length) : null;
+  const latestWeight = Object.entries(data.entries).sort(([left], [right]) => right.localeCompare(left)).find(([, day]) => day.weight !== undefined);
+  const latestTemperature = Object.entries(data.entries).sort(([left], [right]) => right.localeCompare(left)).find(([, day]) => day.temperature !== undefined);
   return <>
     <div className="habit-switch">{habitOptions.map(({ id, label, icon: Icon }) => <button key={id} className={habit === id ? 'active' : ''} onClick={() => setHabit(id)}><Icon /><span>{label}</span></button>)}</div>
-    <section className="surface habit-main"><div className="section-heading"><div><span className="eyebrow">Вода · 7 дней</span><h2>В дни с отметками</h2></div><span className="soft-status sage">5 записей</span></div><div className="habit-value"><strong>1 560</strong><span>мл в среднем</span></div><div className="water-bars">{[1200,1800,0,1600,2100,1100,0].map((value,index) => <div key={index}><span className={value ? '' : 'missing'} style={{ height: value ? `${value/18}px` : '12px' }}><b>{value ? `${value/1000}` : '—'}</b></span><small>{['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index]}</small></div>)}</div><p className="chart-caption">Пустой день означает, что вода не отмечалась. Он не считается нулём.</p></section>
-    <section className="surface body-grid"><div className="section-heading"><h2>Измерения</h2><button className="mini-link">Добавить</button></div><div><MetricCard icon={Weight} tone="coral" label="Вес" value="58,4" note="кг · 12 июля"/><MetricCard icon={Thermometer} tone="violet" label="Температура" value="36,6°" note="14 июля"/></div></section>
+    <section className="surface habit-main"><div className="section-heading"><div><span className="eyebrow">Вода · последние записи</span><h2>В дни с отметками</h2></div><span className="soft-status sage">{waterValues.length} записей</span></div><div className="habit-value"><strong>{averageWater?.toLocaleString('ru-RU') ?? '—'}</strong><span>мл в среднем</span></div><div className="water-bars">{water.map(({date,value}) => <div key={date}><span className={value === undefined ? 'missing' : ''} style={{ height: value === undefined ? '12px' : `${Math.max(16,value/18)}px` }}><b>{value === undefined ? '—' : `${value/1000}`}</b></span><small>{ruWeekdays[localDate(date).getDay()]}</small></div>)}</div><p className="chart-caption">Пустой день означает, что вода не отмечалась. Он не считается нулём.</p></section>
+    <section className="surface body-grid"><div className="section-heading"><h2>Измерения</h2></div><div><MetricCard icon={Weight} tone="coral" label="Вес" value={latestWeight ? `${latestWeight[1].weight}` : '—'} note={latestWeight ? `кг · ${formatRuDate(latestWeight[0])}` : 'не отмечено'}/><MetricCard icon={Thermometer} tone="violet" label="Температура" value={latestTemperature ? `${latestTemperature[1].temperature}°` : '—'} note={latestTemperature ? formatRuDate(latestTemperature[0]) : 'не отмечено'}/></div></section>
   </>;
 }
 
-function HistoryAnalytics() {
+function HistoryAnalytics({ data }: { data: AuraState }) {
   const [filter, setFilter] = useState('Все');
+  const rows = Object.entries(data.entries).sort(([left], [right]) => right.localeCompare(left)).filter(([, day]) => {
+    if (filter === 'Все') return true;
+    if (filter === 'Цикл') return Boolean(day.period && day.period !== 'none');
+    if (filter === 'Симптомы') return day.symptoms.length > 0;
+    if (filter === 'Состояние') return Boolean(day.rating || day.moods.length);
+    return day.sleepHours !== undefined;
+  });
+  const latest = rows.slice(0, 12);
+  const currentMonth = localDate(AURA_TODAY);
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const activeDays = new Set(Object.keys(data.entries).filter((date) => date.slice(0, 7) === AURA_TODAY.slice(0, 7)).map((date) => Number(date.slice(8))));
+  const summary = (day: AuraDayEntry) => day.symptoms[0] ? `${day.symptoms[0].label} · ${day.symptoms[0].severity}/3` : day.rating ? `Оценка дня · ${day.rating}/5` : day.sleepHours !== undefined ? `Сон · ${day.sleepHours} ч` : day.period && day.period !== 'none' ? 'Месячные отмечены' : 'Сохранённая запись';
+  const detail = (day: AuraDayEntry) => day.water !== undefined ? `Вода · ${day.water.toLocaleString('ru-RU')} мл` : day.energy ? `Энергия · ${day.energy}/5` : day.moods[0] ?? 'Без дополнительной отметки';
   return <div className="history-view">
-    <section className="surface history-calendar"><div className="section-heading"><div><span className="eyebrow">Июль</span><h2>История записей</h2></div><span className="soft-status">8 дней</span></div><div className="history-dots">{Array.from({length:31},(_,index)=><i key={index} className={[1,4,6,9,10,12,13,17].includes(index)?`active tone-${index%4}`:''}><span>{index+1}</span></i>)}</div></section>
+    <section className="surface history-calendar"><div className="section-heading"><div><span className="eyebrow">{ruMonthTitles[currentMonth.getMonth()]}</span><h2>История записей</h2></div><span className="soft-status">{activeDays.size} дней</span></div><div className="history-dots">{Array.from({length:daysInMonth},(_,index)=><i key={index} className={activeDays.has(index + 1) ? `active tone-${index%4}` : ''}><span>{index+1}</span></i>)}</div></section>
     <div className="filter-chips">{['Все','Цикл','Симптомы','Состояние','Сон'].map(item=><button key={item} className={filter===item?'active':''} onClick={()=>setFilter(item)}>{item}</button>)}</div>
-    <div className="history-list">{[
-      ['14 июля','Сегодня','Боль внизу живота · 2/3','Сон · 7,5 ч','coral'],
-      ['13 июля','Вчера','Самочувствие · хорошо','Вода · 1 800 мл','violet'],
-      ['11 июля','3 дня назад','Усталость · 1/3','Энергия · 3 из 5','sage'],
-      ['9 июля','5 дней назад','Месячные · 5-й день','Боль · не отмечалась','rose'],
-    ].map(row=><button key={row[0]}><span className={`history-date ${row[4]}`}><strong>{row[0].split(' ')[0]}</strong><small>июл</small></span><span><small>{row[1]}</small><strong>{row[2]}</strong><p>{row[3]}</p></span><ChevronRight /></button>)}</div>
+    <div className="history-list">{latest.map(([date, day], index)=><button key={date}><span className={`history-date ${['coral','violet','sage','rose'][index%4]}`}><strong>{Number(date.slice(8))}</strong><small>{ruMonths[localDate(date).getMonth()].slice(0,3)}</small></span><span><small>{date === AURA_TODAY ? 'Сегодня' : formatRuDate(date)}</small><strong>{summary(day)}</strong><p>{detail(day)}</p></span><ChevronRight /></button>)}</div>
+    {!latest.length && <div className="chart-empty"><NotebookTabs /><strong>Таких записей пока нет</strong><small>Смените фильтр или добавьте отметку в дневнике.</small></div>}
   </div>;
 }
 
@@ -1448,8 +1549,8 @@ function PeriodStartSheet({ marked, onClose, onChooseDate, onConfirm, onRemove }
       <div className="attention-handle"/><button className="attention-close" onClick={onClose} aria-label="Закрыть"><X /></button>
       <span className={`period-start-icon ${marked ? 'marked' : ''}`}>{marked ? <Check /> : <Droplet />}</span>
       <span className="eyebrow">Первый день нового цикла</span><h2>{marked ? 'Начало уже отмечено' : 'Месячные начались сегодня?'}</h2>
-      <p>{marked ? '14 июля сохранено как первый день. Прогноз и день цикла считаются от этой даты.' : '14 июля станет первым днём нового цикла. Прогноз пересчитается по вашей истории.'}</p>
-      <div className="period-start-date"><CalendarRange /><span><small>Дата начала</small><strong>14 июля 2026</strong></span>{marked && <em><Check /> Отмечено</em>}</div>
+      <p>{marked ? `${formatRuDate(AURA_TODAY)} сохранено как первый день. Прогноз и день цикла считаются от этой даты.` : `${formatRuDate(AURA_TODAY)} станет первым днём нового цикла. Прогноз пересчитается по вашей истории.`}</p>
+      <div className="period-start-date"><CalendarRange /><span><small>Дата начала</small><strong>{formatRuDate(AURA_TODAY, true)}</strong></span>{marked && <em><Check /> Отмечено</em>}</div>
       {!marked ? <><button className="primary-button" onClick={onConfirm}><Droplet /> Да, отметить начало</button><button className="secondary-button" onClick={onChooseDate}><CalendarRange /> Выбрать другую дату</button></> : <><button className="secondary-button" onClick={onChooseDate}><CalendarRange /> Открыть календарь</button><button className="period-start-remove" onClick={onRemove}><Trash2 /> Удалить отметку о начале</button></>}
       <small className="period-start-hint">Интенсивность выделений можно отдельно указать в дневнике.</small>
     </section>
