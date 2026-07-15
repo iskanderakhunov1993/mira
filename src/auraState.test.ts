@@ -84,6 +84,17 @@ describe('Mira unified state', () => {
     expect(repaired.entries[AURA_TODAY].weight).toBe(20);
   });
 
+  it('preserves both yes and no intimacy answers as explicit private facts', () => {
+    const repaired = sanitizeAuraState({
+      entries: {
+        [AURA_TODAY]: { intimate: false },
+        [addDays(AURA_TODAY, -1)]: { intimate: true },
+      },
+    });
+    expect(repaired.entries[AURA_TODAY].intimate).toBe(false);
+    expect(repaired.entries[addDays(AURA_TODAY, -1)].intimate).toBe(true);
+  });
+
   it('creates a genuinely empty state after full deletion', () => {
     const empty = createEmptyAuraState();
     expect(empty.entries).toEqual({});

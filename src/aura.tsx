@@ -4,6 +4,7 @@ import {
   Activity,
   Annoyed,
   Bell,
+  Bug,
   BookOpenText,
   Bookmark,
   CalendarRange,
@@ -28,6 +29,7 @@ import {
   ListChecks,
   LockKeyhole,
   Laugh,
+  Lightbulb,
   Meh,
   Moon,
   MessageSquareText,
@@ -48,7 +50,6 @@ import {
   Utensils,
   Thermometer,
   Timer,
-  CircleUserRound,
   Weight,
   Trash2,
   X,
@@ -56,6 +57,8 @@ import {
 } from 'lucide-react';
 import './aura.css';
 import { StartupGate } from './StartupSplash';
+import { deliverFeedback, type FeedbackCategory, type FeedbackPayload } from './feedback';
+import { knowledgeArticles as medicalKnowledgeArticles, type KnowledgeArticle } from './knowledge';
 import {
   AURA_TODAY,
   addDays,
@@ -92,16 +95,6 @@ type PrototypeScenario = 'history' | 'first' | 'empty';
 type Overlay = 'attention' | 'daily-plan' | 'home-settings' | 'diary-settings' | 'data-controls' | 'delete-confirm' | 'feedback' | 'support' | 'period-start' | 'quick-symptoms' | null;
 type PersistStatus = 'saved' | 'saving' | 'error';
 
-const labScreens: Array<{ id: Screen; label: string; icon: LucideIcon }> = [
-  { id: 'today', label: 'Сегодня', icon: House },
-  { id: 'calendar', label: 'Календарь', icon: CalendarRange },
-  { id: 'diary', label: 'Дневник', icon: NotebookTabs },
-  { id: 'analytics', label: 'Аналитика', icon: ChartSpline },
-  { id: 'knowledge', label: 'Знания', icon: BookOpenText },
-  { id: 'report', label: 'Отчёт врачу', icon: FileDown },
-  { id: 'profile', label: 'Профиль', icon: CircleUserRound },
-];
-
 const navItems: Array<{ id: Screen; label: string; icon: LucideIcon }> = [
   { id: 'today', label: 'Сегодня', icon: House },
   { id: 'diary', label: 'Дневник', icon: NotebookTabs },
@@ -118,7 +111,7 @@ const knowledgeCategories: Array<{ id: KnowledgeCategory; label: string; icon: L
   { id: 'habits', label: 'Привычки', icon: Activity },
 ];
 
-const knowledgeArticles: Array<{
+type KnowledgeArticleCard = {
   id: string;
   categoryId: Exclude<KnowledgeCategory, 'all'>;
   category: string;
@@ -126,13 +119,22 @@ const knowledgeArticles: Array<{
   tone: string;
   time: string;
   title: string;
-}> = [
-  { id: 'cycle-length', categoryId: 'cycle', category: 'Цикл', icon: CalendarRange, tone: 'violet', time: '3 минуты', title: 'Почему длина цикла может меняться' },
-  { id: 'sleep-days', categoryId: 'sleep', category: 'Сон', icon: Moon, tone: 'indigo', time: '5 минут', title: 'Сон и самочувствие в разные дни' },
-  { id: 'pain-notes', categoryId: 'symptoms', category: 'Симптомы', icon: Heart, tone: 'coral', time: '4 минуты', title: 'Боль вне месячных: что записать' },
-  { id: 'mood-changes', categoryId: 'wellbeing', category: 'Самочувствие', icon: Smile, tone: 'rose', time: '4 минуты', title: 'Как замечать изменения настроения' },
-  { id: 'daily-rhythm', categoryId: 'habits', category: 'Привычки', icon: Activity, tone: 'sage', time: '3 минуты', title: 'Какие привычки полезно отмечать' },
-];
+};
+
+const knowledgeCategoryMeta: Record<KnowledgeArticle['category'], Pick<KnowledgeArticleCard, 'categoryId' | 'icon' | 'tone'>> = {
+  'Цикл': { categoryId: 'cycle', icon: CalendarRange, tone: 'violet' },
+  'Симптомы': { categoryId: 'symptoms', icon: Heart, tone: 'coral' },
+  'Самочувствие': { categoryId: 'wellbeing', icon: Smile, tone: 'rose' },
+  'Забота о себе': { categoryId: 'habits', icon: Activity, tone: 'sage' },
+};
+
+const knowledgeArticleCards: KnowledgeArticleCard[] = medicalKnowledgeArticles.map((article) => ({
+  id: article.id,
+  category: article.category,
+  time: `${article.readingMinutes} ${pluralRu(article.readingMinutes, 'минута', 'минуты', 'минут')}`,
+  title: article.title,
+  ...(article.id === 'sleep-wellbeing' ? { categoryId: 'sleep' as const, icon: Moon, tone: 'indigo' } : knowledgeCategoryMeta[article.category]),
+}));
 
 const dayRatings: Array<{ label: string; icon: LucideIcon }> = [
   { label: 'Очень тяжело', icon: Annoyed },
@@ -192,10 +194,12 @@ function periodDurations(data: AuraState) {
 function App() {
   const [data, setData] = useState<AuraState>(() => loadAuraState());
   const [screen, setScreen] = useState<Screen>(() => data.onboarding.completed ? 'today' : 'onboarding');
+  const [selectedArticleId, setSelectedArticleId] = useState('cramps-care');
   const [analyticsSection, setAnalyticsSection] = useState<AnalyticsSection>('overview');
   const [wellbeingMode, setWellbeingMode] = useState<WellbeingMode>('summary');
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('idea');
   const [persistStatus, setPersistStatus] = useState<PersistStatus>('saved');
   const [toast, setToast] = useState('');
   const attentionInitialized = useRef(false);
@@ -321,30 +325,26 @@ function App() {
     setToast('Локальные данные удалены');
   };
 
+  const openArticle = (articleId: string) => {
+    setSelectedArticleId(articleId);
+    open('article');
+  };
+
+  const submitFeedback = async (payload: FeedbackPayload) => {
+    const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+    try {
+      const delivery = await deliverFeedback(payload, { endpoint: viteEnv?.VITE_FEEDBACK_ENDPOINT });
+      setOverlay(null);
+      setToast(delivery === 'api' ? 'Сообщение отправлено команде Mira' : delivery === 'share' ? 'Сообщение передано в выбранное приложение' : 'Сообщение скопировано, отправьте его удобным способом');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      throw error;
+    }
+  };
+
   return (
     <div className="aura-lab">
-      <aside className="lab-rail">
-        <div className="lab-brand">
-          <MiraMark className="lab-mark" label="Mira" />
-          <div><strong>Mira</strong><small>Личный трекер</small></div>
-        </div>
-        <nav className="lab-menu" aria-label="Разделы Mira">
-          {labScreens.map(({ id, label, icon: Icon }) => (
-            <button key={id} className={screen === id ? 'active' : ''} onClick={() => open(id)}>
-              <Icon /> <span>{label}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
-
       <main className="lab-canvas">
-        <div className="canvas-heading">
-          <div><span>Mira</span><h1>{labScreens.find((item) => item.id === screen)?.label ?? (screen === 'onboarding' ? 'Настройка' : 'Статья')}</h1></div>
-          <div className="canvas-pills scenario-pills" aria-label="Сценарий данных">
-            <span>{scenario === 'history' ? `${cycleMetrics.completedCycles} завершённых цикла` : scenario === 'first' ? 'Первый цикл' : 'Нет данных'}</span>
-          </div>
-        </div>
-
         <div className="phone-shell">
           <div className="phone-status"><span>9:41</span><span className="phone-island" /><span>● ● ▰</span></div>
           <div className="aura-scroll">
@@ -360,8 +360,8 @@ function App() {
                     : current.periodStarts;
                   return {
                     ...current,
-                    onboarding: { ...onboarding, completed: true },
-                    notifications: onboarding.reminders,
+                    onboarding: { ...onboarding, completed: true, reminders: false },
+                    notifications: false,
                     periodStarts,
                     modules: {
                       ...current.modules,
@@ -383,10 +383,10 @@ function App() {
             {screen === 'calendar' && <Calendar data={data} scenario={scenario} onSelectDate={(date) => changeData((current) => ({ ...current, selectedDate: date }))} onBack={() => open('today')} onOpenDiary={() => open('diary')} />}
             {screen === 'diary' && <Diary data={data} persistStatus={persistStatus} onPatchEntry={patchEntry} onSetPeriodStart={(date, marked) => changeData((current) => setAuraPeriodStart(current, date, marked))} onOpenCalendar={() => open('calendar')} onOpenSettings={() => setOverlay('diary-settings')} onNotify={setToast} />}
             {screen === 'analytics' && <Analytics data={data} scenario={scenario} section={analyticsSection} setSection={setAnalyticsSection} mode={wellbeingMode} setMode={setWellbeingMode} onOpenDiary={() => open('diary')} onOpenReport={() => open('report')} />}
-            {screen === 'knowledge' && <Knowledge data={data} onChangeData={changeData} onOpenArticle={() => open('article')} />}
-            {screen === 'article' && <Article saved={data.savedArticles.includes('pain-notes')} onToggleSaved={() => changeData((current) => ({ ...current, savedArticles: current.savedArticles.includes('pain-notes') ? current.savedArticles.filter((id) => id !== 'pain-notes') : [...current.savedArticles, 'pain-notes'] }))} onBack={() => open('knowledge')} onOpenDiary={() => open('diary')} />}
+            {screen === 'knowledge' && <Knowledge data={data} onChangeData={changeData} onOpenArticle={openArticle} />}
+            {screen === 'article' && <Article article={medicalKnowledgeArticles.find((article) => article.id === selectedArticleId) ?? medicalKnowledgeArticles[0]} saved={data.savedArticles.includes(selectedArticleId)} onToggleSaved={() => changeData((current) => ({ ...current, savedArticles: current.savedArticles.includes(selectedArticleId) ? current.savedArticles.filter((id) => id !== selectedArticleId) : [...current.savedArticles, selectedArticleId] }))} onBack={() => open('knowledge')} onOpenDiary={() => open('diary')} />}
             {screen === 'report' && <Report data={data} onBack={() => open('analytics')} onNotify={setToast} />}
-            {screen === 'profile' && <Profile data={data} onChangeData={changeData} onBack={() => open('today')} onOpenHomeSettings={() => setOverlay('home-settings')} onOpenDiarySettings={() => setOverlay('diary-settings')} onOpenData={() => setOverlay('data-controls')} onOpenSaved={() => open('knowledge')} onOpenFeedback={() => setOverlay('feedback')} onOpenSupport={() => setOverlay('support')} />}
+            {screen === 'profile' && <Profile data={data} onBack={() => open('today')} onOpenHomeSettings={() => setOverlay('home-settings')} onOpenDiarySettings={() => setOverlay('diary-settings')} onOpenData={() => setOverlay('data-controls')} onOpenSaved={() => open('knowledge')} onOpenFeedback={(category) => { setFeedbackCategory(category); setOverlay('feedback'); }} onOpenSupport={() => setOverlay('support')} />}
           </div>
           {overlay === 'attention' && <AttentionModal
             evidence={deriveAttentionEvidence(data)}
@@ -407,7 +407,7 @@ function App() {
           {overlay === 'diary-settings' && <SettingsSheet title="Разделы дневника" description="Показывайте только то, что действительно отмечаете." onClose={() => setOverlay(null)}>{(Object.entries(data.modules) as Array<[AuraModuleId, boolean]>).map(([id, checked]) => <ToggleRow key={id} title={{cycle:'Цикл и симптомы',mood:'Настроение и энергия',sleep:'Сон',daily:'Вода и шаги',activity:'Активность',intimate:'Интимная жизнь',nutrition:'Питание',body:'Показатели тела',note:'Заметка и контекст'}[id]} note={id === 'intimate' ? 'Чувствительный раздел · выключен по умолчанию' : 'Можно изменить в любой момент'} checked={checked} sensitive={id === 'intimate'} onClick={() => changeData((current) => ({ ...current, modules: { ...current.modules, [id]: !checked } }))} />)}</SettingsSheet>}
           {overlay === 'data-controls' && <DataControlsSheet data={data} onChangeData={changeData} onExport={exportData} onImport={importData} onDelete={() => setOverlay('delete-confirm')} onClose={() => setOverlay(null)} />}
           {overlay === 'delete-confirm' && <ConfirmDelete onCancel={() => setOverlay('data-controls')} onConfirm={deleteAllData} />}
-          {overlay === 'feedback' && <FeedbackSheet onClose={() => setOverlay(null)} onSubmit={() => { setOverlay(null); setToast('Спасибо! Форма обратной связи готова к отправке'); }} />}
+          {overlay === 'feedback' && <FeedbackSheet initialCategory={feedbackCategory} onClose={() => setOverlay(null)} onSubmit={submitFeedback} />}
           {overlay === 'support' && <SupportSheet onClose={() => setOverlay(null)} onNotify={setToast} />}
           {overlay === 'period-start' && <PeriodStartSheet marked={data.periodStarts.includes(AURA_TODAY)} onClose={() => setOverlay(null)} onChooseDate={() => { setOverlay(null); open('calendar'); }} onConfirm={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, true)); setOverlay(null); setToast(`${formatRuDate(AURA_TODAY)} отмечено как начало нового цикла`); }} onRemove={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, false)); setOverlay(null); setToast('Отметка о начале цикла удалена'); }} />}
           {overlay === 'quick-symptoms' && <QuickSymptomsSheet day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onSave={(patch) => { patchEntry(AURA_TODAY, patch); setOverlay(null); setToast('Самочувствие на сегодня сохранено'); }} />}
@@ -546,9 +546,9 @@ function Onboarding({ step, setStep, initial, onFinish }: { step: number; setSte
           <span><CircleGauge /><small>Цикл</small><strong>{selectedPattern ?? 'Без предположений'}</strong></span>
           <span><ListChecks /><small>Дневник</small><strong>{draft.focus.length} {draft.focus.length === 1 ? 'раздел' : 'раздела'}</strong></span>
         </div>
-        <button className={`onboarding-reminder ${draft.reminders ? 'selected' : ''}`} onClick={() => setDraft((current) => ({ ...current, reminders: !current.reminders }))}>
-          <span className="choice-icon"><Bell /></span><span><strong>Мягкое напоминание вечером</strong><small>«Пора сделать короткую отметку»</small></span><span className={`toggle ${draft.reminders ? 'on' : ''}`}><b /></span>
-        </button>
+        <div className="onboarding-reminder is-unavailable">
+          <span className="choice-icon"><Bell /></span><span><strong>Напоминания появятся позже</strong><small>В веб-версии они пока недоступны, поэтому Mira не будет обещать уведомление.</small></span>
+        </div>
         <div className="onboarding-privacy-row"><LockKeyhole />Записи хранятся локально · их можно экспортировать или удалить</div>
         <p className="onboarding-disclaimer">Mira помогает наблюдать за самочувствием, но не ставит диагноз и не заменяет врача.</p>
       </>}
@@ -692,8 +692,8 @@ function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDa
       </div>
     </section>}
     {(data.homeCards.hormonoscope || data.homeCards.cycloscope) && <section className="scope-grid">
-      {data.homeCards.hormonoscope && <article className="scope-card hormone"><span className="scope-icon"><Sparkle /></span><small>Hormonoscope · календарный ориентир</small><h2>{scenario === 'empty' ? 'Нужна дата цикла' : `${metrics.cycleDay}-й день цикла`}</h2><p>{scenario === 'empty' ? 'Добавьте начало месячных, чтобы получить контекст.' : 'Это календарный контекст, а не измерение уровня гормонов.'}</p><button>Почему так <ChevronRight /></button></article>}
-      {data.homeCards.cycloscope && <article className="scope-card cyclo"><span className="scope-icon"><InfinityIcon /></span><small>Cycloscope</small><h2>День для мягкого фокуса</h2><p>Короткий ориентир для настроения, не медицинский прогноз.</p><button>На сегодня <ChevronRight /></button></article>}
+      {data.homeCards.hormonoscope && <article className="scope-card hormone"><span className="scope-icon"><Sparkle /></span><small>Hormonoscope · календарный ориентир</small><h2>{scenario === 'empty' ? 'Нужна дата цикла' : `${metrics.cycleDay}-й день цикла`}</h2><p>{scenario === 'empty' ? 'Добавьте начало месячных, чтобы получить контекст.' : 'Это календарный контекст, а не измерение уровня гормонов.'}</p><button onClick={() => onOpen('knowledge')}>Открыть материалы <ChevronRight /></button></article>}
+      {data.homeCards.cycloscope && <article className="scope-card cyclo"><span className="scope-icon"><InfinityIcon /></span><small>Cycloscope</small><h2>День для мягкого фокуса</h2><p>Короткий ориентир для настроения, не медицинский прогноз.</p><button onClick={onOpenDailyPlan}>Открыть план <ChevronRight /></button></article>}
     </section>}
     {data.homeCards.rhythm && <section className="surface">
       <div className="section-heading"><div><span className="eyebrow">Сегодня</span><h2>Ваш ритм</h2></div><button className="mini-link" onClick={onOpenHomeSettings}>Настроить</button></div>
@@ -1255,16 +1255,17 @@ function IntimacyEditor({ day, onChange }: { day: AuraDayEntry; onChange: (patch
 function Analytics({ data, scenario, section, setSection, mode, setMode, onOpenDiary, onOpenReport }: { data: AuraState; scenario: PrototypeScenario; section: AnalyticsSection; setSection: (section: AnalyticsSection) => void; mode: WellbeingMode; setMode: (mode: WellbeingMode) => void; onOpenDiary: () => void; onOpenReport: () => void }) {
   const entryCount = Object.keys(data.entries).length;
   const metrics = getAuraCycleMetrics(data);
+  const showOverviewGate = section === 'overview' && scenario !== 'history';
   return <div className="screen analytics-screen">
-    <header className="analytics-header"><div><span className="eyebrow">Личная картина</span><h1>Аналитика</h1></div><button className="period-select">{metrics.completedCycles ? `${metrics.completedCycles} цикла` : 'С начала'} <ChevronDown /></button></header>
+    <header className="analytics-header"><div><span className="eyebrow">Личная картина</span><h1>Аналитика</h1></div><span className="period-select">{metrics.completedCycles ? `${metrics.completedCycles} ${pluralRu(metrics.completedCycles, 'цикл', 'цикла', 'циклов')}` : 'С начала'}</span></header>
     <div className="analytics-tabs">{([['overview', 'Главное'], ['cycle', 'Цикл'], ['wellbeing', 'Самочувствие'], ['history', 'Записи']] as const).map(([id, label]) => <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}>{label}</button>)}</div>
-    {scenario !== 'history' ? <AnalyticsDataState data={data} scenario={scenario} entryCount={entryCount} onOpenDiary={onOpenDiary} /> : <>
+    {showOverviewGate ? <AnalyticsDataState data={data} scenario={scenario} entryCount={entryCount} onOpenDiary={onOpenDiary} /> : <>
       {section === 'overview' && <AnalyticsOverview data={data} setSection={setSection} />}
       {section === 'cycle' && <CycleAnalytics data={data} />}
       {section === 'wellbeing' && <WellbeingAnalytics data={data} mode={mode} setMode={setMode} />}
       {section === 'history' && <HistoryAnalytics data={data} />}
-      <section className="report-cta"><span><FileHeart /></span><div><small>Для консультации</small><strong>Отчёт из ваших отметок</strong><p>Только сохранённые факты — без диагнозов.</p></div><button onClick={onOpenReport}><ChevronRight /></button></section>
     </>}
+    {(entryCount > 0 || metrics.starts.length > 0) && <section className="report-cta"><span><FileHeart /></span><div><small>Для консультации</small><strong>Отчёт из ваших отметок</strong><p>Только сохранённые факты, без диагнозов.</p></div><button onClick={onOpenReport} aria-label="Открыть отчёт для врача"><ChevronRight /></button></section>}
   </div>;
 }
 
@@ -1373,16 +1374,17 @@ function WellbeingSummary({ data }: { data: AuraState }) {
   const moods = new Map<string, number>();
   recent.forEach(([, day]) => day.moods.forEach((mood) => moods.set(mood, (moods.get(mood) ?? 0) + 1)));
   const frequentMoods = [...moods.entries()].sort((left, right) => right[1] - left[1]).slice(0, 4);
+  const moodMarkCount = [...moods.values()].reduce((sum, count) => sum + count, 0);
   return <>
     <section className="aura-hero wellbeing-hero"><span className="glass-label"><Smile /> Последние 30 записей</span><h2>{ratings.length ? 'Ваши оценки дня' : 'Пока нет оценки самочувствия'}</h2><p>{ratings.length ? `Средняя оценка ${average(ratings)} из 5 по ${ratings.length} сохранённым дням.` : 'Поставьте оценку дня — пустые даты не будут считаться плохим самочувствием.'}</p><div className="wellbeing-score"><strong>{average(ratings)}</strong><span>из 5</span></div></section>
     <div className="two-metrics"><article><small>Энергия</small><strong>{average(energy)} <span>из 5</span></strong><p>{energy.length} записей</p></article><article><small>Дней с болью</small><strong>{painDays}</strong><p>из {recent.length} записанных дней</p></article></div>
     <section className="surface chart-card"><div className="section-heading"><div><span className="eyebrow">Динамика</span><h2>Оценка дня</h2></div><span className="soft-status">{ratings.length} оценок</span></div><MoodAreaChart values={ratings} /><p className="chart-caption">Показаны только дни, когда вы сохранили оценку.</p></section>
-    <section className="surface"><div className="section-heading"><div><span className="eyebrow">{[...moods.values()].reduce((sum, count) => sum + count, 0)} отметок</span><h2>Частые состояния</h2></div></div>{frequentMoods.length ? <div className="mood-composition">{frequentMoods.map(([label, count], index) => <span key={label} style={{ flex: count }} className={['calm','joy','tired','anxious'][index]}>{label} · {count}</span>)}</div> : <div className="chart-empty"><Smile /><strong>Состояния ещё не отмечены</strong><small>Они появятся здесь после сохранения.</small></div>}</section>
+    <section className="surface"><div className="section-heading"><div><span className="eyebrow">{moodMarkCount} отметок</span><h2>Частые состояния</h2></div></div>{moodMarkCount >= 10 ? <div className="mood-composition">{frequentMoods.map(([label, count], index) => <span key={label} style={{ flex: count }} className={['calm','joy','tired','anxious'][index]}>{label} · {count}</span>)}</div> : <div className="chart-empty"><Smile /><strong>Нужно ещё {10 - moodMarkCount} {pluralRu(10 - moodMarkCount, 'отметка', 'отметки', 'отметок')}</strong><small>Состав состояний покажем после 10 отметок.</small></div>}</section>
   </>;
 }
 
 function MoodAreaChart({ values }: { values: number[] }) {
-  if (values.length < 2) return <div className="chart-empty"><ChartSpline /><strong>Нужно минимум две оценки</strong><small>График появится без заполнения пропущенных дней.</small></div>;
+  if (values.length < 10) return <div className="chart-empty"><ChartSpline /><strong>Нужно ещё {10 - values.length} {pluralRu(10 - values.length, 'оценка', 'оценки', 'оценок')}</strong><small>Динамика появится после 10 сохранённых оценок, без заполнения пропущенных дней.</small></div>;
   const recent = values.slice(-12);
   const points = recent.map((value, index) => `${20 + index * (320 / Math.max(1, recent.length - 1))},${150 - (value - 1) * 28}`).join(' ');
   return <svg className="mood-chart" viewBox="0 0 360 170" role="img" aria-label={`Оценки дня: ${recent.join(', ')}`}>{[35,75,115,155].map(y => <line key={y} x1="18" x2="342" y1={y} y2={y} stroke="#f1ddea"/>)}<polyline points={points} fill="none" stroke="#fba0e3" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>{recent.map((value, index) => <circle key={index} cx={20 + index * (320 / Math.max(1, recent.length - 1))} cy={150 - (value - 1) * 28} r="5" fill="#fff" stroke="#fba0e3" strokeWidth="3"/>)}</svg>;
@@ -1477,15 +1479,17 @@ function HistoryAnalytics({ data }: { data: AuraState }) {
   </div>;
 }
 
-function Knowledge({ data, onChangeData, onOpenArticle }: { data: AuraState; onChangeData: (updater: (current: AuraState) => AuraState) => void; onOpenArticle: () => void }) {
+function Knowledge({ data, onChangeData, onOpenArticle }: { data: AuraState; onChangeData: (updater: (current: AuraState) => AuraState) => void; onOpenArticle: (articleId: string) => void }) {
   const [category, setCategory] = useState<KnowledgeCategory>('all');
   const [tab, setTab] = useState<KnowledgeTab>('for-you');
   const [query, setQuery] = useState('');
-  const visibleArticles = knowledgeArticles.filter((article) => {
+  const hasPain = Object.values(data.entries).some((day) => day.symptoms.some((symptom) => symptom.id === 'pain'));
+  const recommendedIds = new Set([hasPain ? 'cramps-care' : 'cycle-basics', 'cycle-length', 'sleep-wellbeing', 'pms-basics', 'doctor-report']);
+  const visibleArticles = knowledgeArticleCards.filter((article) => {
     const categoryMatch = category === 'all' || article.categoryId === category;
     const searchMatch = article.title.toLowerCase().includes(query.trim().toLowerCase()) || article.category.toLowerCase().includes(query.trim().toLowerCase());
-    const savedMatch = tab !== 'saved' || data.savedArticles.includes(article.id);
-    return categoryMatch && searchMatch && savedMatch;
+    const tabMatch = query.trim() || tab === 'all' || (tab === 'saved' ? data.savedArticles.includes(article.id) : recommendedIds.has(article.id));
+    return categoryMatch && searchMatch && Boolean(tabMatch);
   });
   const toggleSaved = (id: string) => onChangeData((current) => ({ ...current, savedArticles: current.savedArticles.includes(id) ? current.savedArticles.filter((item) => item !== id) : [...current.savedArticles, id] }));
 
@@ -1493,7 +1497,7 @@ function Knowledge({ data, onChangeData, onOpenArticle }: { data: AuraState; onC
     <header className="knowledge-header"><div><span className="eyebrow">Спокойно и по делу</span><h1>Знания</h1></div><button className="round-button" onClick={() => setTab('saved')} aria-label="Сохранённые статьи"><Bookmark /></button></header>
     <label className="search-field"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Например: боль или сон"/>{query && <button onClick={() => setQuery('')} aria-label="Очистить поиск"><X /></button>}</label>
     <div className="knowledge-tabs">{([['for-you','Для вас'],['all','Все материалы'],['saved',`Сохранённые · ${data.savedArticles.length}`]] as const).map(([id,label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
-    {tab === 'for-you' && !query && <section className="featured-article" onClick={onOpenArticle}>
+    {tab === 'for-you' && !query && <section className="featured-article" onClick={() => onOpenArticle('cramps-care')}>
       <div className="featured-art clear-article-cover" aria-label="Тема статьи: боль во время месячных">
         <div className="cover-topic"><span><Droplet /></span><div><small>Тема материала</small><strong>Боль во время месячных</strong></div></div>
         <div className="cover-checks"><span><CircleGauge /> Сила</span><span><Timer /> Длительность</span><span><Activity /> Влияние на день</span></div>
@@ -1504,7 +1508,7 @@ function Knowledge({ data, onChangeData, onOpenArticle }: { data: AuraState; onC
     <div className="category-filter" aria-label="Категории статей">
       {knowledgeCategories.map(({ id, label, icon: Icon }) => <button key={id} className={category === id ? 'active' : ''} onClick={() => setCategory(id)}><Icon /><span>{label}</span></button>)}
     </div>
-    <div className="article-list">{visibleArticles.map(article => <ArticleCard key={article.id} {...article} saved={data.savedArticles.includes(article.id)} onToggleSaved={() => toggleSaved(article.id)} onOpen={article.categoryId === 'symptoms' ? onOpenArticle : undefined}/>)}</div>
+    <div className="article-list">{visibleArticles.map(article => <ArticleCard key={article.id} {...article} saved={data.savedArticles.includes(article.id)} onToggleSaved={() => toggleSaved(article.id)} onOpen={() => onOpenArticle(article.id)}/>)}</div>
     {!visibleArticles.length && <section className="empty-search"><Search /><h2>{tab === 'saved' ? 'Здесь будут сохранённые статьи' : 'Ничего не найдено'}</h2><p>{tab === 'saved' ? 'Нажмите на закладку у материала, чтобы вернуться к нему позже.' : 'Попробуйте другое слово или выберите категорию «Все».'}</p>{query && <button className="secondary-button" onClick={() => { setQuery(''); setCategory('all'); }}>Сбросить поиск</button>}</section>}
     <p className="knowledge-disclaimer"><ShieldCheck /> Материалы помогают наблюдать за самочувствием, но не заменяют консультацию специалиста.</p>
   </div>;
@@ -1514,57 +1518,45 @@ function ArticleCard({ tone, category, time, title, icon: Icon, saved, onToggleS
   return <article className="article-card"><button className={`bookmark-card ${saved ? 'saved' : ''}`} aria-label={saved ? `Убрать «${title}» из сохранённых` : `Сохранить «${title}»`} onClick={onToggleSaved}><Bookmark /></button><span className={`article-thumb ${tone}`}><i/><Icon /></span><div onClick={onOpen}><small>{category} · {time}</small><strong>{title}</strong><p>Простой разбор с примерами и источниками.</p></div><button aria-label={`Открыть статью «${title}»`} onClick={onOpen}><ChevronRight /></button></article>;
 }
 
-function Article({ saved, onToggleSaved, onBack, onOpenDiary }: { saved: boolean; onToggleSaved: () => void; onBack: () => void; onOpenDiary: () => void }) {
+function Article({ article, saved, onToggleSaved, onBack, onOpenDiary }: { article: KnowledgeArticle; saved: boolean; onToggleSaved: () => void; onBack: () => void; onOpenDiary: () => void }) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
   return <div className="screen article-screen">
     <TopBack title="Статья" onBack={onBack} action={<button className={`round-button ${saved ? 'is-saved' : ''}`} onClick={onToggleSaved} aria-label={saved ? 'Убрать из сохранённых' : 'Сохранить статью'}><Bookmark /></button>} />
     <article className="reading-article">
       <header className="reading-header">
-        <span className="reading-badge"><Heart /> Симптомы</span>
-        <h1>Спазмы в первые дни месячных</h1>
-        <p>Почему возникает боль, что полезно записать и когда стоит обратиться за помощью.</p>
-        <div className="reading-meta"><span>4 минуты чтения</span><i/><span>Обновлено 13 июля 2026</span></div>
-        <div className="reading-review"><ShieldCheck /><span><strong>Проверено по медицинским материалам</strong><small>Источники доступны в конце статьи</small></span></div>
+        <span className="reading-badge"><Heart /> {article.category}</span>
+        <h1>{article.title}</h1>
+        <p>{article.summary}</p>
+        <div className="reading-meta"><span>{article.readingMinutes} {pluralRu(article.readingMinutes, 'минута', 'минуты', 'минут')} чтения</span><i/><span>Обновлено {formatRuDate(article.updatedAt, true)}</span></div>
+        <div className="reading-review"><ShieldCheck /><span><strong>Основано на открытых медицинских источниках</strong><small>Материал ещё не проходил редактуру врачом</small></span></div>
       </header>
 
-      <section className="reading-section">
-        <h2>Что важно знать</h2>
-        <p>Спазмы во время месячных могут ощущаться как тянущая или схваткообразная боль внизу живота. У некоторых людей они также сопровождаются дискомфортом в спине, усталостью или тошнотой.</p>
-        <p>Важно не сравнивать себя с универсальной «нормой», а замечать изменения относительно своего обычного состояния. Сильную, новую или усиливающуюся боль не нужно терпеть.</p>
-      </section>
-
-      <section className="reading-section">
-        <h2>Что записать в дневник</h2>
-        <ul className="reading-checklist">
-          <li><Check /><span><strong>Силу боли</strong><small>Например, 2 из 3</small></span></li>
-          <li><Check /><span><strong>Сколько она длилась</strong><small>Несколько минут или часов</small></span></li>
-          <li><Check /><span><strong>Как повлияла на день</strong><small>Мешала ли работать, спать или двигаться</small></span></li>
-        </ul>
-      </section>
+      {article.sections.map((section) => <section className="reading-section" key={section.title}>
+        <h2>{section.title}</h2>
+        {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+      </section>)}
 
       <section className="reading-section">
         <h2>Пример понятной записи</h2>
-        <blockquote className="reading-example">«Боль 2 из 3, длилась четыре часа. Пришлось отменить тренировку».</blockquote>
-        <p>Такая запись полезнее короткого «болел живот»: в ней есть сила, длительность и влияние на обычный день.</p>
+        <blockquote className="reading-example">{article.example}</blockquote>
       </section>
 
       <aside className="reading-callout">
         <CircleAlert />
-        <div><strong>Когда обратиться за помощью</strong><p>Если боль сильная, новая, усиливается, возникает вне месячных или мешает обычной жизни.</p></div>
+        <div><strong>Когда обратиться за помощью</strong><p>{article.whenToSeekCare}</p></div>
       </aside>
 
-      <button className="primary-button reading-action" onClick={onOpenDiary}><Plus /> Отметить боль в дневнике</button>
+      {article.actionLabel && <button className="primary-button reading-action" onClick={onOpenDiary}><Plus /> {article.actionLabel}</button>}
 
       <footer className="reading-sources">
         <button className="sources-toggle" type="button" aria-expanded={sourcesOpen} onClick={() => setSourcesOpen((open) => !open)}>
           <span className="sources-toggle-icon"><BookOpenText /></span>
-          <span><strong>Источники статьи</strong><small>2 медицинских материала · откроются отдельно</small></span>
+          <span><strong>Источники статьи</strong><small>{article.sources.length} {pluralRu(article.sources.length, 'материал', 'материала', 'материалов')} · откроются отдельно</small></span>
           <ChevronDown />
         </button>
         {sourcesOpen && <div className="sources-panel">
           <p>Материалы для дополнительного чтения. Статья носит информационный характер и не заменяет консультацию врача.</p>
-          <a href="https://www.acog.org/womens-health/faqs/dysmenorrhea-painful-periods" target="_blank" rel="noreferrer"><span><strong>ACOG</strong><small>Dysmenorrhea: Painful Periods</small></span><ChevronRight /></a>
-          <a href="https://www.nhs.uk/conditions/period-pain/" target="_blank" rel="noreferrer"><span><strong>NHS</strong><small>Period pain</small></span><ChevronRight /></a>
+          {article.sources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer"><span><strong>{source.publisher}</strong><small>{source.title}</small></span><ChevronRight /></a>)}
         </div>}
       </footer>
     </article>
@@ -1575,7 +1567,6 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
   const [notes, setNotes] = useState(false);
   const [intimate, setIntimate] = useState(false);
   const [sections, setSections] = useState<Record<string, boolean>>({ cycle: true, symptoms: true, wellbeing: true, sleep: true });
-  const evidence = deriveAttentionEvidence(data);
   const metrics = getAuraCycleMetrics(data);
   const entryCount = Object.keys(data.entries).length;
   const reportStarts = metrics.starts.slice(-4);
@@ -1589,12 +1580,38 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
   const includedSections = Object.values(sections).filter(Boolean).length + Number(notes) + Number(intimate);
   const noteCount = Object.values(data.entries).filter((day) => day.note).length;
   const intimateCount = Object.values(data.entries).filter((day) => day.intimate !== undefined).length;
+  const reportEntries = Object.entries(data.entries).sort(([left], [right]) => left.localeCompare(right));
+  const ratings = reportEntries.flatMap(([, day]) => day.rating ? [day.rating] : []);
+  const energyValues = reportEntries.flatMap(([, day]) => day.energy ? [day.energy] : []);
+  const sleepValues = reportEntries.flatMap(([, day]) => day.sleepHours === undefined ? [] : [day.sleepHours]);
+  const average = (values: number[]) => values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1).replace('.', ',') : '—';
+  const symptomStats = new Map<string, { label: string; count: number; severe: number; impact: number }>();
+  reportEntries.forEach(([, day]) => day.symptoms.forEach((symptom) => {
+    const current = symptomStats.get(symptom.id) ?? { label: symptom.label, count: 0, severe: 0, impact: 0 };
+    current.count += 1;
+    current.severe += Number(symptom.severity === 3);
+    current.impact += Number(symptom.affectsLife);
+    symptomStats.set(symptom.id, current);
+  }));
+  const topSymptoms = [...symptomStats.values()].sort((left, right) => right.count - left.count).slice(0, 5);
+  const reportNotes = reportEntries.flatMap(([date, day]) => day.note?.trim() ? [{ date, note: day.note.trim() }] : []);
+  const intimacyYes = reportEntries.filter(([, day]) => day.intimate === true).length;
+  const intimacyConcern = reportEntries.filter(([, day]) => day.intimacyComfort === 'pain' || day.intimacyAfter?.some((item) => item !== 'none')).length;
   return <div className="screen report-screen">
     <TopBack title="Отчёт для врача" onBack={onBack} action={<span className="secure-badge"><ShieldCheck /> Локально</span>} />
     <section className="aura-hero report-hero"><span className="glass-label"><FileHeart /> Факты для консультации</span><h2>Подготовьте понятную историю</h2><p>Выберите только те данные, которыми готовы поделиться.</p></section>
     <section className="surface"><div className="section-heading"><div><span className="eyebrow">Период</span><h2>{metrics.completedCycles ? `Последние ${Math.min(3, metrics.completedCycles)} цикла` : 'С начала наблюдений'}</h2></div></div><div className="report-summary"><span><strong>{reportDays}</strong><small>дней</small></span><span><strong>{metrics.completedCycles}</strong><small>завершено</small></span><span><strong>{entryCount}</strong><small>записей</small></span></div></section>
     <section className="surface report-options"><div className="section-heading"><div><span className="eyebrow">Состав отчёта</span><h2>Что включить</h2></div><span className="soft-status">{includedSections} {pluralRu(includedSections, 'раздел', 'раздела', 'разделов')}</span></div>{([['cycle','Циклы и месячные','Даты, длительность и диапазон'],['symptoms','Боль и симптомы','Частота, выраженность и влияние'],['wellbeing','Состояние и энергия','Средние оценки по записям'],['sleep','Сон','Длительность и качество']] as const).map(([id,title,note])=><ToggleRow key={id} title={title} note={note} checked={sections[id]} onClick={() => setSections((current) => ({ ...current, [id]: !current[id] }))}/>)}<div className="sensitive-label"><LockKeyhole /> Чувствительные данные выключены</div><ToggleRow title="Личные заметки" note={`${noteCount} ${pluralRu(noteCount, 'заметка', 'заметки', 'заметок')}`} checked={notes} onClick={()=>setNotes(!notes)} sensitive/><ToggleRow title="Интимная жизнь" note={`${intimateCount} ${pluralRu(intimateCount, 'отметка', 'отметки', 'отметок')}`} checked={intimate} onClick={()=>setIntimate(!intimate)} sensitive/></section>
-    <section className="report-preview"><div className="report-logo"><MiraMark /> Mira</div><h2>Цикл и самочувствие</h2><p>{formatRuDate(reportStart, true)} – {formatRuDate(AURA_TODAY, true)}</p><div className="preview-metrics"><span><small>Циклы</small><strong>{averageCycle ? `${averageCycle} дней` : '—'}</strong><i>{cycleRange}</i></span><span><small>Месячные</small><strong>{averagePeriod ? `${averagePeriod} дня` : '—'}</strong><i>{durations.length} периода</i></span><span><small>Симптом</small><strong>Боль · {evidence.painDays}</strong><i>{evidence.severeDays} сильные</i></span></div>{cycleLengths.length ? <div className="preview-line">{cycleLengths.map((value, index) => <span key={`${value}-${index}`} style={{height:`${35 + ((value - Math.min(...cycleLengths)) / Math.max(1, Math.max(...cycleLengths) - Math.min(...cycleLengths))) * 50}%`}}/>)}</div> : <div className="chart-empty"><ChartSpline /><strong>Динамика появится позже</strong><small>Нужны завершённые циклы.</small></div>}<small>Отчёт содержит самостоятельные отметки и не является медицинским заключением.</small></section>
+    <section className="report-preview" id="mira-report"><div className="report-logo"><MiraMark /> Mira</div><h2>Цикл и самочувствие</h2><p>{formatRuDate(reportStart, true)} – {formatRuDate(AURA_TODAY, true)}</p>
+      {!includedSections && <div className="chart-empty"><ListChecks /><strong>Выберите хотя бы один раздел</strong><small>Предпросмотр обновляется сразу после переключения.</small></div>}
+      {sections.cycle && <section className="report-preview-section"><h3>Циклы и месячные</h3><div className="preview-metrics"><span><small>Циклы</small><strong>{averageCycle ? `${averageCycle} дней` : '—'}</strong><i>{cycleRange}</i></span><span><small>Месячные</small><strong>{averagePeriod ? `${averagePeriod} дня` : '—'}</strong><i>{durations.length} периода</i></span><span><small>История</small><strong>{metrics.completedCycles}</strong><i>завершено</i></span></div>{cycleLengths.length ? <div className="preview-line">{cycleLengths.map((value, index) => <span key={`${value}-${index}`} style={{height:`${35 + ((value - Math.min(...cycleLengths)) / Math.max(1, Math.max(...cycleLengths) - Math.min(...cycleLengths))) * 50}%`}}/>)}</div> : <p className="report-empty-line">Динамика появится после завершённого цикла.</p>}</section>}
+      {sections.symptoms && <section className="report-preview-section"><h3>Боль и симптомы</h3>{topSymptoms.length ? <div className="report-fact-list">{topSymptoms.map((symptom) => <div key={symptom.label}><strong>{symptom.label}</strong><span>{symptom.count} {pluralRu(symptom.count, 'день', 'дня', 'дней')} · сильный: {symptom.severe} · мешал делам: {symptom.impact}</span></div>)}</div> : <p className="report-empty-line">Симптомы не отмечены.</p>}</section>}
+      {sections.wellbeing && <section className="report-preview-section"><h3>Состояние и энергия</h3><div className="preview-metrics two"><span><small>Оценка дня</small><strong>{average(ratings)} из 5</strong><i>{ratings.length} оценок</i></span><span><small>Энергия</small><strong>{average(energyValues)} из 5</strong><i>{energyValues.length} отметок</i></span></div></section>}
+      {sections.sleep && <section className="report-preview-section"><h3>Сон</h3><div className="preview-metrics two"><span><small>Средняя длительность</small><strong>{average(sleepValues)} ч</strong><i>{sleepValues.length} ночей</i></span><span><small>Хорошее качество</small><strong>{reportEntries.filter(([, day]) => day.sleepQuality === 'Хорошее').length}</strong><i>сохранённых отметок</i></span></div></section>}
+      {notes && <section className="report-preview-section sensitive-preview"><h3>Личные заметки</h3>{reportNotes.length ? <div className="report-fact-list">{reportNotes.map((item) => <div key={`${item.date}-${item.note}`}><strong>{formatRuDate(item.date, true)}</strong><span>{item.note}</span></div>)}</div> : <p className="report-empty-line">Заметок нет.</p>}</section>}
+      {intimate && <section className="report-preview-section sensitive-preview"><h3>Интимная жизнь</h3><div className="preview-metrics two"><span><small>Близость была</small><strong>{intimacyYes}</strong><i>из {intimateCount} отметок</i></span><span><small>Боль или изменения после</small><strong>{intimacyConcern}</strong><i>отметок</i></span></div></section>}
+      <small className="report-disclaimer">Отчёт содержит самостоятельные отметки пользователя и не является медицинским заключением.</small>
+    </section>
     <button className="primary-button" onClick={() => { onNotify('Открыто системное окно печати'); window.print(); }}><FileDown /> Открыть печать / сохранить PDF</button>
   </div>;
 }
@@ -1603,22 +1620,30 @@ function ToggleRow({ title, note, checked, onClick, sensitive = false }: { title
   return <button className={`toggle-row ${sensitive ? 'sensitive' : ''}`} onClick={onClick}><span><strong>{title}{sensitive && <i>личное</i>}</strong><small>{note}</small></span><i className={`toggle ${checked ? 'on' : ''}`}><b /></i></button>;
 }
 
-function Profile({ data, onChangeData, onBack, onOpenHomeSettings, onOpenDiarySettings, onOpenData, onOpenSaved, onOpenFeedback, onOpenSupport }: { data: AuraState; onChangeData: (updater: (current: AuraState) => AuraState) => void; onBack: () => void; onOpenHomeSettings: () => void; onOpenDiarySettings: () => void; onOpenData: () => void; onOpenSaved: () => void; onOpenFeedback: () => void; onOpenSupport: () => void }) {
+function Profile({ data, onBack, onOpenHomeSettings, onOpenDiarySettings, onOpenData, onOpenSaved, onOpenFeedback, onOpenSupport }: { data: AuraState; onBack: () => void; onOpenHomeSettings: () => void; onOpenDiarySettings: () => void; onOpenData: () => void; onOpenSaved: () => void; onOpenFeedback: (category: FeedbackCategory) => void; onOpenSupport: () => void }) {
   const metrics = getAuraCycleMetrics(data);
   const cycleNote = metrics.expectedLength ? `${metrics.expectedLength} дней · месячные ${data.onboarding.periodLength ?? '—'} дней` : `Мало данных · месячные ${data.onboarding.periodLength ?? '—'} дней`;
   return <div className="screen profile-screen">
-    <TopBack title="Профиль" onBack={onBack} action={<button className="round-button"><SlidersHorizontal /></button>} />
-    <section className="profile-person"><span className="profile-avatar">Л</span><div><h2>Личная история</h2><p>Локальный профиль · без аккаунта</p></div><button>Изменить</button></section>
+    <TopBack title="Профиль" onBack={onBack} />
+    <section className="profile-person"><span className="profile-avatar">Л</span><div><h2>Личная история</h2><p>Локальный профиль · без аккаунта</p></div></section>
     <section className="privacy-aura"><span><ShieldCheck /></span><div><small>Приватность</small><h2>Данные остаются на этом устройстве</h2><p>Ничего не отправляется на сервер.</p><button onClick={onOpenData}>Управлять данными <ChevronRight /></button></div></section>
-    <section className="profile-group"><span className="eyebrow">Настройки</span><ProfileRow icon={Droplet} tone="rose" title="Цикл и прогноз" note={cycleNote}/><ProfileRow icon={NotebookTabs} tone="violet" title="Дневник" note={`${Object.values(data.modules).filter(Boolean).length} разделов включено`} onClick={onOpenDiarySettings}/><ProfileRow icon={House} tone="coral" title="Главная страница" note={`${Object.values(data.homeCards).filter(Boolean).length} карточек`} onClick={onOpenHomeSettings}/><button className="profile-toggle-row" onClick={() => onChangeData((current) => ({ ...current, notifications: !current.notifications }))}><span className="metric-icon indigo"><Bell /></span><span><strong>Напоминания</strong><small>{data.notifications ? 'Включены · нейтральный текст' : 'Выключены'}</small></span><i className={`toggle ${data.notifications ? 'on' : ''}`}><b /></i></button></section>
+    <section className="profile-group"><span className="eyebrow">Настройки</span><ProfileRow icon={Droplet} tone="rose" title="Цикл и прогноз" note={cycleNote}/><ProfileRow icon={NotebookTabs} tone="violet" title="Дневник" note={`${Object.values(data.modules).filter(Boolean).length} разделов включено`} onClick={onOpenDiarySettings}/><ProfileRow icon={House} tone="coral" title="Главная страница" note={`${Object.values(data.homeCards).filter(Boolean).length} карточек`} onClick={onOpenHomeSettings}/><div className="profile-toggle-row is-unavailable"><span className="metric-icon indigo"><Bell /></span><span><strong>Напоминания</strong><small>Пока недоступны в веб-версии</small></span><i className="soft-status">Позже</i></div></section>
     <section className="profile-group"><span className="eyebrow">Ваши данные</span><ProfileRow icon={FileDown} tone="sage" title="Экспорт и резервная копия" note="Создать или восстановить копию" onClick={onOpenData}/><ProfileRow icon={LockKeyhole} tone="violet" title="Данные и приватность" note="Хранение, перенос и удаление" onClick={onOpenData}/><ProfileRow icon={BookOpenText} tone="coral" title="Сохранённые материалы" note={`${data.savedArticles.length} ${pluralRu(data.savedArticles.length, 'статья', 'статьи', 'статей')}`} onClick={onOpenSaved}/></section>
-    <section className="community-card"><MiraMark className="community-mark" /><div><span className="eyebrow">Проект создаётся вместе с вами</span><h2>Помогите Mira оставаться бесплатной</h2><p>Расскажите, чего не хватает, подпишитесь на новости или поддержите разработку добровольным донатом.</p></div><div className="community-actions"><button onClick={onOpenFeedback}><MessageSquareText /> Написать нам</button><button onClick={onOpenSupport}><Heart /> Поддержать</button></div><small>Поддержка добровольна и не открывает платные функции.</small></section>
+    <section className="community-card">
+      <div className="community-heading"><MiraMark className="community-mark" /><div><span className="eyebrow">Проект создаётся вместе с вами</span><h2>Помогите сделать Mira лучше</h2><p>Сообщайте о сложностях, предлагайте идеи или поддержите бесплатный проект.</p></div></div>
+      <div className="community-links">
+        <button onClick={() => onOpenFeedback('problem')}><span className="community-link-icon problem"><Bug /></span><span><strong>Сообщить об ошибке</strong><small>Если что-то работает непонятно или неправильно</small></span><ChevronRight /></button>
+        <button onClick={() => onOpenFeedback('idea')}><span className="community-link-icon idea"><Lightbulb /></span><span><strong>Предложить новую функцию</strong><small>Расскажите, чего вам не хватает в Mira</small></span><ChevronRight /></button>
+        <button className="support" onClick={onOpenSupport}><span className="community-link-icon support"><Heart /></span><span><strong>Поддержать Mira</strong><small>Помочь бесплатному проекту развиваться</small></span><ChevronRight /></button>
+      </div>
+      <small><ShieldCheck /> Личные записи не прикрепляются. Поддержка добровольна и не открывает платные функции.</small>
+    </section>
     <section className="surface about-card"><MiraMark className="about-brand-mark" /><div><strong>Mira</strong><p>Не является медицинским устройством и не заменяет консультацию специалиста.</p></div><Info /></section>
   </div>;
 }
 
 function ProfileRow({ icon: Icon, tone, title, note, onClick }: { icon: LucideIcon; tone: string; title: string; note: string; onClick?: () => void }) {
-  return <button className="profile-row" onClick={onClick}><span className={`metric-icon ${tone}`}><Icon /></span><span><strong>{title}</strong><small>{note}</small></span><ChevronRight /></button>;
+  return <button className={`profile-row ${onClick ? '' : 'is-static'}`} onClick={onClick} disabled={!onClick}><span className={`metric-icon ${tone}`}><Icon /></span><span><strong>{title}</strong><small>{note}</small></span>{onClick ? <ChevronRight /> : <span />}</button>;
 }
 
 function PeriodStartSheet({ marked, onClose, onChooseDate, onConfirm, onRemove }: { marked: boolean; onClose: () => void; onChooseDate: () => void; onConfirm: () => void; onRemove: () => void }) {
@@ -1635,32 +1660,57 @@ function PeriodStartSheet({ marked, onClose, onChooseDate, onConfirm, onRemove }
   </div>;
 }
 
-function FeedbackSheet({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
-  const [category, setCategory] = useState<'idea' | 'problem' | 'question'>('idea');
+function FeedbackSheet({ initialCategory, onClose, onSubmit }: { initialCategory: FeedbackCategory; onClose: () => void; onSubmit: (payload: FeedbackPayload) => Promise<void> }) {
+  const [category, setCategory] = useState<FeedbackCategory>(initialCategory);
   const [message, setMessage] = useState('');
   const [contact, setContact] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async () => {
+    if (!message.trim() || sending) return;
+    setSending(true);
+    setError('');
+    try {
+      await onSubmit({ category, message, contact, clientVersion: '0.1.0' });
+    } catch {
+      setError('Не удалось подготовить сообщение. Скопируйте текст и попробуйте ещё раз.');
+    } finally {
+      setSending(false);
+    }
+  };
   return <div className="attention-overlay settings-overlay" onClick={onClose}>
     <section className="settings-sheet feedback-sheet" role="dialog" aria-modal="true" aria-label="Обратная связь" onClick={(event) => event.stopPropagation()}>
       <div className="attention-handle"/><button className="attention-close" onClick={onClose} aria-label="Закрыть"><X /></button>
-      <span className="feedback-icon"><MessageSquareText /></span><span className="eyebrow">Прямо команде Mira</span><h2>Что вы хотите изменить?</h2><p>Можно предложить идею, рассказать о проблеме или задать вопрос. Мы читаем каждое сообщение.</p>
-      <div className="feedback-categories" role="group" aria-label="Тема сообщения">{([['idea','Идея'],['problem','Проблема'],['question','Вопрос']] as const).map(([value,label]) => <button key={value} className={category === value ? 'active' : ''} aria-pressed={category === value} onClick={() => setCategory(value)}>{label}</button>)}</div>
+      <span className="feedback-icon"><MessageSquareText /></span><span className="eyebrow">Помогите улучшить Mira</span><h2>Что вы хотите изменить?</h2><p>Подготовим безопасное сообщение без данных дневника. Вы сможете отправить его через доступное приложение.</p>
+      <div className="feedback-categories" role="group" aria-label="Тема сообщения">{([['problem','Ошибка'],['idea','Новая функция'],['question','Вопрос']] as const).map(([value,label]) => <button key={value} className={category === value ? 'active' : ''} aria-pressed={category === value} onClick={() => setCategory(value)}>{label}</button>)}</div>
       <label className="feedback-field"><span>Сообщение</span><textarea autoFocus value={message} maxLength={1200} placeholder="Например: хочу видеть сравнение боли по циклам…" onChange={(event) => setMessage(event.target.value)}/><small>{message.length} / 1200</small></label>
       <label className="feedback-field compact"><span>Как с вами связаться <i>необязательно</i></span><input type="text" value={contact} placeholder="Email или @username" onChange={(event) => setContact(event.target.value)}/></label>
-      <aside className="feedback-privacy"><ShieldCheck /><span><strong>Данные дневника не прикрепляются</strong>Отправятся только сообщение и контакт, если вы его указали.</span></aside>
-      <button className="primary-button" disabled={!message.trim()} onClick={onSubmit}><Send /> Отправить команде</button>
-      <small className="prototype-connection">В прототипе показан готовый сценарий. Для реальной отправки нужно подключить адрес или сервер.</small>
+      <aside className="feedback-privacy"><ShieldCheck /><span><strong>Данные дневника не прикрепляются</strong>В сообщении будут только текст, категория и контакт, если вы его указали.</span></aside>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <button className="primary-button" disabled={!message.trim() || sending} onClick={submit}><Send /> {sending ? 'Подготавливаем…' : 'Отправить или поделиться'}</button>
+      <small className="prototype-connection">Если владелец проекта подключит endpoint, сообщение отправится напрямую. Без endpoint откроется системное меню «Поделиться».</small>
     </section>
   </div>;
 }
 
 function SupportSheet({ onClose, onNotify }: { onClose: () => void; onNotify: (message: string) => void }) {
   const [amount, setAmount] = useState(199);
+  const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+  const telegramUrl = viteEnv?.VITE_TELEGRAM_URL?.startsWith('https://') ? viteEnv.VITE_TELEGRAM_URL : undefined;
+  const donationUrl = viteEnv?.VITE_DONATION_URL?.startsWith('https://') ? viteEnv.VITE_DONATION_URL : undefined;
+  const openConfiguredLink = (url: string | undefined, unavailableMessage: string) => {
+    if (!url) {
+      onNotify(unavailableMessage);
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
   return <div className="attention-overlay settings-overlay" onClick={onClose}>
     <section className="settings-sheet support-sheet" role="dialog" aria-modal="true" aria-label="Поддержать Mira" onClick={(event) => event.stopPropagation()}>
       <div className="attention-handle"/><button className="attention-close" onClick={onClose} aria-label="Закрыть"><X /></button>
       <div className="support-hero"><span><Heart /></span><small>Mira остаётся бесплатной</small><h2>Спасибо, что помогаете проекту жить</h2><p>Подписка помогает нам расти, а добровольные донаты — оплачивать разработку и медицинскую редактуру.</p></div>
-      <div className="support-option"><span className="metric-icon violet"><Bell /></span><div><strong>Подписаться на новости</strong><small>Обновления продукта, опросы и приглашения в тестирование.</small></div><button onClick={() => onNotify('Добавьте ссылку на Telegram-канал перед запуском')}>Подписаться</button></div>
-      <div className="donation-block"><span className="eyebrow">Разовая поддержка</span><div className="donation-amounts">{[99,199,499].map((value) => <button key={value} className={amount === value ? 'active' : ''} onClick={() => setAmount(value)}>{value} ₽</button>)}</div><button className="primary-button" onClick={() => onNotify(`Выбрано ${amount} ₽ · подключите платёжную ссылку перед запуском`)}><Heart /> Поддержать на {amount} ₽</button></div>
+      <div className="support-option"><span className="metric-icon violet"><Bell /></span><div><strong>Подписаться на новости</strong><small>{telegramUrl ? 'Обновления продукта, опросы и приглашения в тестирование.' : 'Канал будет доступен после публикации ссылки владельцем проекта.'}</small></div><button disabled={!telegramUrl} onClick={() => openConfiguredLink(telegramUrl, 'Telegram-канал пока не подключён')}>{telegramUrl ? 'Подписаться' : 'Скоро'}</button></div>
+      <div className="donation-block"><span className="eyebrow">Разовая поддержка</span><div className="donation-amounts">{[99,199,499].map((value) => <button key={value} className={amount === value ? 'active' : ''} onClick={() => setAmount(value)}>{value} ₽</button>)}</div><button className="primary-button" disabled={!donationUrl} onClick={() => openConfiguredLink(donationUrl, 'Платёжная ссылка пока не подключена')}><Heart /> {donationUrl ? `Поддержать на ${amount} ₽` : 'Поддержка появится позже'}</button></div>
       <p className="support-promise"><ShieldCheck /> Донат добровольный. Все функции остаются доступными бесплатно.</p>
     </section>
   </div>;

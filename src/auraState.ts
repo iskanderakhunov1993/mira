@@ -201,7 +201,7 @@ function sanitizeEntry(date: string, raw: Record<string, unknown>): AuraDayEntry
     water: water === undefined ? undefined : Math.round(water),
     steps: steps === undefined ? undefined : Math.round(steps),
     activity: typeof raw.activity === 'string' ? raw.activity.slice(0, 120) : undefined,
-    intimate: raw.intimate === true ? true : undefined,
+    intimate: typeof raw.intimate === 'boolean' ? raw.intimate : undefined,
     intimacyComfort: typeof raw.intimacyComfort === 'string' && intimacyComfortValues.includes(raw.intimacyComfort as AuraIntimacyComfort) ? raw.intimacyComfort as AuraIntimacyComfort : undefined,
     intimacyAfter: Array.isArray(raw.intimacyAfter) ? raw.intimacyAfter.filter((item): item is AuraIntimacyAfter => typeof item === 'string' && intimacyAfterValues.includes(item as AuraIntimacyAfter)) : [],
     intimacyDesire: typeof raw.intimacyDesire === 'string' && intimacyDesireValues.includes(raw.intimacyDesire as AuraIntimacyDesire) ? raw.intimacyDesire as AuraIntimacyDesire : undefined,
