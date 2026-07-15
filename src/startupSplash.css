@@ -39,31 +39,57 @@
 .startup-splash-content {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   align-items: center;
-  animation: startup-logo-enter 680ms cubic-bezier(.22, 1, .36, 1) both;
+  justify-items: center;
 }
 
 .startup-splash-logo {
-  width: clamp(210px, 50vw, 270px);
-  height: clamp(210px, 50vw, 270px);
-  object-fit: contain;
+  width: clamp(235px, 62vw, 286px);
+  height: auto;
+  overflow: visible;
 }
 
-@keyframes startup-logo-enter {
-  from { opacity: 0; transform: translateY(18px) scale(.93); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.startup-splash-petal {
+  opacity: 0;
+  transform: scale(.18) rotate(var(--petal-twist));
+  transform-box: view-box;
+  transform-origin: 626px 490px;
+  animation: startup-petal-build 520ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: var(--petal-delay);
+}
+
+.startup-splash-word {
+  opacity: 0;
+  transform: translateY(12px);
+  transform-box: view-box;
+  transform-origin: center;
+  animation: startup-word-enter 420ms cubic-bezier(.22, 1, .36, 1) 80ms both;
+}
+
+@keyframes startup-word-enter {
+  from { opacity: 0; transform: translateY(12px); filter: blur(5px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes startup-petal-build {
+  0% { opacity: 0; transform: scale(.18) rotate(var(--petal-twist)); }
+  72% { opacity: 1; transform: scale(1.06) rotate(0); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 @media (max-width: 380px) {
-  .startup-splash-logo { width: 205px; height: 205px; }
+  .startup-splash-logo { width: 232px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .startup-splash,
-  .startup-splash-content {
+  .startup-splash-petal,
+  .startup-splash-word {
     animation: none;
     transition-duration: .01ms;
   }
+
+  .startup-splash-petal,
+  .startup-splash-word { opacity: 1; transform: none; }
 }

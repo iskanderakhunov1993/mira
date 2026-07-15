@@ -128,19 +128,28 @@ button:disabled {
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 30%;
-  background: #bd376b;
+  overflow: visible;
+  background: transparent;
 }
 
-.mira-brand-mark img {
+.mira-brand-mark::before {
+  position: absolute;
+  inset: 0;
+  background: #bd376b;
+  content: '';
+  -webkit-mask: url('/mira-logo-transparent.png') 50% 28% / 178% 178% no-repeat;
+  mask: url('/mira-logo-transparent.png') 50% 28% / 178% 178% no-repeat;
+}
+
+.mira-brand-mark::after {
   position: absolute;
   left: 50%;
-  top: 67%;
-  width: 178%;
-  height: 178%;
-  max-width: none;
-  object-fit: cover;
+  top: 47.5%;
+  width: 22%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #bd376b;
+  content: '';
   transform: translate(-50%, -50%);
 }
 

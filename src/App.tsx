@@ -2889,7 +2889,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function MiraMark({ className = 'h-7 w-7', label }: { className?: string; label?: string }) {
-  return <span className={`mira-brand-mark ${className}`} role={label ? 'img' : undefined} aria-label={label}><img src="/mira-logo.png" alt="" /></span>;
+  return <span className={`mira-brand-mark ${className}`} role={label ? 'img' : undefined} aria-label={label} />;
 }
 
 function DayRatingFace({ rating }: { rating: number }) {

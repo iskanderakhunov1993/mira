@@ -35,6 +35,8 @@ import {
   MessageSquareText,
   NotebookTabs,
   Plus,
+  Play,
+  RefreshCw,
   Search,
   Save,
   Send,
@@ -57,20 +59,20 @@ import {
 } from 'lucide-react';
 import './aura.css';
 import { StartupGate } from './StartupSplash';
+import { clearAuraDatabaseState, loadAuraDatabaseState, persistAuraDatabaseState } from './auraDb';
 import { deliverFeedback, type FeedbackCategory, type FeedbackPayload } from './feedback';
 import { knowledgeArticles as medicalKnowledgeArticles, type KnowledgeArticle } from './knowledge';
 import {
   AURA_TODAY,
   addDays,
-  clearAllMiraStorage,
   createEmptyAuraState,
   daysBetween,
   deriveAttentionEvidence,
   emptyAuraEntry,
   getAuraCycleMetrics,
-  loadAuraState,
+  getAuraObservationDates,
+  getAuraSafetyFacts,
   parseImportedAuraState,
-  persistAuraState,
   setAuraPeriodStart,
   shouldShowAttention,
   type AuraDayEntry,
@@ -81,9 +83,10 @@ import {
   type AuraSymptom,
   type AuraState,
 } from './auraState';
+import { generateWorkout, type AuraWorkoutLog, type WorkoutFeedback } from './workoutEngine';
 
 function MiraMark({ className = '', label }: { className?: string; label?: string }) {
-  return <span className={`mira-brand-mark ${className}`} role={label ? 'img' : undefined} aria-label={label}><img src="/mira-logo.png" alt="" /></span>;
+  return <span className={`mira-brand-mark ${className}`} role={label ? 'img' : undefined} aria-label={label} />;
 }
 
 type Screen = 'onboarding' | 'today' | 'calendar' | 'diary' | 'analytics' | 'knowledge' | 'article' | 'report' | 'profile';
@@ -92,7 +95,7 @@ type WellbeingMode = 'summary' | 'symptoms' | 'sleep' | 'habits';
 type KnowledgeCategory = 'all' | 'cycle' | 'symptoms' | 'sleep' | 'wellbeing' | 'habits';
 type KnowledgeTab = 'for-you' | 'all' | 'saved';
 type PrototypeScenario = 'history' | 'first' | 'empty';
-type Overlay = 'attention' | 'daily-plan' | 'home-settings' | 'diary-settings' | 'data-controls' | 'delete-confirm' | 'feedback' | 'support' | 'period-start' | 'quick-symptoms' | null;
+type Overlay = 'attention' | 'daily-plan' | 'workout' | 'home-settings' | 'diary-settings' | 'data-controls' | 'delete-confirm' | 'feedback' | 'support' | 'period-start' | 'quick-symptoms' | 'symptom-saved' | null;
 type PersistStatus = 'saved' | 'saving' | 'error';
 
 const navItems: Array<{ id: Screen; label: string; icon: LucideIcon }> = [
@@ -176,6 +179,10 @@ function pluralRu(value: number, one: string, few: string, many: string) {
   return many;
 }
 
+function symptomDiaryText(symptom: AuraSymptom) {
+  return `${symptom.label} · ${symptom.severity}/3${symptom.affectsLife ? ' · влиял на обычные дела' : ''}`;
+}
+
 function periodDurations(data: AuraState) {
   const dates = Object.entries(data.entries)
     .filter(([, day]) => day.period && day.period !== 'none')
@@ -191,8 +198,23 @@ function periodDurations(data: AuraState) {
   return groups.map((group) => group.length);
 }
 
-function App() {
-  const [data, setData] = useState<AuraState>(() => loadAuraState());
+function generateTodayWorkout(data: AuraState, generatedAt = new Date().toISOString()) {
+  const day = data.entries[AURA_TODAY] ?? emptyAuraEntry();
+  const metrics = getAuraCycleMetrics(data);
+  return generateWorkout({
+    date: AURA_TODAY,
+    cycleDay: metrics.cycleDay ?? undefined,
+    period: day.period,
+    rating: day.rating,
+    energy: day.energy,
+    sleepHours: day.sleepHours,
+    sleepQuality: day.sleepQuality,
+    symptoms: day.symptoms.map(({ id, severity, affectsLife }) => ({ id, severity, affectsLife })),
+  }, generatedAt);
+}
+
+function App({ initialData }: { initialData: AuraState }) {
+  const [data, setData] = useState<AuraState>(initialData);
   const [screen, setScreen] = useState<Screen>(() => data.onboarding.completed ? 'today' : 'onboarding');
   const [selectedArticleId, setSelectedArticleId] = useState('cramps-care');
   const [analyticsSection, setAnalyticsSection] = useState<AnalyticsSection>('overview');
@@ -214,12 +236,18 @@ function App() {
 
   useEffect(() => {
     setPersistStatus('saving');
+    let active = true;
     const timer = window.setTimeout(() => {
-      const saved = persistAuraState(data);
-      setPersistStatus(saved ? 'saved' : 'error');
-      if (!saved) setToast('Не удалось сохранить локально. Проверьте доступ к хранилищу.');
+      void persistAuraDatabaseState(data).then((saved) => {
+        if (!active) return;
+        setPersistStatus(saved ? 'saved' : 'error');
+        if (!saved) setToast('Не удалось сохранить локально. Проверьте доступ к хранилищу.');
+      });
     }, 260);
-    return () => window.clearTimeout(timer);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [data]);
 
   useEffect(() => {
@@ -256,6 +284,48 @@ function App() {
         [date]: { ...(current.entries[date] ?? emptyAuraEntry()), ...patch, updatedAt: new Date().toISOString() },
       },
     }));
+  };
+
+  const openWorkout = (regenerate = false) => {
+    if (data.entries[AURA_TODAY]?.workout && !regenerate) {
+      setOverlay('workout');
+      return;
+    }
+    changeData((current) => {
+      const day = current.entries[AURA_TODAY] ?? emptyAuraEntry();
+      const workout = generateTodayWorkout(current);
+      return {
+        ...current,
+        modules: { ...current.modules, activity: true },
+        entries: {
+          ...current.entries,
+          [AURA_TODAY]: { ...day, workout, updatedAt: new Date().toISOString() },
+        },
+      };
+    });
+    setOverlay('workout');
+  };
+
+  const patchWorkout = (patch: Partial<AuraWorkoutLog>) => {
+    changeData((current) => {
+      const day = current.entries[AURA_TODAY] ?? emptyAuraEntry();
+      if (!day.workout) return current;
+      const workout = { ...day.workout, ...patch };
+      const completed = workout.status === 'completed';
+      return {
+        ...current,
+        entries: {
+          ...current.entries,
+          [AURA_TODAY]: {
+            ...day,
+            workout,
+            activity: completed ? `${workout.title} · ${workout.durationMin} мин` : day.activity,
+            recommendedActivityDone: completed ? true : day.recommendedActivityDone,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
   };
 
   const dismissAttention = () => {
@@ -317,7 +387,7 @@ function App() {
   };
 
   const deleteAllData = () => {
-    clearAllMiraStorage();
+    void clearAuraDatabaseState();
     setData(createEmptyAuraState());
     setOnboardingStep(0);
     setScreen('onboarding');
@@ -379,9 +449,9 @@ function App() {
                 open('today');
               }}
             />}
-            {screen === 'today' && <Today data={data} scenario={scenario} onOpen={open} onPatchEntry={patchEntry} onShowAttention={() => setOverlay('attention')} onOpenDailyPlan={() => setOverlay('daily-plan')} onOpenHomeSettings={() => setOverlay('home-settings')} onOpenPeriodStart={() => setOverlay('period-start')} onOpenQuickSymptoms={() => setOverlay('quick-symptoms')} />}
+            {screen === 'today' && <Today data={data} scenario={scenario} onOpen={open} onPatchEntry={patchEntry} onShowAttention={() => setOverlay('attention')} onOpenDailyPlan={() => setOverlay('daily-plan')} onOpenWorkout={() => openWorkout()} onOpenHomeSettings={() => setOverlay('home-settings')} onOpenPeriodStart={() => setOverlay('period-start')} onOpenQuickSymptoms={() => setOverlay('quick-symptoms')} />}
             {screen === 'calendar' && <Calendar data={data} scenario={scenario} onSelectDate={(date) => changeData((current) => ({ ...current, selectedDate: date }))} onBack={() => open('today')} onOpenDiary={() => open('diary')} />}
-            {screen === 'diary' && <Diary data={data} persistStatus={persistStatus} onPatchEntry={patchEntry} onSetPeriodStart={(date, marked) => changeData((current) => setAuraPeriodStart(current, date, marked))} onOpenCalendar={() => open('calendar')} onOpenSettings={() => setOverlay('diary-settings')} onNotify={setToast} />}
+            {screen === 'diary' && <Diary data={data} persistStatus={persistStatus} onPatchEntry={patchEntry} onSetPeriodStart={(date, marked) => changeData((current) => setAuraPeriodStart(current, date, marked))} onOpenCalendar={() => open('calendar')} onOpenSettings={() => setOverlay('diary-settings')} onDone={() => open('today')} onNotify={setToast} />}
             {screen === 'analytics' && <Analytics data={data} scenario={scenario} section={analyticsSection} setSection={setAnalyticsSection} mode={wellbeingMode} setMode={setWellbeingMode} onOpenDiary={() => open('diary')} onOpenReport={() => open('report')} />}
             {screen === 'knowledge' && <Knowledge data={data} onChangeData={changeData} onOpenArticle={openArticle} />}
             {screen === 'article' && <Article article={medicalKnowledgeArticles.find((article) => article.id === selectedArticleId) ?? medicalKnowledgeArticles[0]} saved={data.savedArticles.includes(selectedArticleId)} onToggleSaved={() => changeData((current) => ({ ...current, savedArticles: current.savedArticles.includes(selectedArticleId) ? current.savedArticles.filter((id) => id !== selectedArticleId) : [...current.savedArticles, selectedArticleId] }))} onBack={() => open('knowledge')} onOpenDiary={() => open('diary')} />}
@@ -402,7 +472,8 @@ function App() {
               open('report');
             }}
           />}
-          {overlay === 'daily-plan' && <DailyPlanModal day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onPatch={(patch) => patchEntry(AURA_TODAY, patch)} onClose={() => setOverlay(null)} />}
+          {overlay === 'daily-plan' && <DailyPlanModal day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onPatch={(patch) => patchEntry(AURA_TODAY, patch)} onOpenWorkout={() => openWorkout()} onClose={() => setOverlay(null)} />}
+          {overlay === 'workout' && data.entries[AURA_TODAY]?.workout && <WorkoutModal workout={data.entries[AURA_TODAY].workout!} onPatch={patchWorkout} onRegenerate={() => openWorkout(true)} onClose={() => setOverlay(null)} />}
           {overlay === 'home-settings' && <SettingsSheet title="Главная страница" description="Выберите карточки, которые помогают вам сегодня." onClose={() => setOverlay(null)}>{(Object.entries(data.homeCards) as Array<[AuraHomeCardId, boolean]>).map(([id, checked]) => <ToggleRow key={id} title={{hormonoscope:'Hormonoscope',cycloscope:'Cycloscope',rhythm:'Ваш ритм',recommendation:'План на сегодня',knowledge:'Полезная статья'}[id]} note={{hormonoscope:'Контекст по фазе цикла',cycloscope:'Мягкий прогноз дня',rhythm:'Сон, вода и шаги',recommendation:'Вещи, движение и назначенные добавки',knowledge:'Одна статья по контексту'}[id]} checked={checked} onClick={() => changeData((current) => ({ ...current, homeCards: { ...current.homeCards, [id]: !checked } }))} />)}</SettingsSheet>}
           {overlay === 'diary-settings' && <SettingsSheet title="Разделы дневника" description="Показывайте только то, что действительно отмечаете." onClose={() => setOverlay(null)}>{(Object.entries(data.modules) as Array<[AuraModuleId, boolean]>).map(([id, checked]) => <ToggleRow key={id} title={{cycle:'Цикл и симптомы',mood:'Настроение и энергия',sleep:'Сон',daily:'Вода и шаги',activity:'Активность',intimate:'Интимная жизнь',nutrition:'Питание',body:'Показатели тела',note:'Заметка и контекст'}[id]} note={id === 'intimate' ? 'Чувствительный раздел · выключен по умолчанию' : 'Можно изменить в любой момент'} checked={checked} sensitive={id === 'intimate'} onClick={() => changeData((current) => ({ ...current, modules: { ...current.modules, [id]: !checked } }))} />)}</SettingsSheet>}
           {overlay === 'data-controls' && <DataControlsSheet data={data} onChangeData={changeData} onExport={exportData} onImport={importData} onDelete={() => setOverlay('delete-confirm')} onClose={() => setOverlay(null)} />}
@@ -410,7 +481,8 @@ function App() {
           {overlay === 'feedback' && <FeedbackSheet initialCategory={feedbackCategory} onClose={() => setOverlay(null)} onSubmit={submitFeedback} />}
           {overlay === 'support' && <SupportSheet onClose={() => setOverlay(null)} onNotify={setToast} />}
           {overlay === 'period-start' && <PeriodStartSheet marked={data.periodStarts.includes(AURA_TODAY)} onClose={() => setOverlay(null)} onChooseDate={() => { setOverlay(null); open('calendar'); }} onConfirm={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, true)); setOverlay(null); setToast(`${formatRuDate(AURA_TODAY)} отмечено как начало нового цикла`); }} onRemove={() => { changeData((current) => setAuraPeriodStart(current, AURA_TODAY, false)); setOverlay(null); setToast('Отметка о начале цикла удалена'); }} />}
-          {overlay === 'quick-symptoms' && <QuickSymptomsSheet day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onSave={(patch) => { patchEntry(AURA_TODAY, patch); setOverlay(null); setToast('Самочувствие на сегодня сохранено'); }} />}
+          {overlay === 'quick-symptoms' && <QuickSymptomsSheet day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onOpenDetails={() => { changeData((current) => ({ ...current, selectedDate: AURA_TODAY, modules: { ...current.modules, cycle: true } })); setOverlay(null); open('diary'); }} onSave={(patch) => { changeData((current) => ({ ...current, selectedDate: AURA_TODAY, modules: { ...current.modules, cycle: true }, entries: { ...current.entries, [AURA_TODAY]: { ...(current.entries[AURA_TODAY] ?? emptyAuraEntry()), ...patch, updatedAt: new Date().toISOString() } } })); setOverlay('symptom-saved'); }} />}
+          {overlay === 'symptom-saved' && <SymptomSavedSheet day={data.entries[AURA_TODAY] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onOpenDiary={() => { changeData((current) => ({ ...current, selectedDate: AURA_TODAY })); setOverlay(null); open('diary'); }} onOpenAnalytics={() => { setAnalyticsSection('wellbeing'); setWellbeingMode('symptoms'); setOverlay(null); open('analytics'); }} />}
           {toast && <div className="aura-toast" role="status"><Check />{toast}</div>}
           {!['onboarding', 'article', 'report', 'profile', 'calendar'].includes(screen) && <BottomNav screen={screen} onOpen={open} />}
         </div>
@@ -461,7 +533,7 @@ function Onboarding({ step, setStep, initial, onFinish }: { step: number; setSte
   return <div className={`screen onboarding-screen onboarding-step-${step}`}>
     <header className="onboarding-topbar">
       {step > 0 ? <button className="onboarding-back" onClick={() => setStep(step - 1)} aria-label="Назад"><ChevronLeft /></button> : <span className="onboarding-back-placeholder" />}
-      <div className="simple-brand"><MiraMark className="brand-orb" /><strong>Mira</strong></div>
+      <div className="simple-brand"><MiraMark className="onboarding-brand-mark" /><strong>Mira</strong></div>
       <span className="onboarding-count">{step === 0 ? 'Знакомство' : `${step} из ${lastStep}`}</span>
     </header>
     {step > 0 && <div className="onboarding-progress" aria-label={`Шаг ${step} из ${lastStep}`}><i style={{ width: `${(step / lastStep) * 100}%` }} /></div>}
@@ -518,7 +590,21 @@ function Onboarding({ step, setStep, initial, onFinish }: { step: number; setSte
 
       {step === 4 && <>
         <OnboardingHeading eyebrow="Ещё один ориентир" title="Сколько обычно идут месячные?" text="Используем это только для первой настройки. Дальше важнее ваши реальные даты." />
-        <div className="period-length-visual" aria-hidden="true"><span className="period-drop"><Droplet /></span><i /><i /><i /><i /><i /></div>
+        <div className="period-length-preview">
+          <div className="period-length-preview-head">
+            <span className="period-length-preview-icon"><CalendarRange /></span>
+            <span>
+              <small>{draft.periodLength ? 'Вы выбрали' : draft.periodLengthUnknown ? 'Ваш цикл' : 'Если пока не знаете'}</small>
+              <strong>{draft.periodLength ? `${draft.periodLength} ${draft.periodLength === 3 || draft.periodLength === 4 ? 'дня' : 'дней'}` : draft.periodLengthUnknown ? 'Длительность бывает разной' : 'Можно выбрать «Не знаю»'}</strong>
+            </span>
+          </div>
+          {draft.periodLength ? <>
+            <div className="period-length-calendar" aria-label={`Пример: месячные идут ${draft.periodLength} дней`}>
+              {Array.from({ length: 7 }, (_, index) => <span key={index} className={index < draft.periodLength! ? 'active' : ''}><i>{index + 1}</i><b>{index < draft.periodLength! ? <Droplet /> : null}</b></span>)}
+            </div>
+            <div className="period-length-calendar-caption"><span>Первый день</span><span>Последний день — {draft.periodLength}</span></div>
+          </> : <p>{draft.periodLengthUnknown ? 'Отмечайте реальные даты — Mira рассчитает вашу длительность по истории.' : 'Это нормально: Mira начнёт считать длительность после первых отметок.'}</p>}
+        </div>
         <div className="period-length-options">
           {[3, 4, 5, 6, 7].map((days) => <button key={days} className={draft.periodLength === days && !draft.periodLengthUnknown ? 'selected' : ''} onClick={() => setDraft((current) => ({ ...current, periodLength: days, periodLengthUnknown: false }))}><strong>{days}</strong><small>дн.</small></button>)}
         </div>
@@ -637,19 +723,18 @@ function AppHeader({ title = formatRuDate(AURA_TODAY), onProfile, onCalendar }: 
   </header>;
 }
 
-function DateStrip() {
+function DateStrip({ onCalendar }: { onCalendar: () => void }) {
   return <div className="date-strip">{Array.from({ length: 7 }, (_, index) => addDays(AURA_TODAY, index - 3)).map((value) => {
     const date = localDate(value);
     const active = value === AURA_TODAY;
-    return <button key={value} className={active ? 'active' : ''} disabled={!active}><small>{ruWeekdays[date.getDay()].slice(0, 1)}</small><strong>{date.getDate()}</strong>{active && <i />}</button>;
+    return <button key={value} className={active ? 'active' : ''} disabled={!active} onClick={active ? onCalendar : undefined} aria-label={active ? `Открыть календарь, сегодня ${formatRuDate(value)}` : undefined}><small>{ruWeekdays[date.getDay()].slice(0, 1)}</small><strong>{date.getDate()}</strong>{active && <i />}</button>;
   })}</div>;
 }
 
-function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDailyPlan, onOpenHomeSettings, onOpenPeriodStart, onOpenQuickSymptoms }: { data: AuraState; scenario: PrototypeScenario; onOpen: (screen: Screen) => void; onPatchEntry: (date: string, patch: Partial<AuraDayEntry>) => void; onShowAttention: () => void; onOpenDailyPlan: () => void; onOpenHomeSettings: () => void; onOpenPeriodStart: () => void; onOpenQuickSymptoms: () => void }) {
+function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDailyPlan, onOpenWorkout, onOpenHomeSettings, onOpenPeriodStart, onOpenQuickSymptoms }: { data: AuraState; scenario: PrototypeScenario; onOpen: (screen: Screen) => void; onPatchEntry: (date: string, patch: Partial<AuraDayEntry>) => void; onShowAttention: () => void; onOpenDailyPlan: () => void; onOpenWorkout: () => void; onOpenHomeSettings: () => void; onOpenPeriodStart: () => void; onOpenQuickSymptoms: () => void }) {
   const day = data.entries[AURA_TODAY] ?? emptyAuraEntry();
   const periodStartedToday = data.periodStarts.includes(AURA_TODAY);
-  const todayPain = day.symptoms.find((symptom) => symptom.id === 'pain');
-  const gentleMovement = Boolean(todayPain && (todayPain.severity === 3 || todayPain.affectsLife));
+  const workout = day.workout;
   const attention = deriveAttentionEvidence(data);
   const metrics = getAuraCycleMetrics(data);
   const range = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
@@ -663,7 +748,7 @@ function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDa
   const timelineProgress = Math.min(96, Math.max(5, ((metrics.cycleDay ?? 1) / (metrics.expectedLength ?? 28)) * 100));
   return <div className="screen today-screen">
     <AppHeader onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
-    <DateStrip />
+    <DateStrip onCalendar={() => onOpen('calendar')} />
     <section className="cycle-status-card">
       <div className="cycle-status-main">
         <div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'день пока неизвестен'}</span></div>
@@ -687,7 +772,7 @@ function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDa
       <div className="today-plan-title"><div><span className="eyebrow">Подсказки на сегодня</span><h2>Что может пригодиться</h2></div><button onClick={onOpenDailyPlan}>Все <ChevronRight /></button></div>
       <div className="today-plan-grid">
         <button className="kit" onClick={onOpenDailyPlan}><span><ShoppingBag /></span><small>Аптечка</small><strong>Прокладки<br/>+ ещё 2 вещи</strong><em>{day.careItems?.length ? `${day.careItems.length} из 3 собрано` : 'Собрать с собой'}</em></button>
-        <button className="movement" onClick={onOpenDailyPlan}><span><PersonStanding /></span><small>Нагрузка</small><strong>{gentleMovement ? <>Мягкий<br/>режим</> : <>Ходьба<br/>15 минут</>}</strong><em>{day.recommendedActivityDone ? 'Выполнено' : 'По самочувствию'}</em></button>
+        <button className="movement" onClick={onOpenWorkout}><span><Dumbbell /></span><small>Тренировка</small><strong>{workout ? <>{workout.durationMin} минут<br/>{workout.level === 'rest' ? 'восстановления' : workout.intensityLabel.toLowerCase()}</> : <>Подобрать<br/>за 1 нажатие</>}</strong><em>{workout ? workoutStatusCopy[workout.status] : 'По вашим отметкам'}</em></button>
         <button className="vitamins" onClick={onOpenDailyPlan}><span><Pill /></span><small>Витамины</small><strong>{day.b6Prescribed ? <>B6<br/>по схеме</> : <>Только<br/>назначенные</>}</strong><em>{day.b6Taken ? 'Принято' : day.b6Prescribed ? 'Отметить приём' : 'Без назначения нет'}</em></button>
       </div>
     </section>}
@@ -715,26 +800,31 @@ function Today({ data, scenario, onOpen, onPatchEntry, onShowAttention, onOpenDa
   </div>;
 }
 
+const workoutStatusCopy: Record<AuraWorkoutLog['status'], string> = {
+  planned: 'План сохранён',
+  in_progress: 'Тренировка идёт',
+  completed: 'Выполнено',
+  skipped: 'Пропущено сегодня',
+};
+
+const workoutLevelCopy: Record<AuraWorkoutLog['level'], string> = {
+  rest: 'Восстановление',
+  recovery: 'Мягкий режим',
+  light: 'Лёгкая нагрузка',
+  moderate: 'Умеренная нагрузка',
+};
+
 const dailyCareItems = [
   { id: 'period-products', title: 'Прокладки или тампоны', note: 'Проверьте запас без спешки' },
   { id: 'heat-patch', title: 'Термопластырь', note: 'Если тепло обычно помогает' },
   { id: 'spare-underwear', title: 'Запасное бельё', note: 'Можно положить в сумку заранее' },
 ];
 
-const quickMoodOptions: Array<{ label: string; icon: LucideIcon }> = [
-  { label: 'Спокойствие', icon: Smile },
-  { label: 'Радость', icon: Laugh },
-  { label: 'Раздражение', icon: Annoyed },
-  { label: 'Грусть', icon: Frown },
-  { label: 'Тревога', icon: Meh },
-  { label: 'Апатия', icon: Moon },
-];
-
 const quickSymptomOptions: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: 'pain', label: 'Боль внизу живота', icon: Heart },
   { id: 'fatigue', label: 'Усталость', icon: Activity },
   { id: 'headache', label: 'Головная боль', icon: CircleAlert },
-  { id: 'back-pain', label: 'Боль в спине', icon: PersonStanding },
+  { id: 'back', label: 'Боль в спине', icon: PersonStanding },
   { id: 'breast', label: 'Чувствительная грудь', icon: Heart },
   { id: 'bloating', label: 'Вздутие', icon: CircleGauge },
   { id: 'acne', label: 'Высыпания', icon: Sparkle },
@@ -745,38 +835,50 @@ const quickSymptomOptions: Array<{ id: string; label: string; icon: LucideIcon }
   { id: 'nausea', label: 'Тошнота', icon: Meh },
 ];
 
-function QuickSymptomsSheet({ day, onClose, onSave }: { day: AuraDayEntry; onClose: () => void; onSave: (patch: Partial<AuraDayEntry>) => void }) {
+function QuickSymptomsSheet({ day, onClose, onOpenDetails, onSave }: { day: AuraDayEntry; onClose: () => void; onOpenDetails: () => void; onSave: (patch: Partial<AuraDayEntry>) => void }) {
   const [symptoms, setSymptoms] = useState<AuraSymptom[]>(day.symptoms);
-  const [moods, setMoods] = useState(day.moods);
-  const [energy, setEnergy] = useState(day.energy);
   const [clearMarked, setClearMarked] = useState(Boolean(day.symptomsChecked && day.symptoms.length === 0));
-  const toggleMood = (value: string) => setMoods((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
   const toggleSymptom = (option: (typeof quickSymptomOptions)[number]) => {
     setClearMarked(false);
     setSymptoms((current) => current.some((item) => item.id === option.id) ? current.filter((item) => item.id !== option.id) : [...current, { id: option.id, label: option.label, severity: 1, affectsLife: false }]);
   };
   const setSeverity = (id: string, severity: 1 | 2 | 3) => setSymptoms((current) => current.map((item) => item.id === id ? { ...item, severity } : item));
+  const toggleImpact = (id: string) => setSymptoms((current) => current.map((item) => item.id === id ? { ...item, affectsLife: !item.affectsLife } : item));
   const markClear = () => { setSymptoms([]); setClearMarked(true); };
+  const severePain = symptoms.some((symptom) => symptom.id === 'pain' && symptom.severity === 3);
   return <div className="attention-overlay quick-checkin-overlay" onClick={onClose}>
     <section className="attention-modal quick-checkin-modal" role="dialog" aria-modal="true" aria-labelledby="quick-checkin-title" onClick={(event) => event.stopPropagation()}>
       <div className="attention-handle"/><button className="attention-close" onClick={onClose} aria-label="Закрыть"><X /></button>
-      <header className="quick-checkin-header"><span><Heart /></span><div><span className="eyebrow">Быстрая отметка · {formatRuDate(AURA_TODAY)}</span><h2 id="quick-checkin-title">Как вы себя чувствуете?</h2><p>Выберите всё, что подходит сегодня.</p></div><em>{symptoms.length + moods.length} выбрано</em></header>
+      <header className="quick-checkin-header"><span><Heart /></span><div><span className="eyebrow">Симптомы · {formatRuDate(AURA_TODAY)}</span><h2 id="quick-checkin-title">Что беспокоит сегодня?</h2><p>Сначала выберите симптом — детали появятся ниже.</p></div><em>{symptoms.length} выбрано</em></header>
 
-      <section className="quick-checkin-section mood"><div className="quick-checkin-section-title"><div><span><Smile /></span><h3>Настроение</h3></div><small>Можно несколько</small></div><div className="quick-mood-grid">{quickMoodOptions.map(({ label, icon: Icon }) => <button key={label} className={moods.includes(label) ? 'active' : ''} aria-pressed={moods.includes(label)} onClick={() => toggleMood(label)}><Icon /><strong>{label}</strong>{moods.includes(label) && <Check />}</button>)}</div></section>
+      <section className="quick-checkin-section symptoms"><div className="quick-checkin-section-title"><div><span><Stethoscope /></span><h3>Частые симптомы</h3></div><small>Можно несколько</small></div><button className={`all-good-option ${clearMarked ? 'active' : ''}`} aria-pressed={clearMarked} onClick={markClear}><span><Check /></span><div><strong>Ничего не беспокоит</strong><small>Это отдельная осознанная отметка, а не пустой день</small></div>{clearMarked && <Check />}</button><div className="quick-symptom-grid">{quickSymptomOptions.slice(0, 6).map(({ id,label,icon: Icon }) => { const active = symptoms.some((item) => item.id === id); return <button key={id} className={active ? 'active' : ''} aria-pressed={active} onClick={() => toggleSymptom({ id,label,icon:Icon })}><Icon /><strong>{label}</strong>{active && <Check />}</button>; })}</div><button className="quick-more-details" onClick={onOpenDetails}><Plus /> Другой симптом или подробная запись <ChevronRight /></button></section>
 
-      <section className="quick-checkin-section energy"><div className="quick-checkin-section-title"><div><span><Activity /></span><h3>Энергия</h3></div><small>{energy ? `${energy} из 5` : 'Не отмечено'}</small></div><div className="quick-energy-scale">{[1,2,3,4,5].map((value) => <button key={value} className={energy === value ? 'active' : ''} aria-pressed={energy === value} onClick={() => setEnergy(value)}><strong>{value}</strong><small>{value === 1 ? 'мало' : value === 5 ? 'много' : ''}</small></button>)}</div></section>
+      {symptoms.length > 0 && <section className="quick-severity"><div className="quick-checkin-section-title"><div><span><CircleGauge /></span><h3>Выраженность и влияние</h3></div><small>Для каждого симптома</small></div>{symptoms.map((symptom) => <div className="quick-severity-card" key={symptom.id}><div className="quick-severity-row"><strong>{symptom.label}</strong><div>{([1,2,3] as const).map((value) => <button key={value} className={symptom.severity === value ? 'active' : ''} onClick={() => setSeverity(symptom.id, value)}>{value}<small>{value === 1 ? 'лёгк.' : value === 2 ? 'сред.' : 'сильн.'}</small></button>)}</div></div><button className={`quick-impact-toggle ${symptom.affectsLife ? 'active' : ''}`} aria-pressed={symptom.affectsLife} onClick={() => toggleImpact(symptom.id)}><span>{symptom.affectsLife && <Check />}</span>Мешало работе, сну, движению или отдыху</button></div>)}</section>}
 
-      <section className="quick-checkin-section symptoms"><div className="quick-checkin-section-title"><div><span><Stethoscope /></span><h3>Симптомы</h3></div><small>Основные</small></div><button className={`all-good-option ${clearMarked ? 'active' : ''}`} aria-pressed={clearMarked} onClick={markClear}><span><Check /></span><div><strong>Всё в порядке</strong><small>Сегодня ничего из списка не беспокоит</small></div>{clearMarked && <Check />}</button><div className="quick-symptom-grid">{quickSymptomOptions.map(({ id,label,icon: Icon }) => { const active = symptoms.some((item) => item.id === id); return <button key={id} className={active ? 'active' : ''} aria-pressed={active} onClick={() => toggleSymptom({ id,label,icon:Icon })}><Icon /><strong>{label}</strong>{active && <Check />}</button>; })}</div></section>
-
-      {symptoms.length > 0 && <section className="quick-severity"><div className="quick-checkin-section-title"><div><span><CircleGauge /></span><h3>Насколько выражено?</h3></div><small>Для выбранных симптомов</small></div>{symptoms.map((symptom) => <div className="quick-severity-row" key={symptom.id}><strong>{symptom.label}</strong><div>{([1,2,3] as const).map((value) => <button key={value} className={symptom.severity === value ? 'active' : ''} onClick={() => setSeverity(symptom.id, value)}>{value}<small>{value === 1 ? 'лёгк.' : value === 2 ? 'сред.' : 'сильн.'}</small></button>)}</div></div>)}</section>}
+      {severePain && <aside className="quick-safety-alert"><CircleAlert /><span><strong>Сильную боль лучше не откладывать</strong>Если боль сильнее обычной и обезболивающее не помогает, обратитесь за срочной медицинской помощью.</span></aside>}
 
       <aside className="quick-checkin-note"><ShieldCheck /> Пустой день не считается «всё в порядке». Сохраняются только выбранные вами отметки.</aside>
-      <button className="primary-button quick-checkin-save" onClick={() => onSave({ symptoms, symptomsChecked: clearMarked || symptoms.length > 0, moods, energy })}><Check /> Сохранить на сегодня</button>
+      <button className="primary-button quick-checkin-save" disabled={!clearMarked && symptoms.length === 0} onClick={() => onSave({ symptoms, symptomsChecked: clearMarked || symptoms.length > 0 })}><Check /> Сохранить симптомы</button>
     </section>
   </div>;
 }
 
-function DailyPlanModal({ day, onPatch, onClose }: { day: AuraDayEntry; onPatch: (patch: Partial<AuraDayEntry>) => void; onClose: () => void }) {
+function SymptomSavedSheet({ day, onClose, onOpenDiary, onOpenAnalytics }: { day: AuraDayEntry; onClose: () => void; onOpenDiary: () => void; onOpenAnalytics: () => void }) {
+  return <div className="attention-overlay symptom-saved-overlay" onClick={onClose}>
+    <section className="attention-modal symptom-saved-modal" role="dialog" aria-modal="true" aria-labelledby="symptom-saved-title" onClick={(event) => event.stopPropagation()}>
+      <button className="attention-close" onClick={onClose} aria-label="Закрыть подтверждение"><X /></button>
+      <span className="symptom-saved-icon"><Check /></span>
+      <span className="eyebrow">Запись сохранена</span>
+      <h2 id="symptom-saved-title">Mira учтёт это в вашей истории</h2>
+      {day.symptoms.length ? <div className="symptom-saved-list">{day.symptoms.map((symptom) => <span key={symptom.id}><strong>{symptom.label}</strong><small>{symptom.severity}/3{symptom.affectsLife ? ' · влияло на обычные дела' : ''}</small></span>)}</div> : <p className="symptom-saved-clear">Сегодня отмечено, что ничего из списка не беспокоит.</p>}
+      <p className="symptom-saved-note">Запись уже находится в Дневнике. Аналитика будет сравнивать её только с другими сохранёнными днями.</p>
+      <div className="symptom-saved-actions"><button onClick={onOpenDiary}><NotebookTabs /> Открыть дневник</button><button onClick={onOpenAnalytics}><ChartSpline /> Смотреть динамику</button></div>
+      <button className="text-button" onClick={onClose}>Остаться на главной</button>
+    </section>
+  </div>;
+}
+
+function DailyPlanModal({ day, onPatch, onOpenWorkout, onClose }: { day: AuraDayEntry; onPatch: (patch: Partial<AuraDayEntry>) => void; onOpenWorkout: () => void; onClose: () => void }) {
   const careItems = day.careItems ?? [];
   const pain = day.symptoms.find((symptom) => symptom.id === 'pain');
   const gentleDay = Boolean(pain && (pain.severity === 3 || pain.affectsLife));
@@ -804,7 +906,7 @@ function DailyPlanModal({ day, onPatch, onClose }: { day: AuraDayEntry; onPatch:
       <section className="daily-plan-section movement">
         <div className="daily-plan-section-head"><span><PersonStanding /></span><div><small>Движение</small><h3>{gentleDay ? 'Мягкое движение по самочувствию' : 'Спокойная ходьба · 15 минут'}</h3></div></div>
         <p>{gentleDay ? 'Сегодня отмечена выраженная боль. Можно выбрать отдых, дыхание или короткую прогулку — только если движение не усиливает симптомы.' : 'Неспешная прогулка или лёгкая растяжка могут помочь переключиться и поддержать привычный ритм.'}</p>
-        <button className={`daily-plan-action ${day.recommendedActivityDone ? 'done' : ''}`} onClick={() => onPatch({ recommendedActivityDone: !day.recommendedActivityDone })}>{day.recommendedActivityDone ? <><Check /> Выполнено</> : <><PersonStanding /> Отметить занятие</>}</button>
+        <button className={`daily-plan-action ${day.workout?.status === 'completed' ? 'done' : ''}`} onClick={onOpenWorkout}>{day.workout ? <><Dumbbell /> {day.workout.status === 'completed' ? 'Тренировка выполнена' : 'Открыть тренировку'}</> : <><Sparkle /> Подобрать тренировку</>}</button>
       </section>
 
       <section className="daily-plan-section supplements">
@@ -820,6 +922,65 @@ function DailyPlanModal({ day, onPatch, onClose }: { day: AuraDayEntry; onPatch:
 
       <aside className="daily-plan-safety"><ShieldCheck /><p><strong>Почему именно эти подсказки?</strong><span>Вещи связаны с прогнозом цикла, движение — с сегодняшними отметками. Добавки отображаются только после подтверждения назначения.</span></p></aside>
       <button className="primary-button" onClick={onClose}><Check /> Готово на сегодня</button>
+    </section>
+  </div>;
+}
+
+function WorkoutModal({ workout, onPatch, onRegenerate, onClose }: { workout: AuraWorkoutLog; onPatch: (patch: Partial<AuraWorkoutLog>) => void; onRegenerate: () => void; onClose: () => void }) {
+  const isRest = workout.level === 'rest';
+  const canRegenerate = workout.status !== 'in_progress';
+  const snapshotItems = [
+    workout.snapshot.cycleDay ? `${workout.snapshot.cycleDay}-й день цикла` : 'День цикла неизвестен',
+    workout.snapshot.energy ? `Энергия ${workout.snapshot.energy}/5` : 'Энергия не отмечена',
+    workout.snapshot.sleepHours ? `Сон ${workout.snapshot.sleepHours} ч` : workout.snapshot.sleepQuality ? `Сон: ${workout.snapshot.sleepQuality.toLowerCase()}` : 'Сон не отмечен',
+  ];
+  const begin = () => onPatch({ status: 'in_progress', startedAt: new Date().toISOString(), completedAt: undefined, feedback: undefined });
+  const complete = () => onPatch({ status: 'completed', completedAt: new Date().toISOString() });
+  const skip = () => onPatch({ status: 'skipped', completedAt: new Date().toISOString() });
+  return <div className="attention-overlay workout-overlay" onClick={onClose}>
+    <section className={`attention-modal workout-modal level-${workout.level}`} role="dialog" aria-modal="true" aria-labelledby="workout-title" onClick={(event) => event.stopPropagation()}>
+      <div className="attention-handle" />
+      <button className="attention-close" onClick={onClose} aria-label="Закрыть тренировку"><X /></button>
+      <header className="workout-header">
+        <span className="workout-header-icon">{isRest ? <Moon /> : <Dumbbell />}</span>
+        <div><span className="eyebrow">Тренировка на сегодня</span><h2 id="workout-title">{workout.title}</h2><p>{workoutLevelCopy[workout.level]} · {workout.intensityLabel}</p></div>
+        <span className={`workout-status ${workout.status}`}>{workoutStatusCopy[workout.status]}</span>
+      </header>
+
+      <div className="workout-summary">
+        <span><Timer /><strong>{workout.durationMin}</strong><small>минут</small></span>
+        <span><CircleGauge /><strong>{workout.exercises.length}</strong><small>{isRest ? 'шага' : 'упражнений'}</small></span>
+        <span><Activity /><strong>{workout.intensityLabel}</strong><small>интенсивность</small></span>
+      </div>
+
+      <section className="workout-why">
+        <div className="workout-section-title"><div><Sparkle /><h3>Почему такой вариант</h3></div>{canRegenerate && <button onClick={onRegenerate}><RefreshCw /> Обновить</button>}</div>
+        <div className="workout-context">{snapshotItems.map((item) => <span key={item}>{item}</span>)}</div>
+        <ul>{workout.reasons.map((reason) => <li key={reason}><Check />{reason}</li>)}</ul>
+      </section>
+
+      <section className="workout-exercises">
+        <div className="workout-section-title"><div><ListChecks /><h3>{isRest ? 'План восстановления' : 'Готовая последовательность'}</h3></div><small>без оборудования</small></div>
+        <ol>{workout.exercises.map((exercise, index) => <li key={exercise.id}><span>{index + 1}</span><div><strong>{exercise.title}</strong><small>{exercise.amount}</small><p>{exercise.note}</p></div></li>)}</ol>
+      </section>
+
+      <aside className="workout-safety"><ShieldCheck /><p><strong>Ориентируйтесь на самочувствие</strong><span>Остановитесь при боли, головокружении, боли в груди или необычной одышке. Это не медицинское назначение. Упражнения Кегеля не добавляются автоматически: тазовое дно должно уметь не только напрягаться, но и расслабляться.</span></p></aside>
+
+      {workout.status === 'completed' && <section className="workout-feedback"><span>Как ощущалась нагрузка?</span><div>{([
+        ['easy', 'Слишком легко'],
+        ['right', 'В самый раз'],
+        ['hard', 'Слишком тяжело'],
+      ] as Array<[WorkoutFeedback, string]>).map(([value, label]) => <button key={value} className={workout.feedback === value ? 'active' : ''} onClick={() => onPatch({ feedback: value })}>{workout.feedback === value && <Check />}{label}</button>)}</div></section>}
+
+      <div className="workout-actions">
+        {workout.status === 'planned' && (isRest
+          ? <button className="primary-button" onClick={complete}><Check /> Сохранить день восстановления</button>
+          : <button className="primary-button" onClick={begin}><Play /> Начать тренировку</button>)}
+        {workout.status === 'in_progress' && <button className="primary-button" onClick={complete}><Check /> Завершить и сохранить</button>}
+        {workout.status === 'completed' && <button className="primary-button" onClick={onClose}><Check /> Готово</button>}
+        {workout.status === 'skipped' && <button className="primary-button" onClick={onRegenerate}><RefreshCw /> Подобрать заново</button>}
+        {workout.status === 'planned' && !isRest && <button className="text-button" onClick={skip}>Сегодня пропустить</button>}
+      </div>
     </section>
   </div>;
 }
@@ -904,7 +1065,7 @@ function Calendar({ data, scenario, onSelectDate, onBack, onOpenDiary }: { data:
   </div>;
 }
 
-function Diary({ data, persistStatus, onPatchEntry, onSetPeriodStart, onOpenCalendar, onOpenSettings, onNotify }: { data: AuraState; persistStatus: PersistStatus; onPatchEntry: (date: string, patch: Partial<AuraDayEntry>) => void; onSetPeriodStart: (date: string, marked: boolean) => void; onOpenCalendar: () => void; onOpenSettings: () => void; onNotify: (message: string) => void }) {
+function Diary({ data, persistStatus, onPatchEntry, onSetPeriodStart, onOpenCalendar, onOpenSettings, onDone, onNotify }: { data: AuraState; persistStatus: PersistStatus; onPatchEntry: (date: string, patch: Partial<AuraDayEntry>) => void; onSetPeriodStart: (date: string, marked: boolean) => void; onOpenCalendar: () => void; onOpenSettings: () => void; onDone: () => void; onNotify: (message: string) => void }) {
   const [openModule, setOpenModule] = useState('cycle');
   const [symptomPickerOpen, setSymptomPickerOpen] = useState(false);
   const day = data.entries[data.selectedDate] ?? emptyAuraEntry();
@@ -922,7 +1083,8 @@ function Diary({ data, persistStatus, onPatchEntry, onSetPeriodStart, onOpenCale
       <div className="rating-icons">{dayRatings.map(({ label, icon: Icon }, index) => <button key={label} className={day.rating === index + 1 ? 'active' : ''} onClick={() => update({ rating: index + 1 })}><Icon /><small>{label}</small></button>)}</div>
     </section>
     <div className="diary-title"><div><span className="eyebrow">Заполните только нужное</span><h2>Разделы дня</h2></div><button onClick={onOpenSettings}><SlidersHorizontal /> Настроить</button></div>
-    {data.modules.cycle && <DiaryModule title="Цикл и симптомы" icon={Heart} tone="coral" summary={pain ? `${pain.label} · ${pain.severity}/3` : day.period && day.period !== 'none' ? 'Месячные отмечены' : 'Не отмечено'} open={openModule === 'cycle'} onToggle={() => setOpenModule(openModule === 'cycle' ? '' : 'cycle')}>
+    {data.modules.cycle && <DiaryModule title="Цикл и симптомы" icon={Heart} tone="coral" summary={day.symptoms.length ? symptomDiaryText(day.symptoms[0]) : day.period && day.period !== 'none' ? 'Месячные отмечены' : 'Не отмечено'} open={openModule === 'cycle'} onToggle={() => setOpenModule(openModule === 'cycle' ? '' : 'cycle')}>
+      {day.symptoms.length > 0 && <div className="diary-symptom-summary"><span className="eyebrow">Сохранено сегодня</span>{day.symptoms.map((symptom) => <div key={symptom.id}><span><strong>{symptom.label}</strong><small>{symptom.severity}/3{symptom.affectsLife ? ' · влияло на обычные дела' : ''}</small></span><Check /></div>)}</div>}
       <div className="cycle-question">
         <div className="cycle-question-head"><span className="cycle-question-icon period"><Droplet /></span><span><strong>Месячные</strong><small>Интенсивность сегодня</small></span></div>
         <button className={`impact-toggle cycle-impact ${isPeriodStart ? 'active' : ''}`} aria-pressed={isPeriodStart} onClick={() => {
@@ -974,7 +1136,10 @@ function Diary({ data, persistStatus, onPatchEntry, onSetPeriodStart, onOpenCale
     {data.modules.daily && <DiaryModule title="Шаги" icon={Footprints} tone="sage" summary={day.steps ? `${day.steps.toLocaleString('ru-RU')} из 7 000` : 'Пока не отмечено'} open={openModule === 'steps'} onToggle={() => setOpenModule(openModule === 'steps' ? '' : 'steps')}>
       <StepsEditor value={day.steps ?? 0} onChange={(steps) => update({ steps })} />
     </DiaryModule>}
-    {data.modules.activity && <DiaryModule title="Активность" icon={Dumbbell} tone="sage" summary={day.activity ?? 'Не отмечено'} open={openModule === 'activity'} onToggle={() => setOpenModule(openModule === 'activity' ? '' : 'activity')}><div className="choice-chips">{['Прогулка','Тренировка','Растяжка','День отдыха'].map((value) => <button key={value} className={day.activity === value ? 'active' : ''} onClick={() => update({ activity: value })}>{value}</button>)}</div></DiaryModule>}
+    {data.modules.activity && <DiaryModule title="Активность" icon={Dumbbell} tone="sage" summary={day.workout ? `${workoutStatusCopy[day.workout.status]} · ${day.workout.durationMin} мин` : day.activity ?? 'Не отмечено'} open={openModule === 'activity'} onToggle={() => setOpenModule(openModule === 'activity' ? '' : 'activity')}>
+      {day.workout && <WorkoutDiaryCard workout={day.workout} />}
+      <p className="module-prompt">Другая активность за день</p><div className="choice-chips">{['Прогулка','Тренировка','Растяжка','День отдыха'].map((value) => <button key={value} className={day.activity === value ? 'active' : ''} onClick={() => update({ activity: value })}>{value}</button>)}</div>
+    </DiaryModule>}
     {data.modules.intimate && <DiaryModule title="Интимная жизнь" icon={LockKeyhole} tone="rose" summary={intimacySummary(day)} open={openModule === 'intimate'} onToggle={() => setOpenModule(openModule === 'intimate' ? '' : 'intimate')}><IntimacyEditor day={day} onChange={update} /></DiaryModule>}
     {data.modules.nutrition && <DiaryModule title="Питание" icon={Utensils} tone="coral" summary={day.calories ? `${day.calories.toLocaleString('ru-RU')} ккал` : day.nutrition.length ? day.nutrition.join(', ') : 'Не отмечено'} open={openModule === 'nutrition'} onToggle={() => setOpenModule(openModule === 'nutrition' ? '' : 'nutrition')}>
       <div className="calorie-editor"><span className="choice-icon"><Utensils /></span><div><small>Сколько получилось за день</small><label><input type="number" inputMode="numeric" min="0" max="6000" step="50" value={day.calories ?? ''} placeholder="Например, 1800" onChange={(event) => update({ calories: event.target.value ? Math.max(0, Number(event.target.value)) : undefined })}/><b>ккал</b></label></div></div>
@@ -993,7 +1158,7 @@ function Diary({ data, persistStatus, onPatchEntry, onSetPeriodStart, onOpenCale
       <p className="module-prompt">Быстрый контекст, если подходит</p><div className="choice-chips">{['Стресс','Поездка','Болезнь','Лекарства'].map((value) => <button key={value} className={day.contexts.includes(value) ? 'active' : ''} onClick={() => update({ contexts: toggleValue(day.contexts, value) })}>{value}</button>)}</div>
       <aside className="note-privacy"><LockKeyhole /> Заметка хранится только на этом устройстве.</aside>
     </DiaryModule>}
-    <button className="primary-button sticky-save" onClick={() => onNotify('Подробная запись сохранена')}><Check /> Готово</button>
+    <button className="primary-button sticky-save" onClick={() => { onNotify('Все изменения сохранены автоматически'); onDone(); }}><Check /> Готово — вернуться на Сегодня</button>
   </div>;
 }
 
@@ -1202,6 +1367,13 @@ function MiniMeasurementChart({ points, unit }: { points: Array<{ date: string; 
   return <div className="mini-measurement-chart"><svg viewBox="0 0 320 112" role="img" aria-label="История измерений"><defs><linearGradient id="measurement-gradient" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#fba0e3" stopOpacity=".35"/><stop offset="1" stopColor="#fba0e3" stopOpacity="0"/></linearGradient></defs><path className="measure-area" d={`${path} L ${x(points.length - 1)} 88 L ${x(0)} 88 Z`} fill="url(#measurement-gradient)" /><path className="measure-line" d={path}/>{points.map((point, index) => <g key={point.date}><circle cx={x(index)} cy={y(point.value)} r="4"/><text x={x(index)} y={y(point.value) - 9}>{String(point.value).replace('.', ',')}{unit}</text><text className="measure-date" x={x(index)} y="103">{Number(point.date.slice(8))}</text></g>)}</svg></div>;
 }
 
+function WorkoutDiaryCard({ workout }: { workout: AuraWorkoutLog }) {
+  return <div className={`workout-diary-card ${workout.status}`}>
+    <span>{workout.status === 'completed' ? <Check /> : workout.level === 'rest' ? <Moon /> : <Dumbbell />}</span>
+    <div><small>{workoutStatusCopy[workout.status]}</small><strong>{workout.title}</strong><p>{workout.durationMin} минут · {workout.intensityLabel.toLowerCase()}{workout.feedback ? ` · ${workout.feedback === 'easy' ? 'было легко' : workout.feedback === 'right' ? 'нагрузка подошла' : 'было тяжело'}` : ''}</p></div>
+  </div>;
+}
+
 function DiaryModule({ title, icon: Icon, tone, summary, open, onToggle, children }: { title: string; icon: LucideIcon; tone: string; summary: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return <section className={`diary-module ${open ? 'open' : ''}`}><button className="module-head" onClick={onToggle}><span className={`metric-icon ${tone}`}><Icon /></span><span><strong>{title}</strong><small>{summary}</small></span><ChevronDown /></button>{open && <div className="module-body">{children}</div>}</section>;
 }
@@ -1253,7 +1425,7 @@ function IntimacyEditor({ day, onChange }: { day: AuraDayEntry; onChange: (patch
 }
 
 function Analytics({ data, scenario, section, setSection, mode, setMode, onOpenDiary, onOpenReport }: { data: AuraState; scenario: PrototypeScenario; section: AnalyticsSection; setSection: (section: AnalyticsSection) => void; mode: WellbeingMode; setMode: (mode: WellbeingMode) => void; onOpenDiary: () => void; onOpenReport: () => void }) {
-  const entryCount = Object.keys(data.entries).length;
+  const entryCount = getAuraObservationDates(data).length;
   const metrics = getAuraCycleMetrics(data);
   const showOverviewGate = section === 'overview' && scenario !== 'history';
   return <div className="screen analytics-screen">
@@ -1458,9 +1630,10 @@ function HabitsAnalytics({ data }: { data: AuraState }) {
 
 function HistoryAnalytics({ data }: { data: AuraState }) {
   const [filter, setFilter] = useState('Все');
-  const rows = Object.entries(data.entries).sort(([left], [right]) => right.localeCompare(left)).filter(([, day]) => {
+  const observationDates = getAuraObservationDates(data);
+  const rows = observationDates.map((date) => [date, data.entries[date] ?? emptyAuraEntry(date)] as const).sort(([left], [right]) => right.localeCompare(left)).filter(([date, day]) => {
     if (filter === 'Все') return true;
-    if (filter === 'Цикл') return Boolean(day.period && day.period !== 'none');
+    if (filter === 'Цикл') return data.periodStarts.includes(date) || Boolean(day.period && day.period !== 'none');
     if (filter === 'Симптомы') return day.symptoms.length > 0;
     if (filter === 'Состояние') return Boolean(day.rating || day.moods.length);
     return day.sleepHours !== undefined;
@@ -1468,13 +1641,13 @@ function HistoryAnalytics({ data }: { data: AuraState }) {
   const latest = rows.slice(0, 12);
   const currentMonth = localDate(AURA_TODAY);
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-  const activeDays = new Set(Object.keys(data.entries).filter((date) => date.slice(0, 7) === AURA_TODAY.slice(0, 7)).map((date) => Number(date.slice(8))));
-  const summary = (day: AuraDayEntry) => day.symptoms[0] ? `${day.symptoms[0].label} · ${day.symptoms[0].severity}/3` : day.rating ? `Оценка дня · ${day.rating}/5` : day.sleepHours !== undefined ? `Сон · ${day.sleepHours} ч` : day.period && day.period !== 'none' ? 'Месячные отмечены' : 'Сохранённая запись';
-  const detail = (day: AuraDayEntry) => day.water !== undefined ? `Вода · ${day.water.toLocaleString('ru-RU')} мл` : day.energy ? `Энергия · ${day.energy}/5` : day.moods[0] ?? 'Без дополнительной отметки';
+  const activeDays = new Set(observationDates.filter((date) => date.slice(0, 7) === AURA_TODAY.slice(0, 7)).map((date) => Number(date.slice(8))));
+  const summary = (date: string, day: AuraDayEntry) => data.periodStarts.includes(date) ? 'Начало месячных' : day.symptoms[0] ? `${day.symptoms[0].label} · ${day.symptoms[0].severity}/3` : day.rating ? `Оценка дня · ${day.rating}/5` : day.sleepHours !== undefined ? `Сон · ${day.sleepHours} ч` : day.period && day.period !== 'none' ? 'Месячные отмечены' : 'Сохранённая запись';
+  const detail = (date: string, day: AuraDayEntry) => data.periodStarts.includes(date) ? 'Первый день цикла' : day.water !== undefined ? `Вода · ${day.water.toLocaleString('ru-RU')} мл` : day.energy ? `Энергия · ${day.energy}/5` : day.moods[0] ?? 'Без дополнительной отметки';
   return <div className="history-view">
     <section className="surface history-calendar"><div className="section-heading"><div><span className="eyebrow">{ruMonthTitles[currentMonth.getMonth()]}</span><h2>История записей</h2></div><span className="soft-status">{activeDays.size} дней</span></div><div className="history-dots">{Array.from({length:daysInMonth},(_,index)=><i key={index} className={activeDays.has(index + 1) ? `active tone-${index%4}` : ''}><span>{index+1}</span></i>)}</div></section>
     <div className="filter-chips">{['Все','Цикл','Симптомы','Состояние','Сон'].map(item=><button key={item} className={filter===item?'active':''} onClick={()=>setFilter(item)}>{item}</button>)}</div>
-    <div className="history-list">{latest.map(([date, day], index)=><button key={date}><span className={`history-date ${['coral','violet','sage','rose'][index%4]}`}><strong>{Number(date.slice(8))}</strong><small>{ruMonths[localDate(date).getMonth()].slice(0,3)}</small></span><span><small>{date === AURA_TODAY ? 'Сегодня' : formatRuDate(date)}</small><strong>{summary(day)}</strong><p>{detail(day)}</p></span><ChevronRight /></button>)}</div>
+    <div className="history-list">{latest.map(([date, day], index)=><button key={date}><span className={`history-date ${['coral','violet','sage','rose'][index%4]}`}><strong>{Number(date.slice(8))}</strong><small>{ruMonths[localDate(date).getMonth()].slice(0,3)}</small></span><span><small>{date === AURA_TODAY ? 'Сегодня' : formatRuDate(date)}</small><strong>{summary(date, day)}</strong><p>{detail(date, day)}</p></span><ChevronRight /></button>)}</div>
     {!latest.length && <div className="chart-empty"><NotebookTabs /><strong>Таких записей пока нет</strong><small>Смените фильтр или добавьте отметку в дневнике.</small></div>}
   </div>;
 }
@@ -1568,9 +1741,10 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
   const [intimate, setIntimate] = useState(false);
   const [sections, setSections] = useState<Record<string, boolean>>({ cycle: true, symptoms: true, wellbeing: true, sleep: true });
   const metrics = getAuraCycleMetrics(data);
-  const entryCount = Object.keys(data.entries).length;
+  const observationDates = getAuraObservationDates(data);
+  const entryCount = observationDates.length;
   const reportStarts = metrics.starts.slice(-4);
-  const reportStart = reportStarts[0] ?? Object.keys(data.entries).sort()[0] ?? AURA_TODAY;
+  const reportStart = reportStarts[0] ?? observationDates[0] ?? AURA_TODAY;
   const reportDays = daysBetween(reportStart, AURA_TODAY) + 1;
   const cycleLengths = metrics.cycleLengths.slice(-3);
   const averageCycle = cycleLengths.length ? Math.round(cycleLengths.reduce((sum, value) => sum + value, 0) / cycleLengths.length) : null;
@@ -1585,10 +1759,11 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
   const energyValues = reportEntries.flatMap(([, day]) => day.energy ? [day.energy] : []);
   const sleepValues = reportEntries.flatMap(([, day]) => day.sleepHours === undefined ? [] : [day.sleepHours]);
   const average = (values: number[]) => values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1).replace('.', ',') : '—';
-  const symptomStats = new Map<string, { label: string; count: number; severe: number; impact: number }>();
+  const symptomStats = new Map<string, { label: string; count: number; severityTotal: number; severe: number; impact: number }>();
   reportEntries.forEach(([, day]) => day.symptoms.forEach((symptom) => {
-    const current = symptomStats.get(symptom.id) ?? { label: symptom.label, count: 0, severe: 0, impact: 0 };
+    const current = symptomStats.get(symptom.id) ?? { label: symptom.label, count: 0, severityTotal: 0, severe: 0, impact: 0 };
     current.count += 1;
+    current.severityTotal += symptom.severity;
     current.severe += Number(symptom.severity === 3);
     current.impact += Number(symptom.affectsLife);
     symptomStats.set(symptom.id, current);
@@ -1597,6 +1772,7 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
   const reportNotes = reportEntries.flatMap(([date, day]) => day.note?.trim() ? [{ date, note: day.note.trim() }] : []);
   const intimacyYes = reportEntries.filter(([, day]) => day.intimate === true).length;
   const intimacyConcern = reportEntries.filter(([, day]) => day.intimacyComfort === 'pain' || day.intimacyAfter?.some((item) => item !== 'none')).length;
+  const safetyFacts = getAuraSafetyFacts(data, intimate).filter((fact) => fact.category === 'cycle' ? sections.cycle : fact.category === 'symptoms' ? sections.symptoms : intimate).slice(0, 12);
   return <div className="screen report-screen">
     <TopBack title="Отчёт для врача" onBack={onBack} action={<span className="secure-badge"><ShieldCheck /> Локально</span>} />
     <section className="aura-hero report-hero"><span className="glass-label"><FileHeart /> Факты для консультации</span><h2>Подготовьте понятную историю</h2><p>Выберите только те данные, которыми готовы поделиться.</p></section>
@@ -1605,11 +1781,13 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
     <section className="report-preview" id="mira-report"><div className="report-logo"><MiraMark /> Mira</div><h2>Цикл и самочувствие</h2><p>{formatRuDate(reportStart, true)} – {formatRuDate(AURA_TODAY, true)}</p>
       {!includedSections && <div className="chart-empty"><ListChecks /><strong>Выберите хотя бы один раздел</strong><small>Предпросмотр обновляется сразу после переключения.</small></div>}
       {sections.cycle && <section className="report-preview-section"><h3>Циклы и месячные</h3><div className="preview-metrics"><span><small>Циклы</small><strong>{averageCycle ? `${averageCycle} дней` : '—'}</strong><i>{cycleRange}</i></span><span><small>Месячные</small><strong>{averagePeriod ? `${averagePeriod} дня` : '—'}</strong><i>{durations.length} периода</i></span><span><small>История</small><strong>{metrics.completedCycles}</strong><i>завершено</i></span></div>{cycleLengths.length ? <div className="preview-line">{cycleLengths.map((value, index) => <span key={`${value}-${index}`} style={{height:`${35 + ((value - Math.min(...cycleLengths)) / Math.max(1, Math.max(...cycleLengths) - Math.min(...cycleLengths))) * 50}%`}}/>)}</div> : <p className="report-empty-line">Динамика появится после завершённого цикла.</p>}</section>}
-      {sections.symptoms && <section className="report-preview-section"><h3>Боль и симптомы</h3>{topSymptoms.length ? <div className="report-fact-list">{topSymptoms.map((symptom) => <div key={symptom.label}><strong>{symptom.label}</strong><span>{symptom.count} {pluralRu(symptom.count, 'день', 'дня', 'дней')} · сильный: {symptom.severe} · мешал делам: {symptom.impact}</span></div>)}</div> : <p className="report-empty-line">Симптомы не отмечены.</p>}</section>}
+      {sections.cycle && <section className="report-preview-section cycle-start-section"><h3>Фактические даты начала</h3><div className="report-fact-list cycle-start-facts">{reportStarts.length ? reportStarts.map((date, index) => <div key={date}><strong>{formatRuDate(date, true)}</strong><span>{index === reportStarts.length - 1 ? 'Начало текущего цикла' : 'Сохранённая дата начала месячных'}</span></div>) : <div><strong>Даты начала не отмечены</strong><span>Добавьте первый день месячных, чтобы он появился в отчёте.</span></div>}</div></section>}
+      {sections.symptoms && <section className="report-preview-section"><h3>Боль и симптомы</h3>{topSymptoms.length ? <div className="report-fact-list">{topSymptoms.map((symptom) => <div key={symptom.label}><strong>{symptom.label}</strong><span>{symptom.count} {pluralRu(symptom.count, 'день', 'дня', 'дней')} · средняя выраженность {(symptom.severityTotal / symptom.count).toFixed(1).replace('.', ',')}/3 · влияние на обычные дела: {symptom.impact} {pluralRu(symptom.impact, 'день', 'дня', 'дней')}</span></div>)}</div> : <p className="report-empty-line">Симптомы не отмечены.</p>}</section>}
       {sections.wellbeing && <section className="report-preview-section"><h3>Состояние и энергия</h3><div className="preview-metrics two"><span><small>Оценка дня</small><strong>{average(ratings)} из 5</strong><i>{ratings.length} оценок</i></span><span><small>Энергия</small><strong>{average(energyValues)} из 5</strong><i>{energyValues.length} отметок</i></span></div></section>}
       {sections.sleep && <section className="report-preview-section"><h3>Сон</h3><div className="preview-metrics two"><span><small>Средняя длительность</small><strong>{average(sleepValues)} ч</strong><i>{sleepValues.length} ночей</i></span><span><small>Хорошее качество</small><strong>{reportEntries.filter(([, day]) => day.sleepQuality === 'Хорошее').length}</strong><i>сохранённых отметок</i></span></div></section>}
       {notes && <section className="report-preview-section sensitive-preview"><h3>Личные заметки</h3>{reportNotes.length ? <div className="report-fact-list">{reportNotes.map((item) => <div key={`${item.date}-${item.note}`}><strong>{formatRuDate(item.date, true)}</strong><span>{item.note}</span></div>)}</div> : <p className="report-empty-line">Заметок нет.</p>}</section>}
       {intimate && <section className="report-preview-section sensitive-preview"><h3>Интимная жизнь</h3><div className="preview-metrics two"><span><small>Близость была</small><strong>{intimacyYes}</strong><i>из {intimateCount} отметок</i></span><span><small>Боль или изменения после</small><strong>{intimacyConcern}</strong><i>отметок</i></span></div></section>}
+      {safetyFacts.length > 0 && <section className="report-preview-section report-attention-facts"><h3><CircleAlert /> Важные эпизоды</h3><p>Факты, которые могут быть полезны при разговоре с врачом.</p><div className="report-fact-list">{safetyFacts.map((fact, index) => <div key={`${fact.date}-${fact.category}-${fact.label}-${index}`}><strong>{formatRuDate(fact.date, true)} · {fact.label}</strong><span>{fact.detail}</span></div>)}</div></section>}
       <small className="report-disclaimer">Отчёт содержит самостоятельные отметки пользователя и не является медицинским заключением.</small>
     </section>
     <button className="primary-button" onClick={() => { onNotify('Открыто системное окно печати'); window.print(); }}><FileDown /> Открыть печать / сохранить PDF</button>
@@ -1626,9 +1804,9 @@ function Profile({ data, onBack, onOpenHomeSettings, onOpenDiarySettings, onOpen
   return <div className="screen profile-screen">
     <TopBack title="Профиль" onBack={onBack} />
     <section className="profile-person"><span className="profile-avatar">Л</span><div><h2>Личная история</h2><p>Локальный профиль · без аккаунта</p></div></section>
-    <section className="privacy-aura"><span><ShieldCheck /></span><div><small>Приватность</small><h2>Данные остаются на этом устройстве</h2><p>Ничего не отправляется на сервер.</p><button onClick={onOpenData}>Управлять данными <ChevronRight /></button></div></section>
+    <section className="privacy-aura"><span><ShieldCheck /></span><div><small>Приватность</small><h2>Данные остаются на этом устройстве</h2><p>Локальная база и резервная копия в браузере. Ничего не отправляется на сервер.</p><button onClick={onOpenData}>Управлять данными <ChevronRight /></button></div></section>
     <section className="profile-group"><span className="eyebrow">Настройки</span><ProfileRow icon={Droplet} tone="rose" title="Цикл и прогноз" note={cycleNote}/><ProfileRow icon={NotebookTabs} tone="violet" title="Дневник" note={`${Object.values(data.modules).filter(Boolean).length} разделов включено`} onClick={onOpenDiarySettings}/><ProfileRow icon={House} tone="coral" title="Главная страница" note={`${Object.values(data.homeCards).filter(Boolean).length} карточек`} onClick={onOpenHomeSettings}/><div className="profile-toggle-row is-unavailable"><span className="metric-icon indigo"><Bell /></span><span><strong>Напоминания</strong><small>Пока недоступны в веб-версии</small></span><i className="soft-status">Позже</i></div></section>
-    <section className="profile-group"><span className="eyebrow">Ваши данные</span><ProfileRow icon={FileDown} tone="sage" title="Экспорт и резервная копия" note="Создать или восстановить копию" onClick={onOpenData}/><ProfileRow icon={LockKeyhole} tone="violet" title="Данные и приватность" note="Хранение, перенос и удаление" onClick={onOpenData}/><ProfileRow icon={BookOpenText} tone="coral" title="Сохранённые материалы" note={`${data.savedArticles.length} ${pluralRu(data.savedArticles.length, 'статья', 'статьи', 'статей')}`} onClick={onOpenSaved}/></section>
+    <section className="profile-group"><span className="eyebrow">Ваши данные</span><ProfileRow icon={FileDown} tone="sage" title="Экспорт и резервная копия" note="Создать или восстановить копию" onClick={onOpenData}/><ProfileRow icon={LockKeyhole} tone="violet" title="Данные и приватность" note="Хранение, перенос и удаление" onClick={onOpenData}/><a className="profile-row profile-link" href="/privacy.html" target="_blank" rel="noreferrer"><span className="metric-icon violet"><ShieldCheck /></span><span><strong>Политика конфиденциальности</strong><small>Какие данные хранит Mira и как ими управлять</small></span><ChevronRight /></a><ProfileRow icon={BookOpenText} tone="coral" title="Сохранённые материалы" note={`${data.savedArticles.length} ${pluralRu(data.savedArticles.length, 'статья', 'статьи', 'статей')}`} onClick={onOpenSaved}/></section>
     <section className="community-card">
       <div className="community-heading"><MiraMark className="community-mark" /><div><span className="eyebrow">Проект создаётся вместе с вами</span><h2>Помогите сделать Mira лучше</h2><p>Сообщайте о сложностях, предлагайте идеи или поддержите бесплатный проект.</p></div></div>
       <div className="community-links">
@@ -1729,11 +1907,12 @@ function SettingsSheet({ title, description, onClose, children }: { title: strin
 }
 
 function DataControlsSheet({ data, onChangeData, onExport, onImport, onDelete, onClose }: { data: AuraState; onChangeData: (updater: (current: AuraState) => AuraState) => void; onExport: () => void; onImport: (event: ChangeEvent<HTMLInputElement>) => void; onDelete: () => void; onClose: () => void }) {
+  const observationCount = getAuraObservationDates(data).length;
   return <div className="attention-overlay settings-overlay" onClick={onClose}>
     <section className="settings-sheet data-controls-sheet" role="dialog" aria-modal="true" aria-label="Данные и приватность" onClick={(event) => event.stopPropagation()}>
       <div className="attention-handle" /><button className="attention-close" onClick={onClose} aria-label="Закрыть"><X /></button>
       <span className="eyebrow">Локально и под вашим контролем</span><h2>Данные и приватность</h2><p>Записи хранятся в этом браузере. Mira не отправляет их на сервер.</p>
-      <div className="data-trust-card"><ShieldCheck /><div><strong>Только на устройстве</strong><small>{Object.keys(data.entries).length} записей · версия данных {data.version}</small></div></div>
+      <div className="data-trust-card"><ShieldCheck /><div><strong>Локальная база защищает историю</strong><small>IndexedDB + резервная копия · {observationCount} {pluralRu(observationCount, 'отметка', 'отметки', 'отметок')}</small></div></div>
       <button className="data-action" onClick={onExport}><FileDown /><span><strong>Сохранить копию</strong><small>Файл JSON для переноса и резервного хранения</small></span><ChevronRight /></button>
       <label className="data-action import-action"><Upload /><span><strong>Восстановить из копии</strong><small>Перед заменой файл будет проверен</small></span><ChevronRight /><input type="file" accept="application/json,.json" onChange={onImport}/></label>
       <ToggleRow title="Включать личные заметки" note="По умолчанию заметки и интимные данные исключены" checked={data.privacy.sensitiveExport} sensitive onClick={() => onChangeData((current) => ({ ...current, privacy: { ...current.privacy, sensitiveExport: !current.privacy.sensitiveExport } }))}/>
@@ -1762,7 +1941,21 @@ function BottomNav({ screen, onOpen }: { screen: Screen; onOpen: (screen: Screen
 
 const root = document.getElementById('aura-root');
 const auraGlobal = globalThis as typeof globalThis & { __lunaAuraRoot?: ReturnType<typeof createRoot> };
+
+function AuraDatabaseBootstrap() {
+  const [initialData, setInitialData] = useState<AuraState | null>(null);
+  useEffect(() => {
+    let active = true;
+    void loadAuraDatabaseState().then((stored) => {
+      if (active) setInitialData(stored);
+    });
+    return () => { active = false; };
+  }, []);
+  if (!initialData) return <div className="database-loading" role="status" aria-live="polite">Открываем вашу историю…</div>;
+  return <App initialData={initialData} />;
+}
+
 if (root) {
   auraGlobal.__lunaAuraRoot ??= createRoot(root);
-  auraGlobal.__lunaAuraRoot.render(<StartupGate><App /></StartupGate>);
+  auraGlobal.__lunaAuraRoot.render(<StartupGate><AuraDatabaseBootstrap /></StartupGate>);
 }

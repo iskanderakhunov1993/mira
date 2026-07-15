@@ -9,6 +9,8 @@ import {
   createEmptyAuraState,
   deriveAttentionEvidence,
   getAuraCycleMetrics,
+  getAuraObservationDates,
+  getAuraSafetyFacts,
   loadAuraState,
   migrateLegacyAppState,
   parseImportedAuraState,
@@ -95,6 +97,33 @@ describe('Mira unified state', () => {
     expect(repaired.entries[addDays(AURA_TODAY, -1)].intimate).toBe(true);
   });
 
+  it('keeps a valid workout log and removes malformed workout data', () => {
+    const repaired = sanitizeAuraState({
+      entries: {
+        [AURA_TODAY]: {
+          workout: {
+            id: 'workout-today',
+            date: '2099-01-01',
+            generatedAt: '2026-07-15T09:41:00.000Z',
+            level: 'light',
+            title: 'Лёгкая тренировка',
+            durationMin: 12,
+            intensityLabel: 'Легко',
+            reasons: ['Без выраженных ограничений'],
+            exercises: [{ id: 'walk', title: 'Ходьба на месте', amount: '4 минуты', note: 'В удобном темпе' }],
+            safety: 'standard',
+            status: 'completed',
+            feedback: 'right',
+            snapshot: { cycleDay: 10, energy: 4, maxSymptomSeverity: 0, symptomsAffectLife: false },
+          },
+        },
+        [addDays(AURA_TODAY, -1)]: { workout: { level: 'extreme', exercises: [] } },
+      },
+    });
+    expect(repaired.entries[AURA_TODAY].workout).toMatchObject({ date: AURA_TODAY, level: 'light', status: 'completed', feedback: 'right' });
+    expect(repaired.entries[addDays(AURA_TODAY, -1)].workout).toBeUndefined();
+  });
+
   it('creates a genuinely empty state after full deletion', () => {
     const empty = createEmptyAuraState();
     expect(empty.entries).toEqual({});
@@ -111,6 +140,34 @@ describe('Mira unified state', () => {
     expect(marked.selectedDate).toBe(AURA_TODAY);
     expect(marked.entries[AURA_TODAY]).toBeDefined();
     expect(setAuraPeriodStart(marked, AURA_TODAY, false).periodStarts).toEqual([]);
+  });
+
+  it('counts cycle starts as observations even without a separate day entry', () => {
+    const state = sanitizeAuraState({
+      periodStarts: [addDays(AURA_TODAY, -28), AURA_TODAY],
+      entries: {
+        [AURA_TODAY]: { rating: 4 },
+        [addDays(AURA_TODAY, -2)]: { sleepHours: 7.5 },
+      },
+    });
+    expect(getAuraObservationDates(state)).toEqual([addDays(AURA_TODAY, -28), addDays(AURA_TODAY, -2), AURA_TODAY]);
+  });
+
+  it('collects important medical facts and keeps intimate facts opt-in', () => {
+    const date = addDays(AURA_TODAY, -1);
+    const state = sanitizeAuraState({
+      entries: {
+        [date]: {
+          period: 'heavy',
+          symptoms: [{ id: 'pain', label: 'Боль внизу живота', severity: 3, affectsLife: true }],
+          intimate: true,
+          intimacyComfort: 'pain',
+          intimacyAfter: ['bleeding'],
+        },
+      },
+    });
+    expect(getAuraSafetyFacts(state).map((fact) => fact.category)).toEqual(['cycle', 'symptoms']);
+    expect(getAuraSafetyFacts(state, true).map((fact) => fact.category)).toEqual(['cycle', 'symptoms', 'intimate']);
   });
 
   it('calculates cycle day, personal range and a forecast from stored starts', () => {

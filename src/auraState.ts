@@ -1,3 +1,5 @@
+import type { AuraWorkoutLog, WorkoutFeedback, WorkoutLevel, WorkoutStatus } from './workoutEngine';
+
 export const AURA_STORAGE_KEY = 'mira-state-v3';
 export const LEGACY_AURA_STORAGE_KEY = 'luna-flow-aura-v2';
 export const LEGACY_APP_STORAGE_KEY = 'luna-flow-state-v1';
@@ -50,6 +52,7 @@ export type AuraDayEntry = {
   water?: number;
   steps?: number;
   activity?: string;
+  workout?: AuraWorkoutLog;
   intimate?: boolean;
   intimacyComfort?: AuraIntimacyComfort;
   intimacyAfter?: AuraIntimacyAfter[];
@@ -88,6 +91,14 @@ export type AuraState = {
     lastShownAt?: string;
     showCount: number;
   };
+};
+
+export type AuraSafetyFact = {
+  date: string;
+  category: 'cycle' | 'symptoms' | 'intimate';
+  label: string;
+  detail: string;
+  sensitive: boolean;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -159,6 +170,9 @@ const intimacyAfterValues: AuraIntimacyAfter[] = ['none', 'pain', 'bleeding', 'd
 const intimacyDesireValues: AuraIntimacyDesire[] = ['lower', 'usual', 'higher'];
 const periodValues: AuraDayEntry['period'][] = ['none', 'light', 'medium', 'heavy'];
 const sleepQualityValues: NonNullable<AuraDayEntry['sleepQuality']>[] = ['Плохое', 'Обычное', 'Хорошее'];
+const workoutLevels: WorkoutLevel[] = ['rest', 'recovery', 'light', 'moderate'];
+const workoutStatuses: WorkoutStatus[] = ['planned', 'in_progress', 'completed', 'skipped'];
+const workoutFeedbackValues: WorkoutFeedback[] = ['easy', 'right', 'hard'];
 
 function sanitizeSymptoms(value: unknown): AuraSymptom[] {
   if (!Array.isArray(value)) return [];
@@ -176,6 +190,62 @@ function sanitizeSymptoms(value: unknown): AuraSymptom[] {
     });
   }
   return [...result.values()];
+}
+
+function sanitizeWorkout(date: string, value: unknown): AuraWorkoutLog | undefined {
+  if (!isObject(value)
+    || typeof value.id !== 'string'
+    || typeof value.generatedAt !== 'string'
+    || typeof value.title !== 'string'
+    || typeof value.intensityLabel !== 'string'
+    || typeof value.level !== 'string'
+    || !workoutLevels.includes(value.level as WorkoutLevel)
+    || typeof value.status !== 'string'
+    || !workoutStatuses.includes(value.status as WorkoutStatus)
+    || !['standard', 'caution', 'rest'].includes(String(value.safety))
+    || !Array.isArray(value.exercises)
+    || !isObject(value.snapshot)) return undefined;
+  const durationMin = clamp(value.durationMin, 1, 120);
+  if (!durationMin) return undefined;
+  const snapshot = value.snapshot;
+  const cycleDay = clamp(snapshot.cycleDay, 1, 200);
+  const rating = clamp(snapshot.rating, 1, 5);
+  const energy = clamp(snapshot.energy, 1, 5);
+  const sleepHours = clamp(snapshot.sleepHours, 0, 24);
+  const maxSymptomSeverity = clamp(snapshot.maxSymptomSeverity, 0, 3) ?? 0;
+  const period = typeof snapshot.period === 'string' && periodValues.includes(snapshot.period as AuraDayEntry['period']) ? snapshot.period as AuraDayEntry['period'] : undefined;
+  const sleepQuality = typeof snapshot.sleepQuality === 'string' && sleepQualityValues.includes(snapshot.sleepQuality as NonNullable<AuraDayEntry['sleepQuality']>) ? snapshot.sleepQuality as AuraDayEntry['sleepQuality'] : undefined;
+  const exercises = value.exercises.flatMap((raw) => {
+    if (!isObject(raw) || typeof raw.id !== 'string' || typeof raw.title !== 'string' || typeof raw.amount !== 'string' || typeof raw.note !== 'string') return [];
+    return [{ id: raw.id.slice(0, 80), title: raw.title.slice(0, 160), amount: raw.amount.slice(0, 80), note: raw.note.slice(0, 320) }];
+  }).slice(0, 12);
+  if (!exercises.length) return undefined;
+  return {
+    id: value.id.slice(0, 120),
+    date,
+    generatedAt: value.generatedAt.slice(0, 40),
+    level: value.level as WorkoutLevel,
+    title: value.title.slice(0, 180),
+    durationMin: Math.round(durationMin),
+    intensityLabel: value.intensityLabel.slice(0, 80),
+    reasons: Array.isArray(value.reasons) ? value.reasons.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 240)).slice(0, 6) : [],
+    exercises,
+    safety: value.safety as AuraWorkoutLog['safety'],
+    status: value.status as WorkoutStatus,
+    startedAt: typeof value.startedAt === 'string' ? value.startedAt.slice(0, 40) : undefined,
+    completedAt: typeof value.completedAt === 'string' ? value.completedAt.slice(0, 40) : undefined,
+    feedback: typeof value.feedback === 'string' && workoutFeedbackValues.includes(value.feedback as WorkoutFeedback) ? value.feedback as WorkoutFeedback : undefined,
+    snapshot: {
+      cycleDay: cycleDay ? Math.round(cycleDay) : undefined,
+      period,
+      rating: rating ? Math.round(rating) : undefined,
+      energy: energy ? Math.round(energy) : undefined,
+      sleepHours,
+      sleepQuality,
+      maxSymptomSeverity: Math.round(maxSymptomSeverity),
+      symptomsAffectLife: snapshot.symptomsAffectLife === true,
+    },
+  };
 }
 
 function sanitizeEntry(date: string, raw: Record<string, unknown>): AuraDayEntry {
@@ -201,6 +271,7 @@ function sanitizeEntry(date: string, raw: Record<string, unknown>): AuraDayEntry
     water: water === undefined ? undefined : Math.round(water),
     steps: steps === undefined ? undefined : Math.round(steps),
     activity: typeof raw.activity === 'string' ? raw.activity.slice(0, 120) : undefined,
+    workout: sanitizeWorkout(date, raw.workout),
     intimate: typeof raw.intimate === 'boolean' ? raw.intimate : undefined,
     intimacyComfort: typeof raw.intimacyComfort === 'string' && intimacyComfortValues.includes(raw.intimacyComfort as AuraIntimacyComfort) ? raw.intimacyComfort as AuraIntimacyComfort : undefined,
     intimacyAfter: Array.isArray(raw.intimacyAfter) ? raw.intimacyAfter.filter((item): item is AuraIntimacyAfter => typeof item === 'string' && intimacyAfterValues.includes(item as AuraIntimacyAfter)) : [],
@@ -272,6 +343,49 @@ export function sanitizeAuraState(value: unknown): AuraState {
 export function parseImportedAuraState(value: unknown): AuraState {
   if (!isObject(value) || !isObject(value.entries) || !Array.isArray(value.periodStarts)) throw new Error('Invalid backup');
   return sanitizeAuraState(value);
+}
+
+export function getAuraObservationDates(state: AuraState): string[] {
+  return Array.from(new Set([...Object.keys(state.entries), ...state.periodStarts]))
+    .filter((date) => isValidAuraDate(date))
+    .sort();
+}
+
+export function getAuraSafetyFacts(state: AuraState, includeSensitive = false): AuraSafetyFact[] {
+  const facts = Object.entries(state.entries).flatMap(([date, day]) => {
+    const dailyFacts: AuraSafetyFact[] = [];
+    if (day.period === 'heavy') {
+      dailyFacts.push({
+        date,
+        category: 'cycle',
+        label: 'Обильные месячные',
+        detail: 'Интенсивность отмечена как обильная.',
+        sensitive: false,
+      });
+    }
+    day.symptoms.forEach((symptom) => {
+      if (symptom.severity !== 3 && !symptom.affectsLife) return;
+      const markers = [symptom.severity === 3 ? 'сильный симптом' : '', symptom.affectsLife ? 'мешал обычным делам' : ''].filter(Boolean);
+      dailyFacts.push({
+        date,
+        category: 'symptoms',
+        label: symptom.label,
+        detail: markers.join(' · '),
+        sensitive: false,
+      });
+    });
+    if (includeSensitive && (day.intimacyComfort === 'pain' || day.intimacyAfter?.some((item) => ['pain', 'bleeding'].includes(item)))) {
+      dailyFacts.push({
+        date,
+        category: 'intimate',
+        label: 'После близости',
+        detail: day.intimacyAfter?.includes('bleeding') ? 'отмечены кровянистые выделения или боль' : 'отмечена боль',
+        sensitive: true,
+      });
+    }
+    return dailyFacts;
+  });
+  return facts.sort((left, right) => right.date.localeCompare(left.date));
 }
 
 function periodStartsFromDays(value: unknown): string[] {
