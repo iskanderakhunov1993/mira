@@ -41,6 +41,12 @@ test('onboarding → запись → persistence → Calendar', async ({ page }
   await finishOnboarding(page);
   await expectAccessibleCriticalSurface(page);
 
+  await page.getByRole('button', { name: 'Мне плохо' }).click();
+  await expect(page.getByRole('dialog', { name: 'Что беспокоит сильнее всего?' })).toBeVisible();
+  await expect(page.getByText('Начните с фактов')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Скрыть дополнительные поля/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Закрыть' }).click();
+
   await page.getByRole('button', { name: 'Симптомы', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Что чувствовали в этот день?' })).toBeVisible();
   await expectAccessibleCriticalSurface(page);
