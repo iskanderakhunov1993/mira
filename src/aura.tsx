@@ -137,7 +137,6 @@ import {
   type AuraState,
 } from './auraState';
 import { generateWorkout, type AuraWorkoutLog, type WorkoutFeedback, type WorkoutVenue } from './workoutEngine';
-import { HomePage, type HomeDateItem, type HormonoscopeState } from './home/TodayHome';
 
 function MiraMark({ className = '', label }: { className?: string; label?: string }) {
   return <span className={`mira-brand-mark ${className}`} role={label ? 'img' : undefined} aria-label={label} />;
@@ -528,7 +527,7 @@ function App({ initialData }: { initialData: AuraState }) {
                 open('today');
               }}
             />}
-            {screen === 'today' && <Today data={data} onOpen={open} onSelectDate={(date) => changeData((current) => ({ ...current, selectedDate: date }))} onPatchEntry={patchEntry} onOpenDailyPlan={() => setOverlay('daily-plan')} onOpenSupportOptions={() => setOverlay('support-options')} onOpenWorkout={() => openWorkout()} onOpenPeriodStart={() => setOverlay('period-checkin')} onOpenQuickSymptoms={() => setOverlay('quick-symptoms')} />}
+            {screen === 'today' && <Today data={data} scenario={scenario} onOpen={open} onOpenArticle={openArticle} onSelectDate={(date) => changeData((current) => ({ ...current, selectedDate: date }))} onShowAttention={() => setOverlay('attention')} onOpenDailyPlan={() => setOverlay('daily-plan')} onOpenSupportOptions={() => setOverlay('support-options')} onOpenWorkout={() => openWorkout()} onOpenHomeSettings={() => setOverlay('home-settings')} onOpenPeriodStart={() => setOverlay('period-checkin')} onOpenQuickSymptoms={() => setOverlay('quick-symptoms')} onHormonoscopeFeedback={(date, feedback) => changeData((current) => ({ ...current, hormonoscopeFeedback: { ...current.hormonoscopeFeedback, [date]: feedback } }))} onCycloscopeFeedback={(date, feedback) => changeData((current) => ({ ...current, cycloscopeFeedback: { ...current.cycloscopeFeedback, [date]: feedback } }))} />}
             {screen === 'calendar' && <Calendar data={data} scenario={scenario} onSelectDate={(date) => changeData((current) => ({ ...current, selectedDate: date }))} onSetPeriodStart={(date, marked) => changeData((current) => setAuraPeriodStart(current, date, marked))} onNotify={setToast} onBack={() => open('today')} onOpenDiary={() => open('diary')} />}
             {screen === 'diary' && <Diary data={data} persistStatus={persistStatus} onPatchEntry={patchEntry} onOpenCalendar={() => open('calendar')} onOpenSettings={() => setOverlay('diary-settings')} onOpenSleepHistory={() => setOverlay('sleep-history')} onOpenWaterHistory={() => setOverlay('water-history')} onOpenStepsHistory={() => setOverlay('steps-history')} onOpenNutritionHistory={() => setOverlay('nutrition-history')} onOpenNotesHistory={() => setOverlay('notes-history')} onOpenTemperatureHistory={() => setOverlay('temperature-history')} onOpenWeightHistory={() => setOverlay('weight-history')} onDone={() => open('today')} onNotify={setToast} />}
             {screen === 'analytics' && <Analytics data={data} onChangeData={changeData} scenario={scenario} section={analyticsSection} setSection={setAnalyticsSection} mode={wellbeingMode} setMode={setWellbeingMode} onOpenDiary={() => open('diary')} onOpenCycleReport={() => open('cycle-report')} onOpenReport={() => open('report')} />}
@@ -889,60 +888,64 @@ function DateStrip({ data, onSelectDate }: { data: AuraState; onSelectDate: (dat
   })}</div>;
 }
 
-function Today({ data, onOpen, onSelectDate, onPatchEntry, onOpenDailyPlan, onOpenSupportOptions, onOpenWorkout, onOpenPeriodStart, onOpenQuickSymptoms }: { data: AuraState; onOpen: (screen: Screen) => void; onSelectDate: (date: string) => void; onPatchEntry: (date: string, patch: Partial<AuraDayEntry>) => void; onOpenDailyPlan: () => void; onOpenSupportOptions: () => void; onOpenWorkout: () => void; onOpenPeriodStart: () => void; onOpenQuickSymptoms: () => void }) {
+function Today({ data, scenario, onOpen, onOpenArticle, onSelectDate, onShowAttention, onOpenDailyPlan, onOpenSupportOptions, onOpenWorkout, onOpenHomeSettings, onOpenPeriodStart, onOpenQuickSymptoms, onHormonoscopeFeedback, onCycloscopeFeedback }: { data: AuraState; scenario: PrototypeScenario; onOpen: (screen: Screen) => void; onOpenArticle: (articleId: string) => void; onSelectDate: (date: string) => void; onShowAttention: () => void; onOpenDailyPlan: () => void; onOpenSupportOptions: () => void; onOpenWorkout: () => void; onOpenHomeSettings: () => void; onOpenPeriodStart: () => void; onOpenQuickSymptoms: () => void; onHormonoscopeFeedback: (date: string, feedback: AuraHormonoscopeFeedback) => void; onCycloscopeFeedback: (date: string, feedback: AuraHormonoscopeFeedback) => void }) {
   const selectedDate = data.selectedDate <= AURA_TODAY ? data.selectedDate : AURA_TODAY;
+  const selectedIsToday = selectedDate === AURA_TODAY;
   const day = data.entries[selectedDate] ?? emptyAuraEntry();
+  const periodLogged = data.periodStarts.includes(selectedDate) || Boolean(day.period && day.period !== 'none');
   const attention = deriveAttentionEvidence(data);
   const metrics = getAuraCycleMetrics(data, selectedDate);
+  const range = formatRuRange(metrics.periodForecast?.start, metrics.periodForecast?.end);
+  const daysUntilPeriod = metrics.periodForecast ? Math.max(0, daysBetween(selectedDate, metrics.periodForecast.start)) : null;
+  const estimatedOvulationDay = metrics.expectedLength ? Math.max(8, metrics.expectedLength - 14) : null;
+  const hasCalendarEstimate = Boolean(metrics.cycleDay && estimatedOvulationDay && data.onboarding.cyclePattern !== 'irregular');
+  const inEstimatedFertileWindow = Boolean(hasCalendarEstimate && metrics.cycleDay! >= estimatedOvulationDay! - 5 && metrics.cycleDay! <= estimatedOvulationDay! + 1);
+  const fertilityCopy = !hasCalendarEstimate ? 'Недостаточно данных для ориентира' : inEstimatedFertileWindow ? 'Предполагаемое фертильное окно' : 'Вне предполагаемого фертильного окна';
   const expectedPeriodLength = Math.max(1, Math.min(10, data.onboarding.periodLength ?? 5));
   const phaseLabel = !metrics.cycleDay
-    ? 'Добавьте фактическую дату'
+    ? 'Фаза появится после начала цикла'
     : metrics.cycleDay <= expectedPeriodLength
-      ? 'Отмеченные месячные'
-      : 'Календарный контекст';
-  const forecastRange = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
-  const similarDays = getHormonoscopeSimilarDays(data, selectedDate);
-  const hormonoscopeObservations = similarDays.length >= 3 ? [
-    { title: 'Энергия', text: `${similarDays.filter((entry) => (entry.energy ?? 0) >= 4).length} из ${similarDays.length} похожих дней — выше средней` },
-    { title: 'Настроение', text: `${similarDays.filter((entry) => (entry.rating ?? 0) >= 4).length} из ${similarDays.length} похожих дней — ровное или хорошее` },
-    { title: 'Тело', text: 'Показываем только повторяемые личные отметки' },
-  ] : [];
-  const hormonoscope: HormonoscopeState | undefined = data.homeCards.hormonoscope ? {
-    status: similarDays.length >= 3 ? 'ready' : 'learning',
-    completedSimilarDays: Math.min(3, similarDays.length),
-    requiredSimilarDays: 3,
-    observations: hormonoscopeObservations,
-  } : undefined;
-  const dates: HomeDateItem[] = Array.from({ length: 7 }, (_, index) => addDays(selectedDate, index - 3)).map((iso) => {
-    const date = localDate(iso);
-    const entry = data.entries[iso];
-    const markerCount = Number(Boolean(data.periodStarts.includes(iso) || entry?.periodCheckin || (entry?.period && entry.period !== 'none'))) + Number(Boolean(entry?.rating || entry?.moods.length)) + Number(Boolean(entry?.symptoms.length)) + Number(Boolean(entry?.sleepHours || entry?.water || entry?.steps));
-    return { iso, day: date.getDate(), weekday: ruWeekdays[date.getDay()].slice(0, 2), active: iso === selectedDate, today: iso === AURA_TODAY, disabled: iso > AURA_TODAY, markerCount };
-  });
-  const recentSleep = Array.from({ length: 7 }, (_, index) => data.entries[addDays(selectedDate, index - 6)]?.sleepHours ?? 0);
-  const energyLabel = !metrics.cycleDay ? 'Добавьте начало цикла' : day.energy ? (day.energy >= 4 ? 'Энергия выше средней' : day.energy <= 2 ? 'Сегодня меньше энергии' : 'Энергия без резких изменений') : 'Как вы себя чувствуете?';
-  const energyDescription = day.energy ? 'Это ваша отметка за выбранный день.' : 'Короткая отметка поможет Mira увидеть личный контекст.';
-  const attentionInsight = data.homeCards.recommendation && attention.eligible ? { title: 'Похоже, боль повторяется', text: `Отмечена в ${attention.cycles} ${pluralRu(attention.cycles, 'цикле', 'циклах', 'циклах')}. Откройте факты, чтобы посмотреть динамику.` } : undefined;
-  return <HomePage
-    currentDate={formatRuDate(selectedDate, true)}
-    dates={dates}
-    cycle={{ currentDay: metrics.cycleDay, averageLength: metrics.expectedLength, phaseLabel: phaseLabel, predictedPeriodRange: metrics.forecast ? `Начало возможно ${forecastRange}` : 'Добавьте ещё одну фактическую дату', confidenceLabel: metrics.forecast?.confidence === 'personal' ? 'Личный диапазон' : metrics.forecast?.confidence === 'growing' ? 'Диапазон уточняется' : 'Предварительный ориентир', energyLabel, energyDescription }}
-    metrics={{ symptoms: day.symptoms, sleepHours: day.sleepHours, sleepQuality: day.sleepQuality, sleepWeek: recentSleep, water: day.water ?? 0, steps: day.steps ?? 0, mood: day.moods[0], energy: day.energy }}
-    hormonoscope={hormonoscope}
-    cycloscope={data.homeCards.cycloscope ? { archetype: 'Лёгкость и движение', description: 'Игровой образ дня — не рекомендация о здоровье.' } : undefined}
-    insight={attentionInsight}
-    onProfile={() => onOpen('profile')}
-    onCalendar={() => onOpen('calendar')}
-    onSelectDate={onSelectDate}
-    onCycle={() => onOpen('calendar')}
-    onSymptoms={onOpenQuickSymptoms}
-    onSleep={() => onOpen('diary')}
-    onIncreaseWater={() => onPatchEntry(selectedDate, { water: Math.min(2000, (day.water ?? 0) + 250) })}
-    onPeriod={onOpenPeriodStart}
-    onCycloscope={() => undefined}
-    onHormonoscope={() => similarDays.length >= 3 ? onOpen('analytics') : onOpenQuickSymptoms()}
-    onHelpfulAction={(action) => action === 'kit' ? onOpenDailyPlan() : action === 'workout' ? onOpenWorkout() : onOpenSupportOptions()}
-  />;
+      ? 'Месячные'
+      : inEstimatedFertileWindow
+        ? 'Предполагаемое фертильное окно'
+        : estimatedOvulationDay && metrics.cycleDay < estimatedOvulationDay - 5
+          ? 'После месячных'
+          : 'После предполагаемой овуляции';
+  const phaseArticleId = !metrics.cycleDay ? 'forecast-confidence' : metrics.cycleDay <= expectedPeriodLength ? 'cramps-care' : inEstimatedFertileWindow ? 'ovulation-pain' : estimatedOvulationDay && metrics.cycleDay < estimatedOvulationDay - 5 ? 'discharge-cycle' : 'pms-basics';
+  const phaseArticle = medicalKnowledgeArticles.find((article) => article.id === phaseArticleId) ?? medicalKnowledgeArticles[0];
+  const forecast = scenario === 'empty'
+    ? { title: 'Когда начались месячные?', text: 'После первой даты появится день цикла. Прогноз потребует больше истории.' }
+    : metrics.daysLate > 0
+      ? { title: `Задержка ${metrics.daysLate} ${pluralRu(metrics.daysLate, 'день', 'дня', 'дней')}`, text: `Ожидаемое окно ${range} прошло. Это календарный расчёт, а не диагноз.` }
+      : scenario === 'first'
+        ? metrics.periodForecast ? { title: `Ориентир: ${range}`, text: 'Пока это широкий календарный диапазон. Следующая фактическая дата поможет сделать его личнее.' } : { title: 'Первый цикл продолжается', text: 'Отметьте следующую дату начала — после этого появится первый личный прогноз.' }
+        : { title: daysUntilPeriod === 0 ? 'Месячные ожидаются сегодня' : `Месячные через ${daysUntilPeriod} ${pluralRu(daysUntilPeriod ?? 0, 'день', 'дня', 'дней')}`, text: `Ориентировочно ${range}. Прогноз уточняется по вашей истории.` };
+  const timelineDay = Math.min(31, Math.max(1, metrics.cycleDay ?? 1));
+  const cycleChartLength = Math.max(18, metrics.expectedLength ?? 28);
+  const cycleChartProgress = Math.min(1, Math.max(0, (timelineDay - 1) / Math.max(1, cycleChartLength - 1)));
+  const cycleChartX = 13 + cycleChartProgress * 314;
+  const cycleChartY = cycleChartProgress < .18 ? 92 - (cycleChartProgress / .18) * 12 : cycleChartProgress < .55 ? 80 - ((cycleChartProgress - .18) / .37) * 52 : cycleChartProgress < .72 ? 28 + ((cycleChartProgress - .55) / .17) * 30 : 58 + ((cycleChartProgress - .72) / .28) * 30;
+  return <div className="screen today-screen">
+    <AppHeader avatar={data.avatar} title={formatRuDate(selectedDate)} onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
+    <DateStrip data={data} onSelectDate={onSelectDate} />
+    <section className="cycle-status-card">
+      <div className="cycle-status-main"><div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'день пока неизвестен'}</span></div><div className="cycle-status-copy"><h2>{forecast.title}</h2><p>{forecast.text}</p></div></div>
+      {scenario !== 'empty' && <div className={`cycle-fertility-inline ${inEstimatedFertileWindow ? 'higher' : ''}`}><ShieldCheck /><span><strong>{fertilityCopy}</strong><small>Календарный ориентир — не подтверждение овуляции и не способ контрацепции</small></span></div>}
+      {scenario !== 'empty' ? <div className="cycle-timeline">
+        <div className="cycle-timeline-head"><span>Карта цикла</span><strong>{phaseLabel}</strong></div>
+        {metrics.cycleDay && metrics.expectedLength && <div className="cycle-phase-chart"><svg viewBox="0 0 340 147" role="img" aria-label={`${timelineDay}-й день цикла, ${phaseLabel}`}><defs><linearGradient id="cycle-map-line" x1="0" x2="1"><stop offset="0" stopColor="#df6c9f"/><stop offset=".57" stopColor="#eda758"/><stop offset="1" stopColor="#8d6db1"/></linearGradient><linearGradient id="cycle-map-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#df6c9f" stopOpacity=".23"/><stop offset="1" stopColor="#df6c9f" stopOpacity=".02"/></linearGradient></defs><rect x="8" y="15" width="55" height="94" rx="13" fill="#fff0f5"/><rect x="67" y="15" width="105" height="94" rx="13" fill="#f8f1fa"/><rect x="176" y="15" width="45" height="94" rx="13" fill="#fff6e6"/><rect x="225" y="15" width="107" height="94" rx="13" fill="#f3edfa"/><path d="M13 92 C39 84 49 90 70 76 C98 57 119 49 145 44 C170 38 180 20 199 28 C218 37 225 61 246 57 C277 52 299 68 327 88 L327 109 L13 109Z" fill="url(#cycle-map-area)"/><path d="M13 92 C39 84 49 90 70 76 C98 57 119 49 145 44 C170 38 180 20 199 28 C218 37 225 61 246 57 C277 52 299 68 327 88" fill="none" stroke="url(#cycle-map-line)" strokeWidth="4" strokeLinecap="round"/><line x1={cycleChartX} y1="16" x2={cycleChartX} y2="109" stroke="#58364a" strokeWidth="1.5" strokeDasharray="3 4"/><circle cx={cycleChartX} cy={cycleChartY} r="9" fill="#fff" stroke="#58364a" strokeWidth="3"/><circle cx={cycleChartX} cy={cycleChartY} r="3.5" fill="#d65d95"/><rect x={Math.min(278, Math.max(8, cycleChartX - 25))} y="0" width="50" height="19" rx="9.5" fill="#58364a"/><text x={Math.min(303, Math.max(33, cycleChartX))} y="13" className="current-day-label">{timelineDay}-й день</text><text x="35" y="126"><tspan x="35">Менструальная</tspan><tspan x="35" dy="8">фаза</tspan></text><text x="119" y="126"><tspan x="119">Фолликулярная</tspan><tspan x="119" dy="8">фаза</tspan></text><text x="198" y="126"><tspan x="198">Овуляторная*</tspan><tspan x="198" dy="8">фаза</tspan></text><text x="278" y="126"><tspan x="278">Лютеиновая</tspan><tspan x="278" dy="8">фаза</tspan></text></svg><small>* Предполагаемая фаза по календарю</small></div>}
+        {data.homeCards.knowledge && <button className="cycle-context-article" onClick={() => onOpenArticle(phaseArticle.id)} aria-label={`Открыть статью: ${phaseArticle.title}`}><span><BookOpenText /></span><div><small>По теме · {phaseArticle.readingMinutes} {pluralRu(phaseArticle.readingMinutes, 'минута', 'минуты', 'минут')}</small><strong>{phaseArticle.title}</strong></div><ChevronRight /></button>}
+      </div> : <button className="cycle-empty-action" onClick={onOpenPeriodStart}><Plus /> Добавить первый день месячных</button>}
+      <div className="cycle-inline-actions"><button className={periodLogged ? 'active period-action' : 'period-action'} aria-pressed={periodLogged} onClick={onOpenPeriodStart}><span className="cycle-action-icon"><Droplet /></span><strong>{periodLogged ? 'Кровотечение отмечено' : 'Отметить кровотечение'}</strong></button><button className={day.symptoms.length || day.moods.length || day.energy ? 'active symptom-action' : 'symptom-action'} aria-pressed={Boolean(day.symptoms.length || day.moods.length || day.energy)} onClick={onOpenQuickSymptoms}><span className="cycle-action-icon"><Plus /></span><strong>{day.symptoms.length || day.moods.length || day.energy ? 'Состояние отмечено' : 'Симптомы'}</strong></button></div>
+    </section>
+    {(data.homeCards.rhythm || data.homeCards.dailyPlan) && <section className="surface combined-home-surface">
+      {data.homeCards.rhythm && <><div className="section-heading"><div><span className="eyebrow">{selectedIsToday ? 'Сегодня' : formatRuDate(selectedDate)}</span><h2>Ваш ритм</h2></div><button className="mini-link" onClick={onOpenHomeSettings}>Настроить</button></div><div className="metric-row rhythm-metric-row"><MetricCard icon={Moon} illustration="/mira-icons/rhythm-sleep.png?v=2" tone="indigo" label="Сон" value={day.sleepHours ? `${day.sleepHours} ч` : 'Добавить'} note={day.sleepQuality ?? 'Как прошла ночь?'} progress={day.sleepHours ? Math.min(100, day.sleepHours / 8 * 100) : 0} /><MetricCard icon={GlassWater} illustration="/mira-icons/rhythm-water.png?v=2" tone="cyan" label="Вода" value={day.water ? `${day.water.toLocaleString('ru-RU')} мл` : 'Добавить'} note={day.water ? 'За выбранный день' : 'Сколько выпили?'} progress={day.water ? Math.min(100, day.water / 2000 * 100) : 0} /><MetricCard icon={Footprints} illustration="/mira-icons/rhythm-steps.png?v=2" tone="sage" label="Шаги" value={day.steps ? day.steps.toLocaleString('ru-RU') : 'Добавить'} note={day.steps ? 'За выбранный день' : 'Отметить активность'} progress={day.steps ? Math.min(100, day.steps / 8000 * 100) : 0} /></div></>}
+      {data.homeCards.dailyPlan && <div className={`today-plan-preview ${data.homeCards.rhythm ? '' : 'is-first'}`}><div className="today-plan-title"><div><h2>Что может пригодиться</h2></div></div><div className="today-plan-grid"><button className="kit care-kit-card" onClick={onOpenDailyPlan} aria-label="Открыть аптечку"><img className="plan-3d-icon" src="/mira-icons/first-aid-kit.png" alt="" /><strong>Аптечка</strong></button><button className="movement" onClick={onOpenWorkout} aria-label="Открыть тренировку"><img className="plan-3d-icon" src="/mira-icons/workout.png" alt="" /><strong>Тренировка</strong></button><button className="vitamins support-options-card" onClick={onOpenSupportOptions} aria-label="Открыть возможные варианты поддержки"><img className="plan-3d-icon" src="/mira-icons/vitamins.png" alt="" /><strong>Что может помочь</strong><small>{day.symptoms.length ? `${day.symptoms.length} ${pluralRu(day.symptoms.length, 'отметка', 'отметки', 'отметок')}` : 'По симптомам'}</small></button></div></div>}
+    </section>}
+    {data.homeCards.hormonoscope && <ScopesModule data={data} date={selectedDate} onFeedback={onHormonoscopeFeedback} />}
+    {data.homeCards.cycloscope && <CycloscopeMiniCard data={data} date={selectedDate} onFeedback={onCycloscopeFeedback} />}
+    {data.homeCards.recommendation && attention.eligible && <section className="attention-summary"><div className="attention-summary-head"><span className="attention-icon"><ChartSpline /></span><div><span className="eyebrow">Mira заметила</span><h2>Боль повторяется</h2></div><button onClick={onShowAttention}>Динамика <ChevronRight /></button></div><p>Отмечена в {attention.cycles} {pluralRu(attention.cycles, 'цикле', 'циклах', 'циклах')} · в {attention.impactDays} {pluralRu(attention.impactDays, 'случае', 'случаях', 'случаях')} мешала обычным делам.</p><div className="attention-summary-evidence"><span>{attention.painDays >= 5 && attention.cycles >= 3 ? 'Повторяемость заметна' : 'Первые признаки'}</span><small>Основано на {attention.painDays} {pluralRu(attention.painDays, 'отметке', 'отметках', 'отметках')}</small></div></section>}
+  </div>;
 }
 
 const workoutStatusCopy: Record<AuraWorkoutLog['status'], string> = {
@@ -1530,24 +1533,31 @@ function ScopesModule({ data, date, onFeedback }: { data: AuraState; date: strin
   similarDays.forEach((entry) => new Set(entry.symptoms.map((symptom) => symptom.label)).forEach((label) => symptomFrequency.set(label, (symptomFrequency.get(label) ?? 0) + 1)));
   const strongestBodyPattern = Math.max(0, ...symptomFrequency.values());
   const bodyPattern = Array.from(symptomFrequency.entries()).sort((first, second) => second[1] - first[1])[0];
-  const observations = total >= 3 ? [
+  const calculatedObservations = total >= 3 ? [
     energyValues.length >= 3 ? { id: 'energy', icon: Zap, title: 'Энергия', text: positiveEnergy >= Math.ceil(energyValues.length * .6) ? 'Чаще выше средней' : 'Обычно без явного подъёма', filled: positiveEnergy } : null,
     ratingValues.length >= 3 ? { id: 'mood', icon: Smile, title: 'Настроение', text: positiveMood >= Math.ceil(ratingValues.length * .6) ? 'Обычно ровное или хорошее' : 'Выраженного паттерна пока нет', filled: positiveMood } : null,
     { id: 'body', icon: HeartPulse, title: 'Тело', text: bodyPattern && strongestBodyPattern >= Math.ceil(total * .6) ? `Часто: ${bodyPattern[0].toLowerCase()}` : 'Выраженного паттерна пока нет', filled: strongestBodyPattern },
   ].filter((item): item is { id: string; icon: LucideIcon; title: string; text: string; filled: number } => Boolean(item)) : [];
+  const isPreview = total < 3 || !calculatedObservations.length;
+  const displayTotal = isPreview ? 5 : total;
+  const observations = isPreview ? [
+    { id: 'energy', icon: Zap, title: 'Энергия', text: 'Чаще выше средней', filled: 4 },
+    { id: 'mood', icon: Smile, title: 'Настроение', text: 'Обычно ровное или хорошее', filled: 4 },
+    { id: 'body', icon: HeartPulse, title: 'Тело', text: 'Выраженного паттерна пока нет', filled: 2 },
+  ] : calculatedObservations;
   const feedback = data.hormonoscopeFeedback[date];
   const suggestions = ['Задачи с общением', 'Привычная активность', 'Встречи и контакты'];
   const moreSuggestions = ['Спокойное планирование', 'Короткая прогулка', 'Проверить самочувствие'];
 
   return <section className="scopes-module hormonoscope-mini">
-    <header className="hormonoscope-mini-head"><div><Sparkle /><strong>Hormonoscope</strong><em>Новое</em></div><button onClick={() => setShowMethod((value) => !value)} aria-expanded={showMethod}>По {total} похожим {pluralRu(total, 'дню', 'дням', 'дням')} <Info /></button></header>
-    {showMethod && <p className="hormonoscope-method">Показатели основаны на ваших отметках в похожие дни предыдущих циклов.</p>}
-    {total >= 3 && observations.length ? <>
+    <header className="hormonoscope-mini-head"><div><Sparkle /><strong>Hormonoscope</strong><em>{isPreview ? 'Пример' : 'Новое'}</em></div><button onClick={() => setShowMethod((value) => !value)} aria-expanded={showMethod}>По {displayTotal} похожим {pluralRu(displayTotal, 'дню', 'дням', 'дням')} <Info /></button></header>
+    {showMethod && <p className="hormonoscope-method">{isPreview ? 'Это демонстрационный пример. Личный прогноз появится после отметок минимум в трёх похожих днях предыдущих циклов.' : 'Показатели основаны на ваших отметках в похожие дни предыдущих циклов.'}</p>}
+    <>
       <h2>Ваш ритм сегодня</h2>
-      <div className={`hormonoscope-observations count-${observations.length}`}>{observations.map(({ id, icon: Icon, title, text, filled }) => <article key={id} className={id}><Icon /><strong>{title}</strong><p>{text}</p><FrequencyDots filled={Math.min(5, filled)} total={total} /></article>)}</div>
+      <div className={`hormonoscope-observations count-${observations.length}`}>{observations.map(({ id, icon: Icon, title, text, filled }) => <article key={id} className={id}><Icon /><strong>{title}</strong><p>{text}</p><FrequencyDots filled={Math.min(5, filled)} total={displayTotal} /></article>)}</div>
       <div className="hormonoscope-suggestions"><h3>Сегодня может подойти</h3><div>{suggestions.map((suggestion) => <span key={suggestion}>{suggestion}</span>)}<button onClick={() => setShowMore((value) => !value)} aria-label="Показать ещё варианты" aria-expanded={showMore}>•••</button>{showMore && moreSuggestions.map((suggestion) => <span key={suggestion} className="more">{suggestion}</span>)}</div></div>
       <footer className="hormonoscope-feedback"><span>{feedback ? 'Спасибо, ответ сохранён' : 'Как совпал прогноз?'}</span><div>{([['matched', '🙂'], ['neutral', '😐'], ['missed', '🙁']] as const).map(([value, emoji]) => <button key={value} className={feedback === value ? 'active' : ''} aria-label={value === 'matched' ? 'Прогноз совпал' : value === 'neutral' ? 'Совпал частично' : 'Не совпал'} aria-pressed={feedback === value} onClick={() => onFeedback(date, value)}>{emoji}</button>)}</div></footer>
-    </> : <div className="hormonoscope-learning"><span><Orbit /></span><div><h2>Пока изучаем ваш ритм</h2><p>Нужно хотя бы три похожих дня с отметками энергии или самочувствия.</p></div></div>}
+    </>
   </section>;
 }
 
