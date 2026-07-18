@@ -100,6 +100,7 @@ import { clearAuraDatabaseState, loadAuraDatabaseState, persistAuraDatabaseState
 import { deliverFeedback, type FeedbackCategory, type FeedbackPayload } from './feedback';
 import { knowledgeArticles as medicalKnowledgeArticles, type KnowledgeArticle } from './knowledge';
 import { evaluatePeriodCheckin } from './periodCheckin';
+import { registerMiraServiceWorker } from './pwa';
 import {
   AURA_TODAY,
   addDays,
@@ -290,9 +291,21 @@ function App({ initialData }: { initialData: AuraState }) {
   const [feedbackCategory, setFeedbackCategory] = useState<FeedbackCategory>('idea');
   const [persistStatus, setPersistStatus] = useState<PersistStatus>('saved');
   const [toast, setToast] = useState('');
+  const [online, setOnline] = useState(() => navigator.onLine);
   const attentionInitialized = useRef(false);
   const cycleMetrics = useMemo(() => getAuraCycleMetrics(data), [data]);
   const scenario: PrototypeScenario = cycleMetrics.completedCycles >= 2 ? 'history' : cycleMetrics.starts.length ? 'first' : 'empty';
+
+  useEffect(() => {
+    const handleOnline = () => setOnline(true);
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (attentionInitialized.current) return;
@@ -605,6 +618,7 @@ function App({ initialData }: { initialData: AuraState }) {
           />}
           {overlay === 'quick-symptoms' && <QuickSymptomsSheet date={data.selectedDate} day={data.entries[data.selectedDate] ?? emptyAuraEntry(data.selectedDate)} showIntimate={data.modules.intimate} onClose={() => setOverlay(null)} onSave={(patch) => { changeData((current) => ({ ...current, modules: { ...current.modules, cycle: true }, entries: { ...current.entries, [current.selectedDate]: { ...(current.entries[current.selectedDate] ?? emptyAuraEntry(current.selectedDate)), ...patch, completionQuality: current.entries[current.selectedDate]?.completionQuality === 'full' ? 'full' : 'focused', updatedAt: new Date().toISOString() } } })); setOverlay('symptom-saved'); }} />}
           {overlay === 'symptom-saved' && <SymptomSavedSheet day={data.entries[data.selectedDate] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onOpenDiary={() => { setOverlay(null); open('diary'); }} onOpenAnalytics={() => { setAnalyticsSection('wellbeing'); setWellbeingMode('symptoms'); setOverlay(null); open('analytics'); }} />}
+          {!online && <div className="offline-banner" role="status"><CloudMoon />Нет сети · записи продолжат сохраняться на устройстве</div>}
           {toast && <div className="aura-toast" role="status"><Check />{toast}</div>}
           {!['onboarding', 'article', 'cycle-report', 'report', 'profile', 'calendar'].includes(screen) && <BottomNav screen={screen} onOpen={open} />}
         </div>
@@ -3028,6 +3042,7 @@ function AuraDatabaseBootstrap() {
 }
 
 if (root) {
+  registerMiraServiceWorker();
   auraGlobal.__lunaAuraRoot ??= createRoot(root);
   auraGlobal.__lunaAuraRoot.render(<StartupGate><AuraDatabaseBootstrap /></StartupGate>);
 }

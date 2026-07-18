@@ -8,7 +8,8 @@
 - достаточность данных в аналитике;
 - импорт, экспорт и удаление;
 - mobile-first QA;
-- разделение Hormonoscope и Циклоскопа.
+- разделение Hormonoscope и Циклоскопа;
+- production service worker, install icons и проверяемый offline app shell — выполнено 18 июля 2026.
 
 ## Следом — активация и удержание
 

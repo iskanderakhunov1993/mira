@@ -498,3 +498,13 @@ Storage revision/reconciliation; verified delete; sensitive export allowlist; fo
 - календарно-зависимый unit-тест стабилизирован.
 
 Проверка после изменений: `npm test` — 78/78, включая negative delete и legacy-backup migration; `npm run build` — успешно. P0 закрыт для текущего MVP-контракта. Рекомендация по публичному релизу остаётся условной до P1 E2E/offline/accessibility и клинической проверки safety copy.
+
+### P1 PWA update — 18 июля 2026
+
+- добавлены production-only service worker registration, versioned app-shell cache и offline navigation fallback;
+- manifest переведён в статический public-контур и дополнен scope/id/lang/orientation;
+- добавлены PNG 192×192, 512×512, maskable icon и Apple touch icon;
+- UI сообщает об offline-режиме и подтверждает, что локальные записи продолжат сохраняться;
+- `npm run verify:pwa` проверяет built manifest, SW fallback, shell-файлы и размеры install icons.
+
+Ограничение среды проверки: встроенный браузер отображает production preview, но не предоставляет Service Worker API. Поэтому runtime registration/offline reload остаётся release-gate для Chrome/Safari; артефакты и cache contract проверены автоматически. Публичный release остаётся conditional до E2E/accessibility и реального browser offline smoke.
