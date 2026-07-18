@@ -122,7 +122,7 @@ export type AuraDayEntry = {
 };
 
 export type AuraState = {
-  version: 3;
+  version: 4;
   revision: number;
   updatedAt: string;
   avatar: AuraAnimalAvatar;
@@ -186,7 +186,7 @@ const entry = (value: Partial<AuraDayEntry>, date = AURA_TODAY): AuraDayEntry =>
 });
 
 export const defaultAuraState: AuraState = {
-  version: 3,
+  version: 4,
   revision: 0,
   updatedAt: `${AURA_TODAY}T00:00:00.000Z`,
   avatar: 'cat',
@@ -448,6 +448,7 @@ export function sanitizeAuraState(value: unknown): AuraState {
   const rawCycloscopeFeedback: Record<string, unknown> = isObject(candidate.cycloscopeFeedback) ? candidate.cycloscopeFeedback : {};
   const rawProfile: Record<string, unknown> = isObject(candidate.profile) ? candidate.profile : {};
   const rawHealthContext: Record<string, unknown> = isObject(rawProfile.healthContext) ? rawProfile.healthContext : {};
+  const migrateToCoreFirstToday = value.version === 3;
   const cycleLength = clamp(rawOnboarding.cycleLength, 18, 60);
   const periodLength = clamp(rawOnboarding.periodLength, 1, 14);
   const selectedDate = isValidAuraDate(candidate.selectedDate) ? candidate.selectedDate : AURA_TODAY;
@@ -459,7 +460,7 @@ export function sanitizeAuraState(value: unknown): AuraState {
     ? Array.from(new Set(candidate.excludedCycleStarts.filter((item): item is string => isValidAuraDate(item) && completedStartSet.has(item)))).sort()
     : [];
   return {
-    version: 3,
+    version: 4,
     revision: Math.round(clamp(candidate.revision, 0, Number.MAX_SAFE_INTEGER) ?? 0),
     updatedAt: typeof candidate.updatedAt === 'string' && Number.isFinite(Date.parse(candidate.updatedAt))
       ? candidate.updatedAt.slice(0, 40)
@@ -485,7 +486,11 @@ export function sanitizeAuraState(value: unknown): AuraState {
       : [],
     excludedCycleStarts,
     modules: Object.fromEntries(moduleIds.map((id) => [id, typeof rawModules[id] === 'boolean' ? rawModules[id] : defaultAuraState.modules[id]])) as Record<AuraModuleId, boolean>,
-    homeCards: Object.fromEntries(homeCardIds.map((id) => [id, typeof rawHomeCards[id] === 'boolean' ? rawHomeCards[id] : defaultAuraState.homeCards[id]])) as Record<AuraHomeCardId, boolean>,
+    homeCards: Object.fromEntries(homeCardIds.map((id) => [id,
+      migrateToCoreFirstToday && ['dailyPlan', 'rhythm', 'knowledge'].includes(id)
+        ? false
+        : typeof rawHomeCards[id] === 'boolean' ? rawHomeCards[id] : defaultAuraState.homeCards[id],
+    ])) as Record<AuraHomeCardId, boolean>,
     savedArticles: Array.isArray(candidate.savedArticles) ? Array.from(new Set(candidate.savedArticles.filter((item): item is string => typeof item === 'string').map((item) => item.slice(0, 120)))) : [],
     hormonoscopeFeedback: Object.fromEntries(Object.entries(rawHormonoscopeFeedback).flatMap(([date, feedback]) => isValidAuraDate(date) && ['matched', 'neutral', 'missed'].includes(String(feedback)) ? [[date, feedback as AuraHormonoscopeFeedback]] : [])),
     cycloscopeFeedback: Object.fromEntries(Object.entries(rawCycloscopeFeedback).flatMap(([date, feedback]) => isValidAuraDate(date) && ['matched', 'neutral', 'missed'].includes(String(feedback)) ? [[date, feedback as AuraHormonoscopeFeedback]] : [])),

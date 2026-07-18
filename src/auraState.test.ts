@@ -119,20 +119,45 @@ describe('Mira unified state', () => {
 
   it('keeps configurable Today cards instead of removing them from the product', () => {
     const customized = sanitizeAuraState({
+      version: 4,
       homeCards: {
-        rhythm: false,
-        dailyPlan: false,
+        rhythm: true,
+        dailyPlan: true,
+        knowledge: true,
         hormonoscope: false,
         recommendation: false,
       },
     });
 
     expect(customized.homeCards).toMatchObject({
-      rhythm: false,
-      dailyPlan: false,
+      rhythm: true,
+      dailyPlan: true,
+      knowledge: true,
       hormonoscope: false,
       recommendation: false,
     });
+  });
+
+  it('migrates an existing v3 profile to core-first Today exactly once', () => {
+    const migrated = sanitizeAuraState({
+      version: 3,
+      onboarding: { completed: true },
+      homeCards: {
+        rhythm: true,
+        dailyPlan: true,
+        knowledge: true,
+        recommendation: true,
+      },
+    });
+
+    expect(migrated.version).toBe(4);
+    expect(migrated.homeCards).toMatchObject({ rhythm: false, dailyPlan: false, knowledge: false, recommendation: true });
+
+    const customizedAfterMigration = sanitizeAuraState({
+      ...migrated,
+      homeCards: { ...migrated.homeCards, rhythm: true },
+    });
+    expect(customizedAfterMigration.homeCards.rhythm).toBe(true);
   });
 
   it('starts new profiles with a core-first Today while keeping evidence eligible', () => {
