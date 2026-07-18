@@ -918,8 +918,8 @@ function Today({ data, scenario, onOpen, onOpenArticle, onSelectDate, onShowAtte
         : { title: daysUntilPeriod === 0 ? 'Окно возможного начала — сегодня' : `До начала окна около ${daysUntilPeriod} ${pluralRu(daysUntilPeriod ?? 0, 'дня', 'дней', 'дней')}`, text: `Начало возможно ${range}. Это диапазон, а не точная дата.` };
   return <div className="screen today-screen">
     <AppHeader avatar={data.avatar} editorial onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
-    <div className="today-editorial-heading"><span>{formatRuDate(selectedDate)}</span><h1>Ваш ритм сегодня</h1><p>Спокойный взгляд на цикл и самочувствие</p></div>
     <DateStrip data={data} onSelectDate={onSelectDate} />
+    <div className="today-editorial-heading"><span>{formatRuDate(selectedDate)}</span><h1>Сегодня</h1><p>Цикл и самочувствие — коротко и спокойно</p></div>
     <div className="today-status-pills">
       <span><i />{metrics.cycleDay ? `${metrics.cycleDay} ${pluralRu(metrics.cycleDay, 'день', 'дня', 'дней')} цикла` : 'Цикл не настроен'}</span>
       <span><Sparkle />{metrics.forecast ? 'Диапазон готов' : 'Прогноз формируется'}</span>
