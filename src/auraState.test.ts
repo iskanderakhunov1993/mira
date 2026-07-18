@@ -135,6 +135,19 @@ describe('Mira unified state', () => {
     });
   });
 
+  it('starts new profiles with a core-first Today while keeping evidence eligible', () => {
+    const empty = createEmptyAuraState();
+
+    expect(empty.homeCards).toEqual({
+      hormonoscope: false,
+      cycloscope: false,
+      dailyPlan: false,
+      rhythm: false,
+      recommendation: true,
+      knowledge: false,
+    });
+  });
+
   it('keeps a valid period check-in and clamps its numeric answers', () => {
     const repaired = sanitizeAuraState({
       entries: {

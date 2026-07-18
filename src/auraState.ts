@@ -210,10 +210,10 @@ export const defaultAuraState: AuraState = {
   homeCards: {
     hormonoscope: false,
     cycloscope: false,
-    dailyPlan: true,
-    rhythm: true,
+    dailyPlan: false,
+    rhythm: false,
     recommendation: true,
-    knowledge: true,
+    knowledge: false,
   },
   savedArticles: [],
   hormonoscopeFeedback: {},

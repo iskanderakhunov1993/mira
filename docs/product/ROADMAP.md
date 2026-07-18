@@ -11,6 +11,7 @@
 - разделение Hormonoscope и Циклоскопа;
 - production service worker, install icons и проверяемый offline app shell — выполнено 18 июля 2026.
 - mobile Chromium E2E для onboarding, записи, persistence, Calendar, export/delete и accessible-name smoke — выполнено 18 июля 2026.
+- core-first Today defaults для новых профилей без перезаписи существующих настроек — выполнено 18 июля 2026.
 
 ## Следом — активация и удержание
 
