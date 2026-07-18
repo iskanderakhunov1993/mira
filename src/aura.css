@@ -972,9 +972,8 @@ svg { display: block; fill: none; stroke-linecap: round; stroke-linejoin: round;
 .today-screen .editorial-brand-button span { font-family: Georgia,"Times New Roman",serif; font-size: 28px; font-weight: 500; letter-spacing: -.035em; }
 .today-screen .header-calendar-button { width: 42px; height: 42px; border: 1px solid #eee7e8; border-radius: 50%; color: var(--today-pink); background: rgba(255,255,255,.88); box-shadow: 0 6px 18px rgba(76,45,57,.045); }
 .today-screen .header-calendar-button svg { width: 17px; stroke-width: 1.9; }
-.today-editorial-heading { margin: 16px 2px 13px; }
-.today-editorial-heading > span { color: var(--today-pink); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
-.today-editorial-heading h1 { margin: 3px 0 2px; font-family: Georgia,"Times New Roman",serif; font-size: clamp(34px,8.4vw,41px); font-weight: 500; line-height: 1; letter-spacing: -.045em; }
+.today-editorial-heading { margin: 14px 2px 13px; }
+.today-editorial-heading h1 { margin: 0 0 2px; font-family: Georgia,"Times New Roman",serif; font-size: clamp(34px,8.4vw,41px); font-weight: 500; line-height: 1; letter-spacing: -.045em; }
 .today-editorial-heading p { margin: 7px 0 0; color: #918b8e; font-size: 9px; line-height: 1.4; }
 .today-screen .date-strip { gap: 3px; margin: 4px 0 0; padding: 5px; border: 1px solid #eee7e8; border-radius: 22px; background: rgba(255,255,255,.72); }
 .today-screen .date-strip button { height: 53px; border-radius: 16px; }

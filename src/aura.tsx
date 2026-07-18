@@ -919,7 +919,7 @@ function Today({ data, scenario, onOpen, onOpenArticle, onSelectDate, onShowAtte
   return <div className="screen today-screen">
     <AppHeader avatar={data.avatar} editorial onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
     <DateStrip data={data} onSelectDate={onSelectDate} />
-    <div className="today-editorial-heading"><span>{formatRuDate(selectedDate)}</span><h1>Сегодня</h1><p>Цикл и самочувствие — коротко и спокойно</p></div>
+    <div className="today-editorial-heading"><h1>Сегодня</h1><p>Цикл и самочувствие — коротко и спокойно</p></div>
     <div className="today-status-pills">
       <span><i />{metrics.cycleDay ? `${metrics.cycleDay} ${pluralRu(metrics.cycleDay, 'день', 'дня', 'дней')} цикла` : 'Цикл не настроен'}</span>
       <span><Sparkle />{metrics.forecast ? 'Диапазон готов' : 'Прогноз формируется'}</span>
