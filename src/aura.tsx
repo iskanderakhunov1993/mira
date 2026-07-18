@@ -860,10 +860,10 @@ function DateWheelPicker({ value, onChange }: { value?: string; onChange: (value
   </div>;
 }
 
-function AppHeader({ title = formatRuDate(AURA_TODAY), avatar = 'cat', onProfile, onCalendar }: { title?: string; avatar?: AuraAnimalAvatar; onProfile?: () => void; onCalendar?: () => void }) {
+function AppHeader({ title = formatRuDate(AURA_TODAY), avatar = 'cat', editorial = false, onProfile, onCalendar }: { title?: string; avatar?: AuraAnimalAvatar; editorial?: boolean; onProfile?: () => void; onCalendar?: () => void }) {
   return <header className="app-header">
-    <button className="avatar-button" onClick={onProfile} aria-label="Профиль"><AnimalAvatarIcon avatar={avatar} /></button>
-    <div><h1>{title}</h1></div>
+    <button className={`avatar-button ${editorial ? 'editorial-brand-button' : ''}`} onClick={onProfile} aria-label="Профиль">{editorial ? <span>Mira</span> : <AnimalAvatarIcon avatar={avatar} />}</button>
+    <div>{!editorial && <h1>{title}</h1>}</div>
     <button className="round-button header-calendar-button" onClick={onCalendar} aria-label="Календарь"><CalendarRange /></button>
   </header>;
 }
@@ -917,10 +917,16 @@ function Today({ data, scenario, onOpen, onOpenArticle, onSelectDate, onShowAtte
         ? metrics.forecast ? { title: `Начало возможно ${range}`, text: 'Пока это широкий календарный диапазон. Следующая фактическая дата поможет сделать его личнее.' } : { title: 'Первый цикл продолжается', text: 'Отметьте следующую дату начала — после этого появится первый личный прогноз.' }
         : { title: daysUntilPeriod === 0 ? 'Окно возможного начала — сегодня' : `До начала окна около ${daysUntilPeriod} ${pluralRu(daysUntilPeriod ?? 0, 'дня', 'дней', 'дней')}`, text: `Начало возможно ${range}. Это диапазон, а не точная дата.` };
   return <div className="screen today-screen">
-    <AppHeader avatar={data.avatar} title={formatRuDate(selectedDate)} onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
+    <AppHeader avatar={data.avatar} editorial onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
+    <div className="today-editorial-heading"><span>{formatRuDate(selectedDate)}</span><h1>Ваш ритм сегодня</h1><p>Спокойный взгляд на цикл и самочувствие</p></div>
     <DateStrip data={data} onSelectDate={onSelectDate} />
+    <div className="today-status-pills">
+      <span><i />{metrics.cycleDay ? `${metrics.cycleDay} ${pluralRu(metrics.cycleDay, 'день', 'дня', 'дней')} цикла` : 'Цикл не настроен'}</span>
+      <span><Sparkle />{metrics.forecast ? 'Диапазон готов' : 'Прогноз формируется'}</span>
+    </div>
     <section className="cycle-status-card">
-      <div className="cycle-status-main"><div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'день пока неизвестен'}</span></div><div className="cycle-status-copy"><h2>{forecast.title}</h2><p>{forecast.text}</p></div></div>
+      <div className="cycle-card-orbit" aria-hidden="true"><i /><i /><i /><b /></div>
+      <div className="cycle-status-main"><div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'пока неизвестен'}</span></div><div className="cycle-status-copy"><small>{selectedIsToday ? 'Сегодня' : formatRuDate(selectedDate)}</small><h2>{forecast.title}</h2><p>{forecast.text}</p></div></div>
       {scenario !== 'empty' ? <div className="cycle-timeline">
         <div className="cycle-timeline-head"><span>Основание прогноза</span><strong>{confidenceLabel}</strong></div>
         {data.homeCards.knowledge && <button className="cycle-context-article" onClick={() => onOpenArticle(contextArticle.id)} aria-label={`Открыть статью: ${contextArticle.title}`}><span><BookOpenText /></span><div><small>По теме · {contextArticle.readingMinutes} {pluralRu(contextArticle.readingMinutes, 'минута', 'минуты', 'минут')}</small><strong>{contextArticle.title}</strong></div><ChevronRight /></button>}

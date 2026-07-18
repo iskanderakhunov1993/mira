@@ -965,6 +965,53 @@ svg { display: block; fill: none; stroke-linecap: round; stroke-linejoin: round;
   .bottom-nav { bottom: 8px; }
 }
 
+/* Today editorial refresh · inspired by Mira's calm cycle-report direction. */
+.today-screen { --today-pink: #f34f8b; --today-pink-soft: #fff2f6; --today-ink: #171316; padding: 13px 18px 36px; color: var(--today-ink); background: radial-gradient(circle at 88% 7%,rgba(255,224,235,.55),transparent 24%),linear-gradient(180deg,#fffdfc 0%,#fff9f9 52%,#fbf7f6 100%); }
+.today-screen .app-header { min-height: 54px; grid-template-columns: minmax(0,1fr) 1px 44px; }
+.today-screen .editorial-brand-button { width: auto; justify-content: flex-start; color: #171316; }
+.today-screen .editorial-brand-button span { font-family: Georgia,"Times New Roman",serif; font-size: 28px; font-weight: 500; letter-spacing: -.035em; }
+.today-screen .header-calendar-button { width: 42px; height: 42px; border: 1px solid #eee7e8; border-radius: 50%; color: var(--today-pink); background: rgba(255,255,255,.88); box-shadow: 0 6px 18px rgba(76,45,57,.045); }
+.today-screen .header-calendar-button svg { width: 17px; stroke-width: 1.9; }
+.today-editorial-heading { margin: 14px 0 12px; }
+.today-editorial-heading > span { color: var(--today-pink); font-size: 8px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.today-editorial-heading h1 { max-width: 350px; margin: 5px 0 3px; font-family: Georgia,"Times New Roman",serif; font-size: clamp(38px,10.4vw,51px); font-weight: 500; line-height: .98; letter-spacing: -.055em; }
+.today-editorial-heading p { margin: 9px 0 0; color: #918b8e; font-size: 10px; line-height: 1.4; }
+.today-screen .date-strip { gap: 3px; margin: 7px 0 10px; padding: 5px; border: 1px solid #eee7e8; border-radius: 22px; background: rgba(255,255,255,.72); }
+.today-screen .date-strip button { height: 53px; border-radius: 16px; }
+.today-screen .date-strip button.active { color: white; background: var(--today-pink); box-shadow: 0 8px 18px rgba(243,79,139,.19); }
+.today-screen .date-strip-markers { min-height: 8px; }
+.today-screen .date-strip-markers i,.today-screen .date-strip-markers b { width: 9px; height: 9px; flex-basis: 9px; font-size: 4px; }
+.today-status-pills { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 10px 0 12px; }
+.today-status-pills > span { min-width: 0; min-height: 42px; display: flex; align-items: center; gap: 9px; padding: 0 12px; border: 1px solid #ebe5e6; border-radius: 999px; color: #312b2e; background: rgba(255,255,255,.78); font-size: 8px; font-weight: 680; white-space: nowrap; }
+.today-status-pills i { width: 18px; height: 18px; flex: 0 0 auto; border: 2px solid var(--today-pink); border-radius: 50%; box-shadow: inset 0 0 0 4px #fff; background: #ffe7f0; }
+.today-status-pills svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--today-pink); }
+.today-screen .cycle-status-card { min-height: 242px; padding: 21px 20px 17px; border: 1px solid #f1e4e9; border-radius: 27px; background: radial-gradient(circle at 84% 28%,rgba(255,219,232,.54),transparent 33%),linear-gradient(145deg,#fff 0%,#fff8fa 62%,#ffeef4 100%); box-shadow: 0 13px 32px rgba(78,44,57,.055); }
+.today-screen .cycle-status-card::after { display: none; }
+.today-screen .cycle-card-orbit { position: absolute; right: 18px; top: 30px; width: 112px; height: 112px; opacity: .72; }
+.today-screen .cycle-card-orbit i { position: absolute; inset: calc(var(--orbit,0) * 11px); border: 1px solid rgba(243,79,139,.2); border-radius: 50%; }
+.today-screen .cycle-card-orbit i:nth-child(1) { --orbit: 0; }.today-screen .cycle-card-orbit i:nth-child(2) { --orbit: 1; }.today-screen .cycle-card-orbit i:nth-child(3) { --orbit: 2; }
+.today-screen .cycle-card-orbit b { position: absolute; right: 23px; top: 23px; width: 13px; height: 13px; border: 3px solid white; border-radius: 50%; background: var(--today-pink); box-shadow: 0 4px 10px rgba(243,79,139,.24); }
+.today-screen .cycle-status-main { min-height: 116px; grid-template-columns: minmax(0,1fr) 98px; align-items: center; gap: 14px; }
+.today-screen .cycle-status-copy { position: relative; z-index: 2; grid-column: 1; grid-row: 1; }
+.today-screen .cycle-status-copy > small { color: var(--today-pink); font-size: 8px; font-weight: 760; }
+.today-screen .cycle-status-copy h2 { max-width: 235px; margin: 7px 0 9px; font-family: Georgia,"Times New Roman",serif; font-size: 23px; font-weight: 500; line-height: 1.04; letter-spacing: -.035em; }
+.today-screen .cycle-status-copy p { max-width: 225px; color: #777075; font-size: 8px; line-height: 1.55; }
+.today-screen .cycle-day-value { position: relative; z-index: 2; grid-column: 2; grid-row: 1; min-height: 82px; border: 1px solid rgba(243,79,139,.25); border-radius: 50%; color: var(--today-pink); background: rgba(255,255,255,.72); box-shadow: 0 9px 25px rgba(158,67,102,.08),inset 0 0 0 8px rgba(255,237,244,.74); }
+.today-screen .cycle-day-value strong { font-family: Georgia,"Times New Roman",serif; font-size: 31px; font-weight: 500; }.today-screen .cycle-day-value span { max-width: 66px; color: #8a7f84; font-size: 6px; line-height: 1.2; text-align: center; }
+.today-screen .cycle-timeline { margin-top: 5px; padding: 9px 0 7px; border-top: 1px solid #f0e4e8; border-radius: 0; background: transparent; }
+.today-screen .cycle-timeline-head { margin: 0; }.today-screen .cycle-timeline-head span { color: #a79da1; }.today-screen .cycle-timeline-head strong { color: #62575c; }
+.today-screen .cycle-empty-action { min-height: 42px; margin-top: 5px; border: 1px solid rgba(243,79,139,.2); border-radius: 999px; color: #bd3e6d; background: #fff; }
+.today-screen .cycle-inline-actions { gap: 7px; margin-top: 14px; padding: 0; }
+.today-screen .cycle-inline-actions button { min-height: 70px; justify-content: center; gap: 6px; padding: 9px 5px; border: 1px solid #eee6e8; border-radius: 19px; background: rgba(255,255,255,.76); }
+.today-screen .cycle-action-icon { width: 31px; height: 31px; color: var(--today-pink); background: var(--today-pink-soft); box-shadow: none; }
+.today-screen .cycle-action-icon svg { width: 15px; height: 15px; }
+.today-screen .cycle-inline-actions strong { max-width: 100%; color: #3d3539; font-size: 6.4px; font-weight: 730; }
+.today-screen .cycle-inline-actions .period-action.active .cycle-action-icon,.today-screen .cycle-inline-actions .symptom-action.active .cycle-action-icon { color: white; background: var(--today-pink); box-shadow: none; }
+.today-screen .cycle-inline-actions .support-action { border-color: #f3dce4; background: #fff7f9; }.today-screen .cycle-inline-actions .support-action .cycle-action-icon { color: #fff; background: var(--today-pink); box-shadow: none; }
+.today-screen .combined-home-surface,.today-screen .attention-summary,.today-screen .hormonoscope-mini-card,.today-screen .cycloscope-mini-card { border: 1px solid #eee7e8; box-shadow: 0 10px 26px rgba(76,45,57,.045); }
+.today-screen .section-heading h2,.today-screen .attention-summary h2 { font-family: Georgia,"Times New Roman",serif; font-weight: 500; }
+@media (max-width: 370px) { .today-editorial-heading h1 { font-size: 36px; }.today-status-pills > span { padding: 0 9px; font-size: 7px; }.today-screen .cycle-status-card { padding-inline: 15px; }.today-screen .cycle-status-main { grid-template-columns: minmax(0,1fr) 82px; }.today-screen .cycle-card-orbit { width: 96px; height: 96px; }.today-screen .cycle-status-copy h2 { font-size: 20px; } }
+
 .hero-data.hero-data-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 
