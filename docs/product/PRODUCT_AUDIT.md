@@ -458,7 +458,7 @@ Storage revision/reconciliation; verified delete; sensitive export allowlist; fo
 - Не определено, как local-only продукт восстанавливается после потери устройства без cloud account.
 - Не проверена готовность пользователей платить за расширенную аналитику при бесплатном core.
 - Неизвестно, воспринимают ли Hormonoscope и Циклоскоп как разные категории.
-- Не проведена инструментальная accessibility и offline/installability проверка.
+- Добавлен автоматический accessible-name smoke критического пути; полный WCAG-аудит и runtime offline/installability smoke в Chrome/Safari ещё не проведены.
 
 ## Итоговая таблица рекомендаций
 
@@ -507,4 +507,14 @@ Storage revision/reconciliation; verified delete; sensitive export allowlist; fo
 - UI сообщает об offline-режиме и подтверждает, что локальные записи продолжат сохраняться;
 - `npm run verify:pwa` проверяет built manifest, SW fallback, shell-файлы и размеры install icons.
 
-Ограничение среды проверки: встроенный браузер отображает production preview, но не предоставляет Service Worker API. Поэтому runtime registration/offline reload остаётся release-gate для Chrome/Safari; артефакты и cache contract проверены автоматически. Публичный release остаётся conditional до E2E/accessibility и реального browser offline smoke.
+Ограничение среды проверки: встроенный браузер отображает production preview, но не предоставляет Service Worker API. Поэтому runtime registration/offline reload остаётся release-gate для Chrome/Safari; артефакты и cache contract проверены автоматически.
+
+### P1 E2E и accessibility baseline — 18 июля 2026
+
+- добавлен Playwright mobile Chromium gate для onboarding → первая запись → reload persistence → Calendar;
+- отдельный сценарий проверяет создание backup, подтверждение удаления и отсутствие восстановления данных после reload;
+- accessibility smoke проверяет доступные имена активных кнопок и модальных окон на Today, Quick Symptoms, Calendar и Data Controls;
+- кнопки возврата на вторичных экранах и информационная кнопка Calendar получили явные accessible names;
+- Vitest ограничен каталогом `src`, поэтому unit- и browser-наборы не конфликтуют.
+
+Проверка: `npm run test:e2e` — 2/2; `npm test` — 78/78; `npm run build` и `npm run verify:pwa` — успешно. Это закрывает автоматизированный baseline критического пути, но не заменяет полный keyboard/screen-reader/WCAG-аудит и реальный offline reload в поддерживаемых браузерах.

@@ -1736,7 +1736,7 @@ function Calendar({ data, scenario, onSelectDate, onSetPeriodStart, onNotify, on
   const selectedIsFuture = data.selectedDate > AURA_TODAY;
   const selectedLabel = `${formatRuDate(data.selectedDate)}${data.selectedDate === AURA_TODAY ? ' · сегодня' : ''}`;
   return <div className="screen calendar-screen">
-    <TopBack title="Календарь" onBack={onBack} action={<button className="round-button"><Info /></button>} />
+    <TopBack title="Календарь" onBack={onBack} action={<button className="round-button" aria-label="О календаре"><Info /></button>} />
     <section className="calendar-summary aura-hero">
       <span className="glass-label"><Sparkle /> {metrics.daysLate ? 'Окно возможного начала прошло' : confidence === 'personal' ? 'Личный диапазон начала' : confidence === 'growing' ? 'Диапазон уточняется' : confidence === 'preliminary' ? 'Календарный ориентир' : 'Данных пока мало'}</span><h2>{metrics.daysLate ? `После диапазона прошло ${metrics.daysLate} дн.` : forecastRange}</h2><p>{metrics.daysLate ? `Расчётное окно возможного начала было ${forecastRange}. Это календарный ориентир, а не диагноз.` : metrics.forecastCyclesUsed >= 3 ? `Диапазон возможного начала рассчитан по ${metrics.forecastCyclesUsed} завершённым циклам.` : metrics.forecast ? `Пока используем стартовую настройку ${metrics.expectedLength} дней. Личный диапазон появится после трёх завершённых циклов.` : 'Добавьте длину цикла в настройках или следующую фактическую дату начала.'}</p>
       <div className="confidence-line"><span style={{ width: confidence === 'personal' ? '78%' : confidence === 'growing' ? '52%' : confidence === 'preliminary' ? '28%' : '0%' }} /></div><small>Уверенность растёт с новыми завершёнными циклами</small>
@@ -3018,7 +3018,7 @@ function ConfirmDelete({ onCancel, onConfirm }: { onCancel: () => void; onConfir
 }
 
 function TopBack({ title, onBack, action }: { title: string; onBack: () => void; action?: ReactNode }) {
-  return <header className="top-back"><button className="round-button" onClick={onBack}><ChevronLeft /></button><h1>{title}</h1>{action ?? <span />}</header>;
+  return <header className="top-back"><button className="round-button" onClick={onBack} aria-label={`Назад с экрана «${title}»`}><ChevronLeft /></button><h1>{title}</h1>{action ?? <span />}</header>;
 }
 
 function BottomNav({ screen, onOpen }: { screen: Screen; onOpen: (screen: Screen) => void }) {
