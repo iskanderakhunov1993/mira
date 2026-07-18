@@ -58,12 +58,23 @@ async function writeDatabaseState(state: AuraState): Promise<void> {
   }
 }
 
+function compareStateFreshness(first: AuraState, second: AuraState): number {
+  if (first.revision !== second.revision) return first.revision - second.revision;
+  return Date.parse(first.updatedAt) - Date.parse(second.updatedAt);
+}
+
 export async function loadAuraDatabaseState(): Promise<AuraState> {
   const compatibleState = loadAuraState();
   if (!indexedDbAvailable()) return compatibleState;
   try {
     const stored = await readDatabaseState();
-    if (stored) return sanitizeAuraState(stored);
+    if (stored) {
+      const databaseState = sanitizeAuraState(stored);
+      const newest = compareStateFreshness(databaseState, compatibleState) >= 0 ? databaseState : compatibleState;
+      await writeDatabaseState(newest);
+      persistAuraState(newest);
+      return newest;
+    }
     await writeDatabaseState(compatibleState);
     return compatibleState;
   } catch {
@@ -72,7 +83,18 @@ export async function loadAuraDatabaseState(): Promise<AuraState> {
 }
 
 export async function persistAuraDatabaseState(state: AuraState): Promise<boolean> {
-  const safeState = sanitizeAuraState(state);
+  const currentFallback = loadAuraState();
+  let currentDatabase = currentFallback;
+  if (indexedDbAvailable()) {
+    try {
+      const stored = await readDatabaseState();
+      if (stored) currentDatabase = sanitizeAuraState(stored);
+    } catch {
+      // The compatible fallback still provides a safe revision baseline.
+    }
+  }
+  const nextRevision = Math.max(state.revision, currentFallback.revision, currentDatabase.revision) + 1;
+  const safeState = sanitizeAuraState({ ...state, revision: nextRevision, updatedAt: new Date().toISOString() });
   const fallbackSaved = persistAuraState(safeState);
   if (!indexedDbAvailable()) return fallbackSaved;
   try {
@@ -83,9 +105,9 @@ export async function persistAuraDatabaseState(state: AuraState): Promise<boolea
   }
 }
 
-export async function clearAuraDatabaseState(): Promise<void> {
+export async function clearAuraDatabaseState(): Promise<boolean> {
   clearAllMiraStorage();
-  if (!indexedDbAvailable()) return;
+  if (!indexedDbAvailable()) return loadAuraState().revision === 0;
   try {
     const database = await openDatabase();
     try {
@@ -99,8 +121,10 @@ export async function clearAuraDatabaseState(): Promise<void> {
     } finally {
       database.close();
     }
+    const remaining = await readDatabaseState();
+    return remaining === undefined && loadAuraState().revision === 0;
   } catch {
-    // localStorage has already been cleared; a later empty-state save repairs IndexedDB.
+    return false;
   }
 }
 

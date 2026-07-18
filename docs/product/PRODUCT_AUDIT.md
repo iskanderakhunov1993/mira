@@ -484,3 +484,17 @@ Storage revision/reconciliation; verified delete; sensitive export allowlist; fo
 - `npm test` — 72 passed, 1 failed. Падает календарно-зависимый `src/cycle.test.ts:137`: ожидается 2500 мл/2 mood days, текущая неделя возвращает 1500 мл/1 mood day.
 - Не найдены service worker/cache strategy, product analytics event layer, E2E, automated accessibility или visual regression tests.
 - Код приложения не изменялся. Обновлён только этот продуктовый аудит.
+
+### P0 implementation update — 18 июля 2026
+
+После исходного audit snapshot начата реализация P0:
+
+- добавлены revision/updatedAt и reconciliation IndexedDB/localStorage;
+- удаление теперь ожидает очистку и проверяет отсутствие state;
+- default backup исключает профиль, medical period check-in, интимные поля и заметки;
+- Today и Calendar используют диапазон возможного начала `forecast`, а не ожидаемую длительность `periodForecast`;
+- fertility window и карта фаз удалены из основного UI;
+- фазово-гормональный Hormonoscope удалён, а personal module больше не показывает mock-прогноз при недостатке данных;
+- календарно-зависимый unit-тест стабилизирован.
+
+Проверка после изменений: `npm test` — 78/78, включая negative delete и legacy-backup migration; `npm run build` — успешно. P0 закрыт для текущего MVP-контракта. Рекомендация по публичному релизу остаётся условной до P1 E2E/offline/accessibility и клинической проверки safety copy.

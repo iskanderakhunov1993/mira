@@ -103,6 +103,7 @@ import { evaluatePeriodCheckin } from './periodCheckin';
 import {
   AURA_TODAY,
   addDays,
+  createAuraExportState,
   createEmptyAuraState,
   daysBetween,
   deriveAttentionEvidence,
@@ -148,7 +149,7 @@ type WellbeingMode = 'summary' | 'symptoms' | 'sleep' | 'habits';
 type KnowledgeCategory = 'all' | 'cycle' | 'symptoms' | 'sleep' | 'wellbeing' | 'habits';
 type KnowledgeTab = 'for-you' | 'all' | 'saved';
 type PrototypeScenario = 'history' | 'first' | 'empty';
-type Overlay = 'attention' | 'daily-plan' | 'support-options' | 'hormonoscope' | 'cycloscope' | 'workout' | 'personal-data' | 'medical-context' | 'home-settings' | 'diary-settings' | 'data-controls' | 'delete-confirm' | 'feedback' | 'support' | 'quick-symptoms' | 'symptom-saved' | 'period-checkin' | 'temperature-history' | 'weight-history' | 'sleep-history' | 'water-history' | 'steps-history' | 'nutrition-history' | 'notes-history' | null;
+type Overlay = 'attention' | 'daily-plan' | 'support-options' | 'cycloscope' | 'workout' | 'personal-data' | 'medical-context' | 'home-settings' | 'diary-settings' | 'data-controls' | 'delete-confirm' | 'feedback' | 'support' | 'quick-symptoms' | 'symptom-saved' | 'period-checkin' | 'temperature-history' | 'weight-history' | 'sleep-history' | 'water-history' | 'steps-history' | 'nutrition-history' | 'notes-history' | null;
 type PersistStatus = 'saved' | 'saving' | 'error';
 
 const navItems: Array<{ id: Screen; label: string; icon: LucideIcon }> = [
@@ -422,20 +423,7 @@ function App({ initialData }: { initialData: AuraState }) {
 
   const exportData = () => {
     try {
-      const payload = data.privacy.sensitiveExport ? data : {
-        ...data,
-        profile: { ...data.profile, healthContext: { bleedingMedications: [] } },
-        entries: Object.fromEntries(Object.entries(data.entries).map(([date, day]) => [date, {
-          ...day,
-          periodCheckin: day.periodCheckin?.bleedingType === 'after-sex' ? undefined : day.periodCheckin,
-          intimate: undefined,
-          intimacyComfort: undefined,
-          intimacyAfter: undefined,
-          intimacyDesire: undefined,
-          intimacyNote: undefined,
-          note: undefined,
-        }])),
-      };
+      const payload = createAuraExportState(data, data.privacy.sensitiveExport);
       const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
       const link = document.createElement('a');
       link.href = url;
@@ -464,8 +452,13 @@ function App({ initialData }: { initialData: AuraState }) {
     }
   };
 
-  const deleteAllData = () => {
-    void clearAuraDatabaseState();
+  const deleteAllData = async () => {
+    const deleted = await clearAuraDatabaseState();
+    if (!deleted) {
+      setOverlay('data-controls');
+      setToast('Не удалось полностью удалить данные. Попробуйте ещё раз.');
+      return;
+    }
     setData(createEmptyAuraState());
     setOnboardingStep(0);
     setScreen('onboarding');
@@ -547,7 +540,6 @@ function App({ initialData }: { initialData: AuraState }) {
           />}
           {overlay === 'daily-plan' && <DailyPlanModal date={data.selectedDate} day={data.entries[data.selectedDate] ?? emptyAuraEntry(data.selectedDate)} onPatch={(patch) => patchEntry(data.selectedDate, patch)} onClose={() => setOverlay(null)} />}
           {overlay === 'support-options' && <SupportOptionsModal date={data.selectedDate} day={data.entries[data.selectedDate] ?? emptyAuraEntry(data.selectedDate)} onAddSymptoms={() => { setOverlay(null); setOverlay('quick-symptoms'); }} onClose={() => setOverlay(null)} />}
-          {overlay === 'hormonoscope' && <HormonoscopeModal data={data} date={data.selectedDate} onClose={() => setOverlay(null)} />}
           {overlay === 'cycloscope' && <CycloscopeModal data={data} date={data.selectedDate} onClose={() => setOverlay(null)} onOpenDiary={() => { setOverlay(null); open('diary'); }} />}
           {overlay === 'workout' && data.entries[data.selectedDate]?.workout && <WorkoutModal workout={data.entries[data.selectedDate].workout!} onPatch={patchWorkout} onRegenerate={(venue) => openWorkout(true, venue)} onClose={() => setOverlay(null)} />}
           {overlay === 'personal-data' && <PersonalDataSheet data={data} onSave={(profile, avatar) => changeData((current) => ({ ...current, profile, avatar }))} onClose={() => setOverlay(null)} />}
@@ -895,46 +887,29 @@ function Today({ data, scenario, onOpen, onOpenArticle, onSelectDate, onShowAtte
   const periodLogged = data.periodStarts.includes(selectedDate) || Boolean(day.period && day.period !== 'none');
   const attention = deriveAttentionEvidence(data);
   const metrics = getAuraCycleMetrics(data, selectedDate);
-  const range = formatRuRange(metrics.periodForecast?.start, metrics.periodForecast?.end);
-  const daysUntilPeriod = metrics.periodForecast ? Math.max(0, daysBetween(selectedDate, metrics.periodForecast.start)) : null;
-  const estimatedOvulationDay = metrics.expectedLength ? Math.max(8, metrics.expectedLength - 14) : null;
-  const hasCalendarEstimate = Boolean(metrics.cycleDay && estimatedOvulationDay && data.onboarding.cyclePattern !== 'irregular');
-  const inEstimatedFertileWindow = Boolean(hasCalendarEstimate && metrics.cycleDay! >= estimatedOvulationDay! - 5 && metrics.cycleDay! <= estimatedOvulationDay! + 1);
-  const fertilityCopy = !hasCalendarEstimate ? 'Недостаточно данных для ориентира' : inEstimatedFertileWindow ? 'Предполагаемое фертильное окно' : 'Вне предполагаемого фертильного окна';
-  const expectedPeriodLength = Math.max(1, Math.min(10, data.onboarding.periodLength ?? 5));
-  const phaseLabel = !metrics.cycleDay
-    ? 'Фаза появится после начала цикла'
-    : metrics.cycleDay <= expectedPeriodLength
-      ? 'Месячные'
-      : inEstimatedFertileWindow
-        ? 'Предполагаемое фертильное окно'
-        : estimatedOvulationDay && metrics.cycleDay < estimatedOvulationDay - 5
-          ? 'После месячных'
-          : 'После предполагаемой овуляции';
-  const phaseArticleId = !metrics.cycleDay ? 'forecast-confidence' : metrics.cycleDay <= expectedPeriodLength ? 'cramps-care' : inEstimatedFertileWindow ? 'ovulation-pain' : estimatedOvulationDay && metrics.cycleDay < estimatedOvulationDay - 5 ? 'discharge-cycle' : 'pms-basics';
-  const phaseArticle = medicalKnowledgeArticles.find((article) => article.id === phaseArticleId) ?? medicalKnowledgeArticles[0];
+  const range = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
+  const daysUntilPeriod = metrics.forecast ? Math.max(0, daysBetween(selectedDate, metrics.forecast.start)) : null;
+  const contextArticle = medicalKnowledgeArticles.find((article) => article.id === (periodLogged ? 'cramps-care' : 'forecast-confidence')) ?? medicalKnowledgeArticles[0];
+  const confidenceLabel = metrics.forecast?.confidence === 'personal'
+    ? `Личный диапазон по ${metrics.forecast.cyclesUsed} ${pluralRu(metrics.forecast.cyclesUsed, 'циклу', 'циклам', 'циклам')}`
+    : metrics.forecast?.confidence === 'growing'
+      ? `Диапазон уточняется по ${metrics.forecast.cyclesUsed} ${pluralRu(metrics.forecast.cyclesUsed, 'циклу', 'циклам', 'циклам')}`
+      : 'Предварительный календарный ориентир';
   const forecast = scenario === 'empty'
     ? { title: 'Когда начались месячные?', text: 'После первой даты появится день цикла. Прогноз потребует больше истории.' }
     : metrics.daysLate > 0
       ? { title: `Задержка ${metrics.daysLate} ${pluralRu(metrics.daysLate, 'день', 'дня', 'дней')}`, text: `Ожидаемое окно ${range} прошло. Это календарный расчёт, а не диагноз.` }
       : scenario === 'first'
-        ? metrics.periodForecast ? { title: `Ориентир: ${range}`, text: 'Пока это широкий календарный диапазон. Следующая фактическая дата поможет сделать его личнее.' } : { title: 'Первый цикл продолжается', text: 'Отметьте следующую дату начала — после этого появится первый личный прогноз.' }
-        : { title: daysUntilPeriod === 0 ? 'Месячные ожидаются сегодня' : `Месячные через ${daysUntilPeriod} ${pluralRu(daysUntilPeriod ?? 0, 'день', 'дня', 'дней')}`, text: `Ориентировочно ${range}. Прогноз уточняется по вашей истории.` };
-  const timelineDay = Math.min(31, Math.max(1, metrics.cycleDay ?? 1));
-  const cycleChartLength = Math.max(18, metrics.expectedLength ?? 28);
-  const cycleChartProgress = Math.min(1, Math.max(0, (timelineDay - 1) / Math.max(1, cycleChartLength - 1)));
-  const cycleChartX = 13 + cycleChartProgress * 314;
-  const cycleChartY = cycleChartProgress < .18 ? 92 - (cycleChartProgress / .18) * 12 : cycleChartProgress < .55 ? 80 - ((cycleChartProgress - .18) / .37) * 52 : cycleChartProgress < .72 ? 28 + ((cycleChartProgress - .55) / .17) * 30 : 58 + ((cycleChartProgress - .72) / .28) * 30;
+        ? metrics.forecast ? { title: `Начало возможно ${range}`, text: 'Пока это широкий календарный диапазон. Следующая фактическая дата поможет сделать его личнее.' } : { title: 'Первый цикл продолжается', text: 'Отметьте следующую дату начала — после этого появится первый личный прогноз.' }
+        : { title: daysUntilPeriod === 0 ? 'Окно возможного начала — сегодня' : `До начала окна около ${daysUntilPeriod} ${pluralRu(daysUntilPeriod ?? 0, 'дня', 'дней', 'дней')}`, text: `Начало возможно ${range}. Это диапазон, а не точная дата.` };
   return <div className="screen today-screen">
     <AppHeader avatar={data.avatar} title={formatRuDate(selectedDate)} onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
     <DateStrip data={data} onSelectDate={onSelectDate} />
     <section className="cycle-status-card">
       <div className="cycle-status-main"><div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'день пока неизвестен'}</span></div><div className="cycle-status-copy"><h2>{forecast.title}</h2><p>{forecast.text}</p></div></div>
-      {scenario !== 'empty' && <div className={`cycle-fertility-inline ${inEstimatedFertileWindow ? 'higher' : ''}`}><ShieldCheck /><span><strong>{fertilityCopy}</strong><small>Календарный ориентир — не подтверждение овуляции и не способ контрацепции</small></span></div>}
       {scenario !== 'empty' ? <div className="cycle-timeline">
-        <div className="cycle-timeline-head"><span>Карта цикла</span><strong>{phaseLabel}</strong></div>
-        {metrics.cycleDay && metrics.expectedLength && <div className="cycle-phase-chart"><svg viewBox="0 0 340 147" role="img" aria-label={`${timelineDay}-й день цикла, ${phaseLabel}`}><defs><linearGradient id="cycle-map-line" x1="0" x2="1"><stop offset="0" stopColor="#df6c9f"/><stop offset=".57" stopColor="#eda758"/><stop offset="1" stopColor="#8d6db1"/></linearGradient><linearGradient id="cycle-map-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#df6c9f" stopOpacity=".23"/><stop offset="1" stopColor="#df6c9f" stopOpacity=".02"/></linearGradient></defs><rect x="8" y="15" width="55" height="94" rx="13" fill="#fff0f5"/><rect x="67" y="15" width="105" height="94" rx="13" fill="#f8f1fa"/><rect x="176" y="15" width="45" height="94" rx="13" fill="#fff6e6"/><rect x="225" y="15" width="107" height="94" rx="13" fill="#f3edfa"/><path d="M13 92 C39 84 49 90 70 76 C98 57 119 49 145 44 C170 38 180 20 199 28 C218 37 225 61 246 57 C277 52 299 68 327 88 L327 109 L13 109Z" fill="url(#cycle-map-area)"/><path d="M13 92 C39 84 49 90 70 76 C98 57 119 49 145 44 C170 38 180 20 199 28 C218 37 225 61 246 57 C277 52 299 68 327 88" fill="none" stroke="url(#cycle-map-line)" strokeWidth="4" strokeLinecap="round"/><line x1={cycleChartX} y1="16" x2={cycleChartX} y2="109" stroke="#58364a" strokeWidth="1.5" strokeDasharray="3 4"/><circle cx={cycleChartX} cy={cycleChartY} r="9" fill="#fff" stroke="#58364a" strokeWidth="3"/><circle cx={cycleChartX} cy={cycleChartY} r="3.5" fill="#d65d95"/><rect x={Math.min(278, Math.max(8, cycleChartX - 25))} y="0" width="50" height="19" rx="9.5" fill="#58364a"/><text x={Math.min(303, Math.max(33, cycleChartX))} y="13" className="current-day-label">{timelineDay}-й день</text><text x="35" y="126"><tspan x="35">Менструальная</tspan><tspan x="35" dy="8">фаза</tspan></text><text x="119" y="126"><tspan x="119">Фолликулярная</tspan><tspan x="119" dy="8">фаза</tspan></text><text x="198" y="126"><tspan x="198">Овуляторная*</tspan><tspan x="198" dy="8">фаза</tspan></text><text x="278" y="126"><tspan x="278">Лютеиновая</tspan><tspan x="278" dy="8">фаза</tspan></text></svg><small>* Предполагаемая фаза по календарю</small></div>}
-        {data.homeCards.knowledge && <button className="cycle-context-article" onClick={() => onOpenArticle(phaseArticle.id)} aria-label={`Открыть статью: ${phaseArticle.title}`}><span><BookOpenText /></span><div><small>По теме · {phaseArticle.readingMinutes} {pluralRu(phaseArticle.readingMinutes, 'минута', 'минуты', 'минут')}</small><strong>{phaseArticle.title}</strong></div><ChevronRight /></button>}
+        <div className="cycle-timeline-head"><span>Основание прогноза</span><strong>{confidenceLabel}</strong></div>
+        {data.homeCards.knowledge && <button className="cycle-context-article" onClick={() => onOpenArticle(contextArticle.id)} aria-label={`Открыть статью: ${contextArticle.title}`}><span><BookOpenText /></span><div><small>По теме · {contextArticle.readingMinutes} {pluralRu(contextArticle.readingMinutes, 'минута', 'минуты', 'минут')}</small><strong>{contextArticle.title}</strong></div><ChevronRight /></button>}
       </div> : <button className="cycle-empty-action" onClick={onOpenPeriodStart}><Plus /> Добавить первый день месячных</button>}
       <div className="cycle-inline-actions"><button className={periodLogged ? 'active period-action' : 'period-action'} aria-pressed={periodLogged} onClick={onOpenPeriodStart}><span className="cycle-action-icon"><Droplet /></span><strong>{periodLogged ? 'Кровотечение отмечено' : 'Отметить кровотечение'}</strong></button><button className={day.symptoms.length || day.moods.length || day.energy ? 'active symptom-action' : 'symptom-action'} aria-pressed={Boolean(day.symptoms.length || day.moods.length || day.energy)} onClick={onOpenQuickSymptoms}><span className="cycle-action-icon"><Plus /></span><strong>{day.symptoms.length || day.moods.length || day.energy ? 'Состояние отмечено' : 'Симптомы'}</strong></button></div>
     </section>
@@ -1455,53 +1430,6 @@ function SupportOptionsModal({ date, day, onAddSymptoms, onClose }: { date: stri
   </div>;
 }
 
-type HormonoscopePhase = {
-  title: string;
-  forecast: string;
-  explanation: string;
-  energy: string;
-  appetite: string;
-  mood: string;
-  tryTitle: string;
-  tryText: string;
-  gentleTitle: string;
-  gentleText: string;
-  tone: string;
-};
-
-function getHormonoscopePhase(cycleDay?: number | null, periodLength = 5, expectedLength = 28): HormonoscopePhase | null {
-  if (!cycleDay) return null;
-  const ovulationDay = Math.max(8, expectedLength - 14);
-  if (cycleDay <= periodLength) return {
-    title: 'Менструальная фаза', forecast: 'В этой фазе особенно важны комфорт и спокойный темп', explanation: 'Начинается новый цикл: уровень эстрогена и прогестерона снижается, появляется менструальное кровотечение.', energy: 'Может снижаться', appetite: 'Индивидуально', mood: 'Нужен комфорт', tryTitle: 'Добавить тепла и отдыха', tryText: 'Тёплый душ, вода и комфортная активность могут поддержать самочувствие.', gentleTitle: 'Не терпеть сильную боль', gentleText: 'Если боль необычная или мешает жизни, лучше обратиться за помощью.', tone: 'menstrual',
-  };
-  if (cycleDay < ovulationDay - 1) return {
-    title: 'Фолликулярная фаза', forecast: 'Энергия может постепенно возвращаться', explanation: 'В яичнике созревает фолликул с яйцеклеткой, а уровень эстрогена постепенно повышается. Фаза начинается вместе с месячными и продолжается после них.', energy: 'Может расти', appetite: 'Стабильнее', mood: 'Индивидуально', tryTitle: 'Начать одно новое дело', tryText: 'Если чувствуете ресурс, можно направить его на важную задачу или привычную активность.', gentleTitle: 'Не ждать обязательного подъёма', gentleText: 'Усталость возможна в любой фазе — ваши отметки важнее общего прогноза.', tone: 'follicular',
-  };
-  if (cycleDay <= ovulationDay + 1) return {
-    title: 'Овуляторная фаза', forecast: 'Можно внимательнее наблюдать за сигналами тела', explanation: 'Предположительно созревшая яйцеклетка выходит из яичника. Календарь показывает только ориентир и не подтверждает овуляцию.', energy: 'Индивидуально', appetite: 'Может меняться', mood: 'Может меняться', tryTitle: 'Отметить сигналы тела', tryText: 'Запишите выделения, настроение и энергию — это поможет увидеть личную картину.', gentleTitle: 'Не считать день безопасным', gentleText: 'Календарный расчёт нельзя использовать как подтверждение контрацептивной безопасности.', tone: 'ovulation',
-  };
-  return {
-    title: 'Лютеиновая фаза', forecast: 'В этой фазе может хотеться более спокойного темпа', explanation: 'После предполагаемой овуляции повышается прогестерон. Ближе к месячным могут меняться энергия, аппетит и настроение.', energy: 'Спокойнее', appetite: 'Может расти', mood: 'Чувствительнее', tryTitle: 'Оставить запас времени', tryText: 'Регулярная еда и небольшие перерывы могут сделать день комфортнее.', gentleTitle: 'Не перегружать расписание', gentleText: 'Можно изменить привычный темп, если самочувствие в этот день другое.', tone: 'luteal',
-  };
-}
-
-function HormonoscopeCard({ metrics, scenario, onOpen }: { metrics: ReturnType<typeof getAuraCycleMetrics>; scenario: PrototypeScenario; onOpen: () => void }) {
-  const phase = getHormonoscopePhase(metrics.cycleDay, 5, metrics.expectedLength ?? 28);
-  return <button className={`hormonoscope-card ${phase?.tone ?? 'empty'}`} onClick={onOpen}>
-    <span className="hormonoscope-compact-head"><span className="hormonoscope-mini-icon"><Sparkle /></span><small>Hormonoscope</small><em>{metrics.cycleDay ? `${metrics.cycleDay}-й день` : 'Нет данных'}</em></span>
-    {phase ? <span className="hormonoscope-flow">
-      <span className="phase-step"><i><Droplet /></i><b><em>1</em> Сейчас</b><strong>{phase.title}</strong></span>
-      <span className="flow-link"><i /></span>
-      <span className="forecast-step"><i><Waves /></i><b><em>2</em> Возможно</b><strong>{phase.energy}<br />Аппетит: {phase.appetite.toLowerCase()}</strong></span>
-      <span className="flow-link"><i /></span>
-      <span className="support-step"><i><Heart /></i><b><em>3</em> Поддержка</b><strong>{phase.tryTitle}</strong></span>
-    </span> : <span className="hormonoscope-copy"><strong>Нужна дата начала цикла</strong><em>Добавьте первый день месячных, чтобы получить контекст.</em></span>}
-    {phase && <span className="hormonoscope-flow-caption">{phase.forecast}</span>}
-    <span className="hormonoscope-open" aria-hidden="true">{scenario === 'empty' ? 'Подробнее' : 'Все детали'} <ChevronRight /></span>
-  </button>;
-}
-
 function getHormonoscopeSimilarDays(data: AuraState, date: string) {
   const starts = data.periodStarts.filter((start) => start <= date).sort();
   const currentStart = starts[starts.length - 1];
@@ -1517,7 +1445,7 @@ function getHormonoscopeSimilarDays(data: AuraState, date: string) {
 }
 
 function FrequencyDots({ filled, total }: { filled: number; total: number }) {
-  return <span className="hormonoscope-frequency" aria-label={`Так было в ${filled} из ${total} похожих дней`}>{Array.from({ length: 5 }, (_, index) => <i key={index} className={index < filled ? 'filled' : ''} />)}</span>;
+  return <span className="hormonoscope-frequency" aria-label={`Так было в ${filled} из ${total} похожих дней`}>{Array.from({ length: total }, (_, index) => <i key={index} className={index < filled ? 'filled' : ''} />)}</span>;
 }
 
 function ScopesModule({ data, date, onFeedback }: { data: AuraState; date: string; onFeedback: (date: string, feedback: AuraHormonoscopeFeedback) => void }) {
@@ -1538,54 +1466,21 @@ function ScopesModule({ data, date, onFeedback }: { data: AuraState; date: strin
     ratingValues.length >= 3 ? { id: 'mood', icon: Smile, title: 'Настроение', text: positiveMood >= Math.ceil(ratingValues.length * .6) ? 'Обычно ровное или хорошее' : 'Выраженного паттерна пока нет', filled: positiveMood } : null,
     { id: 'body', icon: HeartPulse, title: 'Тело', text: bodyPattern && strongestBodyPattern >= Math.ceil(total * .6) ? `Часто: ${bodyPattern[0].toLowerCase()}` : 'Выраженного паттерна пока нет', filled: strongestBodyPattern },
   ].filter((item): item is { id: string; icon: LucideIcon; title: string; text: string; filled: number } => Boolean(item)) : [];
-  const isPreview = total < 3 || !calculatedObservations.length;
-  const displayTotal = isPreview ? 5 : total;
-  const observations = isPreview ? [
-    { id: 'energy', icon: Zap, title: 'Энергия', text: 'Чаще выше средней', filled: 4 },
-    { id: 'mood', icon: Smile, title: 'Настроение', text: 'Обычно ровное или хорошее', filled: 4 },
-    { id: 'body', icon: HeartPulse, title: 'Тело', text: 'Выраженного паттерна пока нет', filled: 2 },
-  ] : calculatedObservations;
+  const ready = total >= 3 && calculatedObservations.length > 0;
   const feedback = data.hormonoscopeFeedback[date];
   const suggestions = ['Задачи с общением', 'Привычная активность', 'Встречи и контакты'];
   const moreSuggestions = ['Спокойное планирование', 'Короткая прогулка', 'Проверить самочувствие'];
 
   return <section className="scopes-module hormonoscope-mini">
-    <header className="hormonoscope-mini-head"><div><Sparkle /><strong>Hormonoscope</strong><em>{isPreview ? 'Пример' : 'Новое'}</em></div><button onClick={() => setShowMethod((value) => !value)} aria-expanded={showMethod}>По {displayTotal} похожим {pluralRu(displayTotal, 'дню', 'дням', 'дням')} <Info /></button></header>
-    {showMethod && <p className="hormonoscope-method">{isPreview ? 'Это демонстрационный пример. Личный прогноз появится после отметок минимум в трёх похожих днях предыдущих циклов.' : 'Показатели основаны на ваших отметках в похожие дни предыдущих циклов.'}</p>}
-    <>
-      <h2>Ваш ритм сегодня</h2>
-      <div className={`hormonoscope-observations count-${observations.length}`}>{observations.map(({ id, icon: Icon, title, text, filled }) => <article key={id} className={id}><Icon /><strong>{title}</strong><p>{text}</p><FrequencyDots filled={Math.min(5, filled)} total={displayTotal} /></article>)}</div>
+    <header className="hormonoscope-mini-head"><div><Sparkle /><strong>Hormonoscope</strong><em>{ready ? 'Личное наблюдение' : 'Собираем данные'}</em></div><button onClick={() => setShowMethod((value) => !value)} aria-expanded={showMethod}>По {total} похожим {pluralRu(total, 'дню', 'дням', 'дням')} <Info /></button></header>
+    {showMethod && <p className="hormonoscope-method">Mira сравнивает только ваши заполненные дни рядом с тем же днём предыдущих циклов. Пропуски не считаются отсутствием симптома.</p>}
+    {ready ? <>
+      <h2>Что повторялось в похожие дни</h2>
+      <div className={`hormonoscope-observations count-${calculatedObservations.length}`}>{calculatedObservations.map(({ id, icon: Icon, title, text, filled }) => <article key={id} className={id}><Icon /><strong>{title}</strong><p>{text}</p><FrequencyDots filled={Math.min(total, filled)} total={total} /></article>)}</div>
       <div className="hormonoscope-suggestions"><h3>Сегодня может подойти</h3><div>{suggestions.map((suggestion) => <span key={suggestion}>{suggestion}</span>)}<button onClick={() => setShowMore((value) => !value)} aria-label="Показать ещё варианты" aria-expanded={showMore}>•••</button>{showMore && moreSuggestions.map((suggestion) => <span key={suggestion} className="more">{suggestion}</span>)}</div></div>
-      <footer className="hormonoscope-feedback"><span>{feedback ? 'Спасибо, ответ сохранён' : 'Как совпал прогноз?'}</span><div>{([['matched', '🙂'], ['neutral', '😐'], ['missed', '🙁']] as const).map(([value, emoji]) => <button key={value} className={feedback === value ? 'active' : ''} aria-label={value === 'matched' ? 'Прогноз совпал' : value === 'neutral' ? 'Совпал частично' : 'Не совпал'} aria-pressed={feedback === value} onClick={() => onFeedback(date, value)}>{emoji}</button>)}</div></footer>
-    </>
+      <footer className="hormonoscope-feedback"><span>{feedback ? 'Спасибо, ответ сохранён' : 'Насколько полезно наблюдение?'}</span><div>{([['matched', '🙂'], ['neutral', '😐'], ['missed', '🙁']] as const).map(([value, emoji]) => <button key={value} className={feedback === value ? 'active' : ''} aria-label={value === 'matched' ? 'Полезно' : value === 'neutral' ? 'Нейтрально' : 'Не полезно'} aria-pressed={feedback === value} onClick={() => onFeedback(date, value)}>{emoji}</button>)}</div></footer>
+    </> : <div className="hormonoscope-empty"><CalendarRange /><h3>Пока недостаточно похожих дней</h3><p>Есть {total} из 3 необходимых дней с отметками. Это не означает, что закономерности нет.</p></div>}
   </section>;
-}
-
-function HormonoscopeModal({ data, date, onClose }: { data: AuraState; date: string; onClose: () => void }) {
-  const metrics = getAuraCycleMetrics(data, date);
-  const phase = getHormonoscopePhase(metrics.cycleDay, data.onboarding.periodLength ?? 5, metrics.expectedLength ?? 28);
-  const actions = phase ? ({
-    menstrual: ['Добавить тепла', 'Пить достаточно воды', 'Выбрать спокойный темп'],
-    follicular: ['Начать важное дело', 'Добавить привычную активность', 'Запланировать общение'],
-    ovulation: ['Наблюдать сигналы тела', 'Отметить уровень энергии', 'Сохранить самочувствие'],
-    luteal: ['Есть регулярно', 'Оставить небольшие перерывы', 'Выбрать мягкую активность'],
-  }[phase.tone] ?? [phase.tryTitle]) : [];
-  const avoid = phase ? ({
-    menstrual: ['Терпеть сильную боль', 'Перегружать себя', 'Игнорировать слабость'],
-    follicular: ['Ждать обязательного подъёма', 'Резко повышать нагрузку', 'Игнорировать усталость'],
-    ovulation: ['Считать овуляцию подтверждённой', 'Полагаться на календарь как на контрацепцию', 'Игнорировать необычную боль'],
-    luteal: ['Перегружать расписание', 'Пропускать еду и отдых', 'Ругать себя за смену темпа'],
-  }[phase.tone] ?? [phase.gentleTitle]) : [];
-  return <div className="attention-overlay hormonoscope-overlay" onClick={onClose}>
-    <section className={`attention-modal hormonoscope-modal ${phase?.tone ?? 'empty'}`} role="dialog" aria-modal="true" aria-labelledby="hormonoscope-title" onClick={(event) => event.stopPropagation()}>
-      <div className="attention-handle" /><button className="attention-close" onClick={onClose} aria-label="Закрыть Hormonoscope"><X /></button>
-      <header className="hormonoscope-modal-head"><span><Sparkle /></span><div><small>Hormonoscope · {metrics.cycleDay ? `${metrics.cycleDay}-й день цикла` : 'календарный ориентир'}</small><h2 id="hormonoscope-title">{phase?.title ?? 'Пока мало данных'}</h2></div></header>
-      {phase ? <><section className="hormonoscope-forecast phase-summary"><small>Что происходит</small><p>{phase.explanation}</p><h3>{phase.forecast}</h3></section>
-      <div className="hormonoscope-advice phase-lists"><article className="try"><span><Check /></span><small>Можно</small><ul>{actions.map((item) => <li key={item}>{item}</li>)}</ul></article><article className="gentle"><span><Minus /></span><small>Лучше не</small><ul>{avoid.map((item) => <li key={item}>{item}</li>)}</ul></article></div>
-      <aside className="hormonoscope-note"><ShieldCheck /><span>Фаза рассчитана по календарю. Mira не измеряет гормоны и не подтверждает овуляцию.</span></aside></> : <section className="hormonoscope-empty"><CalendarRange /><h3>Добавьте начало месячных</h3><p>После первой даты Mira сможет показать календарный контекст текущей фазы.</p></section>}
-      <button className="primary-button" onClick={onClose}>Понятно</button>
-    </section>
-  </div>;
 }
 
 function CycloscopeMiniCard({ data, date, onFeedback }: { data: AuraState; date: string; onFeedback: (date: string, feedback: AuraHormonoscopeFeedback) => void }) {
@@ -1816,14 +1711,12 @@ function Calendar({ data, scenario, onSelectDate, onSetPeriodStart, onNotify, on
   });
   const selectedEntry = data.entries[data.selectedDate];
   const metrics = getAuraCycleMetrics(data);
-  const forecastRange = metrics.daysLate
-    ? formatRuRange(metrics.forecast?.start, metrics.forecast?.end)
-    : formatRuRange(metrics.periodForecast?.start, metrics.periodForecast?.end);
-  const confidence = metrics.periodForecast?.confidence;
-  const forecastMonth = metrics.periodForecast ? localDate(metrics.periodForecast.start) : null;
+  const forecastRange = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
+  const confidence = metrics.forecast?.confidence;
+  const forecastMonth = metrics.forecast ? localDate(metrics.forecast.start) : null;
   const forecastOutsideVisibleMonth = Boolean(forecastMonth && (forecastMonth.getFullYear() !== year || forecastMonth.getMonth() !== month));
   const monthIso = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const isForecast = (date: string) => Boolean(metrics.periodForecast && date >= metrics.periodForecast.start && date <= metrics.periodForecast.end);
+  const isForecast = (date: string) => Boolean(metrics.forecast && date >= metrics.forecast.start && date <= metrics.forecast.end);
   const isPeriod = (date: string) => data.periodStarts.includes(date) || Boolean(data.entries[date]?.period && data.entries[date]?.period !== 'none');
   const selectedIsPeriodStart = data.periodStarts.includes(data.selectedDate);
   const selectedIsFuture = data.selectedDate > AURA_TODAY;
@@ -1831,7 +1724,7 @@ function Calendar({ data, scenario, onSelectDate, onSetPeriodStart, onNotify, on
   return <div className="screen calendar-screen">
     <TopBack title="Календарь" onBack={onBack} action={<button className="round-button"><Info /></button>} />
     <section className="calendar-summary aura-hero">
-      <span className="glass-label"><Sparkle /> {metrics.daysLate ? 'Ожидаемое окно прошло' : confidence === 'personal' ? 'Личный прогноз' : confidence === 'growing' ? 'Предварительный личный прогноз' : confidence === 'preliminary' ? 'Календарный ориентир' : 'Данных пока мало'}</span><h2>{metrics.daysLate ? `Задержка ${metrics.daysLate} дн.` : forecastRange}</h2><p>{metrics.daysLate ? `Расчётное окно начала было ${forecastRange}. Добавьте фактическую дату или обратитесь к врачу, если задержка вас беспокоит.` : metrics.forecastCyclesUsed >= 3 ? `Ожидаемые дни рассчитаны по ${metrics.forecastCyclesUsed} завершённым циклам.` : metrics.periodForecast ? `Пока используем стартовую настройку ${metrics.expectedLength} дней. Личный прогноз появится после трёх завершённых циклов.` : 'Добавьте длину цикла в настройках или следующую фактическую дату начала.'}</p>
+      <span className="glass-label"><Sparkle /> {metrics.daysLate ? 'Окно возможного начала прошло' : confidence === 'personal' ? 'Личный диапазон начала' : confidence === 'growing' ? 'Диапазон уточняется' : confidence === 'preliminary' ? 'Календарный ориентир' : 'Данных пока мало'}</span><h2>{metrics.daysLate ? `После диапазона прошло ${metrics.daysLate} дн.` : forecastRange}</h2><p>{metrics.daysLate ? `Расчётное окно возможного начала было ${forecastRange}. Это календарный ориентир, а не диагноз.` : metrics.forecastCyclesUsed >= 3 ? `Диапазон возможного начала рассчитан по ${metrics.forecastCyclesUsed} завершённым циклам.` : metrics.forecast ? `Пока используем стартовую настройку ${metrics.expectedLength} дней. Личный диапазон появится после трёх завершённых циклов.` : 'Добавьте длину цикла в настройках или следующую фактическую дату начала.'}</p>
       <div className="confidence-line"><span style={{ width: confidence === 'personal' ? '78%' : confidence === 'growing' ? '52%' : confidence === 'preliminary' ? '28%' : '0%' }} /></div><small>Уверенность растёт с новыми завершёнными циклами</small>
     </section>
     <section className="surface month-card">
@@ -2285,8 +2178,6 @@ function CycleAnalytics({ data, onChangeData }: { data: AuraState; onChangeData:
       : episode?.status === 'ongoing'
         ? `Месячные продолжаются · отмечено ${periodDayIndexes.size} ${pluralRu(periodDayIndexes.size, 'день', 'дня', 'дней')}`
         : `Отмечено ${periodDayIndexes.size} ${pluralRu(periodDayIndexes.size, 'день', 'дня', 'дней')} месячных · окончание не подтверждено`;
-    const expectedLength = length ?? metrics.expectedLength ?? 28;
-    const ovulationDay = Math.max(8, expectedLength - 14);
     const rowTitle = kind === 'current'
       ? `Текущий цикл: ${metrics.cycleDay ?? 1} ${pluralRu(metrics.cycleDay ?? 1, 'день', 'дня', 'дней')}`
       : `${length ?? '—'} ${pluralRu(length ?? 0, 'день', 'дня', 'дней')}`;
@@ -2301,11 +2192,8 @@ function CycleAnalytics({ data, onChangeData }: { data: AuraState; onChangeData:
       <span className="visual-cycle-days" aria-label={`${visibleLength} дней`}>{Array.from({ length: 31 }, (_, dayIndex) => {
         const day = dayIndex + 1;
         const isPeriod = periodDayIndexes.has(day);
-        const isFertile = day >= ovulationDay - 5 && day <= ovulationDay + 1;
-        const isOvulation = day === ovulationDay;
         const isCurrent = kind === 'current' && day === metrics.cycleDay;
-        const estimateVisible = isFertile && (kind === 'current' || day <= visibleLength);
-        return <i key={day} title={isPeriod ? 'Сохранённый факт: месячные' : estimateVisible ? isOvulation ? 'Расчётный день овуляции' : 'Расчётное фертильное окно' : 'Нет сохранённого факта'} className={`${day > visibleLength ? 'future ' : ''}unknown ${isPeriod ? 'fact-period' : ''} ${estimateVisible ? 'estimate-fertile' : ''} ${isOvulation && estimateVisible ? 'estimate-ovulation' : ''} ${isCurrent ? 'current' : ''}`} />;
+        return <i key={day} title={isPeriod ? 'Сохранённый факт: месячные' : 'Нет сохранённого факта'} className={`${day > visibleLength ? 'future ' : ''}unknown ${isPeriod ? 'fact-period' : ''} ${isCurrent ? 'current' : ''}`} />;
       })}</span>
       {allowExclude && kind !== 'current' && <button className="cycle-exclusion-action" onClick={() => onChangeData((current) => setAuraCycleExcluded(current, start, kind !== 'excluded'))}>{kind === 'excluded' ? 'Вернуть в расчёты' : 'Исключить из расчётов'}</button>}
     </div>;

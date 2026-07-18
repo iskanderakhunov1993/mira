@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDayEntry, defaultProfile } from './data';
+import { addDays, createDayEntry, defaultProfile, todayIso } from './data';
 import { dischargeOptions, filterPeriodRangesForAnalytics, getCycleAnalyticsEmptyGuidance, getCycleStats, getCycloscope, getHormonoscope, getPainRecurrenceInsight, getPeriodRanges, getPredictedPeriodDays, getSymptomSeveritySummary, getWeekSummary, getZodiacSign, quickSymptomOptions, symptomGroups, symptomOptions } from './cycle';
 import type { AppState } from './types';
 
@@ -129,9 +129,10 @@ describe('cycle calculations', () => {
 
   it('builds weekly analytics only from recorded values', () => {
     const state = stateWithPeriods([]);
+    const today = todayIso();
     state.entries = {
-      '2026-07-11': { ...createDayEntry('2026-07-11'), waterMl: 1000, mood: 'calm' },
-      '2026-07-12': { ...createDayEntry('2026-07-12'), waterMl: 1500, mood: 'great' },
+      [addDays(today, -1)]: { ...createDayEntry(addDays(today, -1)), waterMl: 1000, mood: 'calm' },
+      [today]: { ...createDayEntry(today), waterMl: 1500, mood: 'great' },
     };
 
     expect(getWeekSummary(state)).toMatchObject({

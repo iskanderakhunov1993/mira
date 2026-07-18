@@ -123,6 +123,8 @@ export type AuraDayEntry = {
 
 export type AuraState = {
   version: 3;
+  revision: number;
+  updatedAt: string;
   avatar: AuraAnimalAvatar;
   profile: {
     fullName: string;
@@ -185,6 +187,8 @@ const entry = (value: Partial<AuraDayEntry>, date = AURA_TODAY): AuraDayEntry =>
 
 export const defaultAuraState: AuraState = {
   version: 3,
+  revision: 0,
+  updatedAt: `${AURA_TODAY}T00:00:00.000Z`,
   avatar: 'cat',
   profile: { fullName: '', healthContext: { bleedingMedications: [] } },
   selectedDate: AURA_TODAY,
@@ -456,6 +460,10 @@ export function sanitizeAuraState(value: unknown): AuraState {
     : [];
   return {
     version: 3,
+    revision: Math.round(clamp(candidate.revision, 0, Number.MAX_SAFE_INTEGER) ?? 0),
+    updatedAt: typeof candidate.updatedAt === 'string' && Number.isFinite(Date.parse(candidate.updatedAt))
+      ? candidate.updatedAt.slice(0, 40)
+      : defaultAuraState.updatedAt,
     avatar: typeof candidate.avatar === 'string' && animalAvatarIds.includes(candidate.avatar as AuraAnimalAvatar) ? candidate.avatar as AuraAnimalAvatar : defaultAuraState.avatar,
     profile: {
       fullName: typeof rawProfile.fullName === 'string' ? rawProfile.fullName.trim().slice(0, 120) : '',
@@ -509,6 +517,24 @@ export function sanitizeAuraState(value: unknown): AuraState {
 export function parseImportedAuraState(value: unknown): AuraState {
   if (!isObject(value) || !isObject(value.entries) || !Array.isArray(value.periodStarts)) throw new Error('Invalid backup');
   return sanitizeAuraState(value);
+}
+
+export function createAuraExportState(state: AuraState, includeSensitive = false): AuraState {
+  if (includeSensitive) return sanitizeAuraState(state);
+  return sanitizeAuraState({
+    ...state,
+    profile: { fullName: '', healthContext: { bleedingMedications: [] } },
+    entries: Object.fromEntries(Object.entries(state.entries).map(([date, day]) => [date, {
+      ...day,
+      periodCheckin: undefined,
+      intimate: undefined,
+      intimacyComfort: undefined,
+      intimacyAfter: undefined,
+      intimacyDesire: undefined,
+      intimacyNote: undefined,
+      note: undefined,
+    }])),
+  });
 }
 
 export function getAuraObservationDates(state: AuraState): string[] {

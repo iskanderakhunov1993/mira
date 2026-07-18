@@ -55,13 +55,64 @@ describe('Mira local database', () => {
     expect(loaded.entries[AURA_TODAY]).toMatchObject({ water: 1750, steps: 7200 });
   });
 
+  it('repairs IndexedDB from a newer compatible fallback', async () => {
+    const databaseState = createEmptyAuraState();
+    databaseState.entries[AURA_TODAY] = { ...emptyAuraEntry(), water: 500 };
+    await persistAuraDatabaseState(databaseState);
+
+    const newerFallback = createEmptyAuraState();
+    newerFallback.revision = 20;
+    newerFallback.updatedAt = '2026-07-18T20:00:00.000Z';
+    newerFallback.entries[AURA_TODAY] = { ...emptyAuraEntry(), water: 1800 };
+    persistAuraState(newerFallback);
+
+    expect((await loadAuraDatabaseState()).entries[AURA_TODAY]?.water).toBe(1800);
+    storage.clear();
+    expect((await loadAuraDatabaseState()).entries[AURA_TODAY]?.water).toBe(1800);
+  });
+
+  it('repairs the compatible fallback from a newer IndexedDB state', async () => {
+    const databaseState = createEmptyAuraState();
+    databaseState.revision = 20;
+    databaseState.updatedAt = '2026-07-18T20:00:00.000Z';
+    databaseState.entries[AURA_TODAY] = { ...emptyAuraEntry(), steps: 9000 };
+    await persistAuraDatabaseState(databaseState);
+
+    const olderFallback = createEmptyAuraState();
+    olderFallback.revision = 1;
+    olderFallback.updatedAt = '2026-07-18T10:00:00.000Z';
+    olderFallback.entries[AURA_TODAY] = { ...emptyAuraEntry(), steps: 1000 };
+    persistAuraState(olderFallback);
+
+    expect((await loadAuraDatabaseState()).entries[AURA_TODAY]?.steps).toBe(9000);
+    expect(JSON.parse(storage.get(AURA_STORAGE_KEY) ?? '{}').entries[AURA_TODAY].steps).toBe(9000);
+  });
+
   it('clears IndexedDB and all compatible local keys', async () => {
     const state = createEmptyAuraState();
     state.onboarding.completed = true;
     await persistAuraDatabaseState(state);
 
-    await clearAuraDatabaseState();
+    expect(await clearAuraDatabaseState()).toBe(true);
     expect(storage.size).toBe(0);
     expect((await loadAuraDatabaseState()).onboarding.completed).toBe(false);
+  });
+
+  it('reports a failed verified delete when IndexedDB cannot be opened', async () => {
+    const state = createEmptyAuraState();
+    state.onboarding.completed = true;
+    await persistAuraDatabaseState(state);
+    const originalOpen = indexedDB.open.bind(indexedDB);
+    Object.defineProperty(indexedDB, 'open', {
+      configurable: true,
+      value: () => { throw new Error('TEST_INDEXED_DB_UNAVAILABLE'); },
+    });
+
+    try {
+      expect(await clearAuraDatabaseState()).toBe(false);
+      expect(storage.size).toBe(0);
+    } finally {
+      Object.defineProperty(indexedDB, 'open', { configurable: true, value: originalOpen });
+    }
   });
 });

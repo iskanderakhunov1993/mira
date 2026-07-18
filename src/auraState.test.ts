@@ -6,6 +6,7 @@ import {
   LEGACY_AURA_STORAGE_KEY,
   addDays,
   clearAllMiraStorage,
+  createAuraExportState,
   createEmptyAuraState,
   deriveAttentionEvidence,
   getAuraCycleMetrics,
@@ -478,6 +479,40 @@ describe('Mira unified state', () => {
   it('rejects malformed imports instead of replacing them with demo data', () => {
     expect(() => parseImportedAuraState({ entries: {} })).toThrow('Invalid backup');
     expect(() => parseImportedAuraState('bad')).toThrow('Invalid backup');
+  });
+
+  it('imports a compatible backup created before storage revisions existed', () => {
+    const legacyBackup = {
+      ...createEmptyAuraState(),
+      revision: undefined,
+      updatedAt: undefined,
+      periodStarts: [AURA_TODAY],
+      entries: {},
+    };
+    const imported = parseImportedAuraState(legacyBackup);
+    expect(imported.revision).toBe(0);
+    expect(imported.updatedAt).toBeTruthy();
+    expect(imported.periodStarts).toEqual([AURA_TODAY]);
+  });
+
+  it('excludes sensitive profile and period check-in fields from the default backup', () => {
+    const state = createEmptyAuraState();
+    state.profile.fullName = 'Анна';
+    state.profile.birthDate = '1990-01-01';
+    state.profile.healthContext = { contraception: 'pill', bleedingMedications: ['aspirin'] };
+    state.entries[AURA_TODAY] = {
+      ...state.entries[AURA_TODAY],
+      symptoms: [], moods: [], nutrition: [], contexts: [], updatedAt: new Date().toISOString(),
+      periodCheckin: { bleedingType: 'between-periods', overall: 'very-hard', flow: 'heavy', changeFrequency: 'hourly', hourlyBleedingHours: 3, largeClots: true, leaksThroughProtection: true, doubleProtection: false, nightChanges: true, durationDays: 6, painImpact: 'unable', painScore: 8, painLocations: ['низ живота'], symptoms: [], pregnancyPossible: true, pregnancyTest: 'positive', differentFromUsual: true, result: 'urgent', completedAt: new Date().toISOString() },
+      intimate: true,
+      intimacyNote: 'личная заметка',
+      note: 'заметка',
+    };
+
+    const safe = createAuraExportState(state);
+    expect(safe.profile).toEqual({ fullName: '', healthContext: { bleedingMedications: [] } });
+    expect(safe.entries[AURA_TODAY]).toMatchObject({ periodCheckin: undefined, intimate: undefined, intimacyNote: undefined, note: undefined });
+    expect(createAuraExportState(state, true).entries[AURA_TODAY].periodCheckin?.pregnancyTest).toBe('positive');
   });
 
   it('migrates old storage once and clears every historical Mira key', () => {
