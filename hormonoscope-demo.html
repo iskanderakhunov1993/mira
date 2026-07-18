@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mira — Гормоноскоп</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/hormonoscope-demo.css" />
+</head>
+<body>
+  <main class="stage">
+    <div class="prototype-note">
+      <strong>Концепт Гормоноскопа</strong>
+      <span>Выберите фазу и откройте карточку</span>
+    </div>
+
+    <section class="phone">
+      <div class="status"><b>9:41</b><i></i><span>● ● ▰</span></div>
+      <div class="scroll">
+        <header class="app-head">
+          <button class="avatar" aria-label="Профиль">🐱</button>
+          <div><small>Сегодня</small><h1>16 июля</h1></div>
+          <button class="calendar" aria-label="Календарь">▦</button>
+        </header>
+
+        <nav class="week">
+          <button><small>П</small><b>13</b></button>
+          <button><small>В</small><b>14</b></button>
+          <button><small>С</small><b>15</b></button>
+          <button class="active"><small>Сегодня</small><b>16</b></button>
+          <button><small>П</small><b>17</b></button>
+          <button><small>С</small><b>18</b></button>
+          <button><small>В</small><b>19</b></button>
+        </nav>
+
+        <section class="cycle-summary">
+          <div><small>День цикла</small><strong>18</strong></div>
+          <span><b>Месячные через 10 дней</b><small>Ориентировочно 26–28 июля</small></span>
+        </section>
+
+        <div class="section-title">
+          <div><small>Сегодня в цикле</small><h2>Ваш ежедневный контекст</h2></div>
+          <button>Настроить</button>
+        </div>
+
+        <button class="hormone-card" id="openCard">
+          <span class="orb"><i></i><b>☾</b></span>
+          <span class="phase-copy">
+            <small>Гормоноскоп · календарный ориентир</small>
+            <strong id="cardTitle">Лютеиновая фаза</strong>
+            <em id="cardText">Сегодня может хотеться более спокойного темпа</em>
+            <span class="signals" id="signals">
+              <i>Энергия ↘</i><i>Аппетит ↗</i><i>Фокус →</i>
+            </span>
+          </span>
+          <span class="open-label">Открыть <b>›</b></span>
+        </button>
+
+        <section class="phase-picker">
+          <small>Посмотреть состояния</small>
+          <div>
+            <button data-phase="menstrual"><i></i><span>Месячные</span></button>
+            <button data-phase="follicular"><i></i><span>После</span></button>
+            <button data-phase="ovulation"><i></i><span>Овуляция</span></button>
+            <button class="active" data-phase="luteal"><i></i><span>Перед</span></button>
+          </div>
+        </section>
+
+        <section class="quick-actions">
+          <button><span>◌</span><b>Месячные</b></button>
+          <button><span>＋</span><b>Симптомы</b></button>
+          <button><span>♡</span><b>Самочувствие</b></button>
+        </section>
+      </div>
+
+      <nav class="bottom">
+        <button class="active"><span>⌂</span><small>Сегодня</small></button>
+        <button><span>▤</span><small>Дневник</small></button>
+        <button><span>⌁</span><small>Аналитика</small></button>
+        <button><span>◫</span><small>Знания</small></button>
+      </nav>
+
+      <div class="sheet-backdrop" id="backdrop"></div>
+      <section class="sheet" id="sheet" aria-hidden="true">
+        <button class="close" id="closeSheet">×</button>
+        <div class="handle"></div>
+        <header class="sheet-head">
+          <span class="sheet-orb">☾</span>
+          <div><small>Гормоноскоп · 18-й день цикла</small><h2 id="sheetTitle">Лютеиновая фаза</h2></div>
+        </header>
+
+        <div class="prediction">
+          <small>Возможный контекст дня</small>
+          <h3 id="sheetPrediction">Темп может стать спокойнее</h3>
+          <p id="sheetDescription">После предполагаемой овуляции меняется гормональный фон. У некоторых в этот период меняются аппетит, сон или эмоциональная чувствительность.</p>
+          <div class="meters">
+            <span><i>⚡</i><b>Энергия</b><em id="energyValue">Спокойнее</em></span>
+            <span><i>◉</i><b>Аппетит</b><em id="appetiteValue">Может расти</em></span>
+            <span><i>☻</i><b>Настроение</b><em id="moodValue">Чувствительнее</em></span>
+          </div>
+        </div>
+
+        <div class="try-bye">
+          <article class="try">
+            <span>✓</span>
+            <div><small>Попробовать</small><strong id="tryTitle">Оставить запас времени</strong><p id="tryText">Регулярная еда и небольшие перерывы могут сделать день комфортнее.</p></div>
+          </article>
+          <article class="gentle">
+            <span>↘</span>
+            <div><small>Сегодня бережнее</small><strong id="byeTitle">Не перегружать расписание</strong><p id="byeText">Необязательно выполнять всё в привычном темпе, если самочувствие изменилось.</p></div>
+          </article>
+        </div>
+
+        <div class="personal-check">
+          <div><small>Mira учится на ваших отметках</small><strong>Похоже на ваше состояние сегодня?</strong></div>
+          <div class="feedback">
+            <button>Да</button><button>Частично</button><button>Нет</button>
+          </div>
+        </div>
+
+        <p class="disclaimer">Фаза рассчитана по календарю. Mira не измеряет гормоны и не подтверждает овуляцию.</p>
+      </section>
+    </section>
+  </main>
+  <script src="/hormonoscope-demo.js"></script>
+</body>
+</html>

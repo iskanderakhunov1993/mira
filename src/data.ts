@@ -10,6 +10,7 @@ export const defaultProfile: Profile = {
   cycleLength: 28,
   periodLength: 5,
   waterGoalMl: 1800,
+  trackingMode: 'cycle',
   trackingModules: ['cycle', 'wellbeing', 'sleep'],
   dailyMetrics: ['water', 'nutrition', 'steps'],
   showHormonoscope: false,
@@ -25,6 +26,7 @@ export const defaultState: AppState = {
   onboardingComplete: false,
   profile: defaultProfile,
   periodDays: [],
+  periodEnds: [],
   entries: {},
   savedArticles: [],
 };
@@ -71,6 +73,7 @@ export function createBackupPayload(state: AppState, options: BackupOptions) {
   return {
     ...state,
     periodDays: options.cycle ? state.periodDays : [],
+    periodEnds: options.cycle ? state.periodEnds : [],
     entries,
     doctorReportDraft: undefined,
     exportMeta: { createdAt: todayIso(), included: options },
@@ -137,12 +140,14 @@ export function sanitizeState(state: AppState): AppState {
       ...state.profile,
       trackingModules: selectedModules.length ? selectedModules : defaultProfile.trackingModules,
       dailyMetrics: selectedDailyMetrics,
+      trackingMode: state.profile?.trackingMode === 'wellbeing-only' ? 'wellbeing-only' : 'cycle',
       showHormonoscope: typeof state.profile?.showHormonoscope === 'boolean' ? state.profile.showHormonoscope : false,
       showCycloscope: typeof state.profile?.showCycloscope === 'boolean' ? state.profile.showCycloscope : false,
       reminderEnabled: state.profile?.reminderEnabled === true,
       reminderTime: typeof state.profile?.reminderTime === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(state.profile.reminderTime) ? state.profile.reminderTime : defaultProfile.reminderTime,
     },
     periodDays: Array.from(new Set(state.periodDays.filter((date) => isValidPastOrTodayIsoDate(date)))).sort(),
+    periodEnds: Array.from(new Set((state.periodEnds ?? []).filter((date) => isValidPastOrTodayIsoDate(date)))).sort(),
     entries,
     lastBackupAt: isValidPastOrTodayIsoDate(state.lastBackupAt) ? state.lastBackupAt : undefined,
     insightFeedback: Object.entries(state.insightFeedback ?? {}).reduce<Record<string, 'helpful' | 'not-helpful'>>((result, [key, value]) => {
@@ -165,6 +170,7 @@ export function sanitizeState(state: AppState): AppState {
         sex: reportDraft.included?.sex === true,
       },
       updatedAt: isValidPastOrTodayIsoDate(reportDraft.updatedAt) ? reportDraft.updatedAt : todayIso(),
+      excludedCycleStarts: Array.from(new Set((reportDraft.excludedCycleStarts ?? []).filter((date) => isValidPastOrTodayIsoDate(date)))).sort(),
     } : undefined,
   };
 }
@@ -190,6 +196,7 @@ export function loadState(): AppState {
       onboardingComplete: parsed.onboardingComplete ?? false,
       profile: { ...defaultProfile, ...parsed.profile },
       periodDays: Array.isArray(parsed.periodDays) ? parsed.periodDays : [],
+      periodEnds: Array.isArray(parsed.periodEnds) ? parsed.periodEnds : [],
       entries: parsed.entries ?? {},
       savedArticles: Array.isArray(parsed.savedArticles) ? parsed.savedArticles : [],
       lastBackupAt: parsed.lastBackupAt,
@@ -211,6 +218,7 @@ export function parseImportedState(value: unknown, fallback: AppState = defaultS
     onboardingComplete: true,
     profile: { ...fallback.profile, ...parsed.profile },
     periodDays: parsed.periodDays,
+    periodEnds: Array.isArray(parsed.periodEnds) ? parsed.periodEnds : [],
     entries: parsed.entries,
     savedArticles: Array.isArray(parsed.savedArticles) ? parsed.savedArticles.filter((item): item is string => typeof item === 'string') : [],
     lastBackupAt: parsed.lastBackupAt,

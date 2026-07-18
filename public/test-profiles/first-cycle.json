@@ -1,0 +1,157 @@
+{
+  "version": 3,
+  "avatar": "rabbit",
+  "profile": {
+    "fullName": "Тест · первый цикл",
+    "birthDate": "1994-06-15",
+    "healthContext": {
+      "bleedingMedications": []
+    }
+  },
+  "selectedDate": "2026-07-18",
+  "entries": {
+    "2026-07-08": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-08T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-07-09": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-09T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-07-10": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-10T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-07-11": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-11T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-07-12": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-12T09:41:00.000Z",
+      "period": "light"
+    }
+  },
+  "periodStarts": [
+    "2026-07-08"
+  ],
+  "periodEnds": [
+    "2026-07-12"
+  ],
+  "excludedCycleStarts": [],
+  "modules": {
+    "cycle": true,
+    "mood": true,
+    "sleep": true,
+    "daily": true,
+    "activity": true,
+    "intimate": false,
+    "nutrition": true,
+    "body": false,
+    "note": true
+  },
+  "homeCards": {
+    "hormonoscope": false,
+    "cycloscope": false,
+    "dailyPlan": true,
+    "rhythm": true,
+    "recommendation": true,
+    "knowledge": true
+  },
+  "savedArticles": [],
+  "notifications": false,
+  "onboarding": {
+    "completed": true,
+    "goal": "patterns",
+    "cyclePattern": "stable",
+    "cycleLength": 28,
+    "periodLength": 5,
+    "periodLengthUnknown": false,
+    "focus": [
+      "cycle",
+      "mood",
+      "sleep",
+      "daily"
+    ],
+    "reminders": false,
+    "lastPeriod": "2026-07-08"
+  },
+  "privacy": {
+    "localOnly": true,
+    "sensitiveExport": false
+  },
+  "attention": {
+    "showCount": 0
+  }
+}

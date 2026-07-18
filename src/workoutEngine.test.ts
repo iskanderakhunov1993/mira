@@ -33,6 +33,20 @@ describe('Mira workout engine', () => {
     expect(chooseWorkoutLevel(base({ rating: 5, energy: 5, sleepHours: 8, sleepQuality: 'Хорошее' })).level).toBe('moderate');
   });
 
+  it('schedules recovery after the weekly target or two consecutive training days', () => {
+    expect(chooseWorkoutLevel(base({ recentCompletedCount: 3 })).level).toBe('rest');
+    expect(chooseWorkoutLevel(base({ consecutiveWorkoutDays: 2 })).level).toBe('rest');
+  });
+
+  it('generates venue-specific exercises and stores checklist metadata', () => {
+    const workout = generateWorkout(base({ venue: 'outdoor', recentCompletedCount: 1 }), '2026-07-15T10:00:00.000Z');
+    expect(workout.venue).toBe('outdoor');
+    expect(workout.weeklyTarget).toBe(3);
+    expect(workout.recentCompletedCount).toBe(1);
+    expect(workout.completedExerciseIds).toEqual([]);
+    expect(workout.exercises.some((exercise) => exercise.id === 'easy-walk')).toBe(true);
+  });
+
   it('generates a deterministic stored plan shape with its input snapshot', () => {
     const workout = generateWorkout(base({ period: 'light' }), '2026-07-15T09:41:00.000Z');
     expect(workout).toMatchObject({

@@ -1,0 +1,59 @@
+{
+  "version": 3,
+  "avatar": "cat",
+  "profile": {
+    "fullName": "Тест · без цикла",
+    "birthDate": "1994-06-15",
+    "healthContext": {
+      "bleedingMedications": []
+    }
+  },
+  "selectedDate": "2026-07-18",
+  "entries": {},
+  "periodStarts": [],
+  "periodEnds": [],
+  "excludedCycleStarts": [],
+  "modules": {
+    "cycle": true,
+    "mood": true,
+    "sleep": true,
+    "daily": true,
+    "activity": true,
+    "intimate": false,
+    "nutrition": true,
+    "body": false,
+    "note": true
+  },
+  "homeCards": {
+    "hormonoscope": false,
+    "cycloscope": false,
+    "dailyPlan": true,
+    "rhythm": true,
+    "recommendation": true,
+    "knowledge": true
+  },
+  "savedArticles": [],
+  "notifications": false,
+  "onboarding": {
+    "completed": true,
+    "goal": "patterns",
+    "cyclePattern": "stable",
+    "cycleLength": 28,
+    "periodLength": 5,
+    "periodLengthUnknown": false,
+    "focus": [
+      "cycle",
+      "mood",
+      "sleep",
+      "daily"
+    ],
+    "reminders": false
+  },
+  "privacy": {
+    "localOnly": true,
+    "sensitiveExport": false
+  },
+  "attention": {
+    "showCount": 0
+  }
+}

@@ -11,6 +11,20 @@ npm run dev
 
 Откройте `http://localhost:5173/`.
 
+## Тестовые профили
+
+Mira не использует серверные аккаунты: каждый тестовый профиль — локальная резервная копия в JSON. Откройте в приложении **Профиль → Управлять данными → Импортировать копию** и выберите нужный файл:
+
+| Профиль | Сценарий | Файл |
+| --- | --- | --- |
+| Тест · без цикла | Онбординг завершён, месячные ещё не отмечались | [`public/test-profiles/no-cycle.json`](public/test-profiles/no-cycle.json) |
+| Тест · первый цикл | Первый цикл начат, завершённой истории ещё нет | [`public/test-profiles/first-cycle.json`](public/test-profiles/first-cycle.json) |
+| Тест · 1 завершённый цикл | Один завершённый цикл и текущий цикл | [`public/test-profiles/one-completed-cycle.json`](public/test-profiles/one-completed-cycle.json) |
+| Тест · 3 завершённых цикла | Три завершённых цикла и текущий цикл | [`public/test-profiles/three-completed-cycles.json`](public/test-profiles/three-completed-cycles.json) |
+| Тест · 5 завершённых циклов | Пять завершённых циклов и текущий цикл | [`public/test-profiles/five-completed-cycles.json`](public/test-profiles/five-completed-cycles.json) |
+
+Профили содержат тестовые отметки кровотечения, самочувствия, сна, воды и шагов. Импорт полностью заменяет текущую локальную историю. Чтобы пересоздать даты относительно текущего дня, выполните `npm run generate:test-profiles`.
+
 ## Продакшен-сборка
 
 ```bash

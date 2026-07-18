@@ -1,0 +1,707 @@
+{
+  "version": 3,
+  "avatar": "ladybug",
+  "profile": {
+    "fullName": "Тест · 5 завершённых циклов",
+    "birthDate": "1994-06-15",
+    "healthContext": {
+      "bleedingMedications": []
+    }
+  },
+  "selectedDate": "2026-07-18",
+  "entries": {
+    "2026-02-18": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-02-18T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-02-19": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-02-19T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-02-20": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-02-20T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-02-21": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-02-21T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-02-22": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-02-22T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-03-02": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1600,
+      "steps": 6200,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-02T09:41:00.000Z"
+    },
+    "2026-03-18": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1700,
+      "steps": 6550,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-18T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-03-19": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1700,
+      "steps": 6550,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-19T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-03-20": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1700,
+      "steps": 6550,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-20T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-03-21": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1700,
+      "steps": 6550,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-21T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-03-22": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1700,
+      "steps": 6550,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-22T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-03-30": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1700,
+      "steps": 6550,
+      "completionQuality": "full",
+      "updatedAt": "2026-03-30T09:41:00.000Z"
+    },
+    "2026-04-15": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1800,
+      "steps": 6900,
+      "completionQuality": "full",
+      "updatedAt": "2026-04-15T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-04-16": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1800,
+      "steps": 6900,
+      "completionQuality": "full",
+      "updatedAt": "2026-04-16T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-04-17": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1800,
+      "steps": 6900,
+      "completionQuality": "full",
+      "updatedAt": "2026-04-17T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-04-18": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1800,
+      "steps": 6900,
+      "completionQuality": "full",
+      "updatedAt": "2026-04-18T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-04-19": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1800,
+      "steps": 6900,
+      "completionQuality": "full",
+      "updatedAt": "2026-04-19T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-04-27": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 1800,
+      "steps": 6900,
+      "completionQuality": "full",
+      "updatedAt": "2026-04-27T09:41:00.000Z"
+    },
+    "2026-05-13": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1900,
+      "steps": 7250,
+      "completionQuality": "full",
+      "updatedAt": "2026-05-13T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-05-14": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1900,
+      "steps": 7250,
+      "completionQuality": "full",
+      "updatedAt": "2026-05-14T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-05-15": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1900,
+      "steps": 7250,
+      "completionQuality": "full",
+      "updatedAt": "2026-05-15T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-05-16": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1900,
+      "steps": 7250,
+      "completionQuality": "full",
+      "updatedAt": "2026-05-16T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-05-17": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1900,
+      "steps": 7250,
+      "completionQuality": "full",
+      "updatedAt": "2026-05-17T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-05-25": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 1900,
+      "steps": 7250,
+      "completionQuality": "full",
+      "updatedAt": "2026-05-25T09:41:00.000Z"
+    },
+    "2026-06-10": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 2000,
+      "steps": 7600,
+      "completionQuality": "full",
+      "updatedAt": "2026-06-10T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-06-11": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 2000,
+      "steps": 7600,
+      "completionQuality": "full",
+      "updatedAt": "2026-06-11T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-06-12": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 2000,
+      "steps": 7600,
+      "completionQuality": "full",
+      "updatedAt": "2026-06-12T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-06-13": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 2000,
+      "steps": 7600,
+      "completionQuality": "full",
+      "updatedAt": "2026-06-13T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-06-14": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 2000,
+      "steps": 7600,
+      "completionQuality": "full",
+      "updatedAt": "2026-06-14T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-06-22": {
+      "symptoms": [],
+      "moods": [
+        "Хорошее настроение"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 5,
+      "energy": 4,
+      "sleepHours": 8,
+      "sleepQuality": "Хорошее",
+      "water": 2000,
+      "steps": 7600,
+      "completionQuality": "full",
+      "updatedAt": "2026-06-22T09:41:00.000Z"
+    },
+    "2026-07-08": {
+      "symptoms": [
+        {
+          "id": "pain",
+          "label": "Спазмы",
+          "severity": 2,
+          "affectsLife": false
+        }
+      ],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 2100,
+      "steps": 7950,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-08T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-07-09": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 2100,
+      "steps": 7950,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-09T09:41:00.000Z",
+      "period": "medium"
+    },
+    "2026-07-10": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 2100,
+      "steps": 7950,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-10T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-07-11": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 2100,
+      "steps": 7950,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-11T09:41:00.000Z",
+      "period": "light"
+    },
+    "2026-07-12": {
+      "symptoms": [],
+      "moods": [
+        "Спокойствие"
+      ],
+      "nutrition": [],
+      "contexts": [],
+      "rating": 4,
+      "energy": 3,
+      "sleepHours": 7,
+      "sleepQuality": "Хорошее",
+      "water": 2100,
+      "steps": 7950,
+      "completionQuality": "full",
+      "updatedAt": "2026-07-12T09:41:00.000Z",
+      "period": "light"
+    }
+  },
+  "periodStarts": [
+    "2026-02-18",
+    "2026-03-18",
+    "2026-04-15",
+    "2026-05-13",
+    "2026-06-10",
+    "2026-07-08"
+  ],
+  "periodEnds": [
+    "2026-02-22",
+    "2026-03-22",
+    "2026-04-19",
+    "2026-05-17",
+    "2026-06-14",
+    "2026-07-12"
+  ],
+  "excludedCycleStarts": [],
+  "modules": {
+    "cycle": true,
+    "mood": true,
+    "sleep": true,
+    "daily": true,
+    "activity": true,
+    "intimate": false,
+    "nutrition": true,
+    "body": false,
+    "note": true
+  },
+  "homeCards": {
+    "hormonoscope": false,
+    "cycloscope": false,
+    "dailyPlan": true,
+    "rhythm": true,
+    "recommendation": true,
+    "knowledge": true
+  },
+  "savedArticles": [],
+  "notifications": false,
+  "onboarding": {
+    "completed": true,
+    "goal": "patterns",
+    "cyclePattern": "stable",
+    "cycleLength": 28,
+    "periodLength": 5,
+    "periodLengthUnknown": false,
+    "focus": [
+      "cycle",
+      "mood",
+      "sleep",
+      "daily"
+    ],
+    "reminders": false,
+    "lastPeriod": "2026-07-08"
+  },
+  "privacy": {
+    "localOnly": true,
+    "sensitiveExport": false
+  },
+  "attention": {
+    "showCount": 0
+  }
+}

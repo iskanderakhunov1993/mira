@@ -217,23 +217,62 @@ button:disabled {
   }
 
   .today-strip-day {
-    @apply flex min-h-14 flex-col items-center justify-start gap-0.5 rounded-full px-1 py-1 text-ink transition sm:min-h-20 sm:gap-1 sm:py-2;
+    @apply flex min-h-[4.75rem] flex-col items-center justify-start gap-0.5 rounded-full px-0.5 py-1 text-ink transition sm:min-h-24 sm:gap-1 sm:px-1 sm:py-2;
   }
 
   .today-strip-day strong {
     @apply flex h-10 w-10 items-center justify-center rounded-full text-lg font-semibold sm:h-12 sm:w-12 sm:text-xl;
   }
 
-  .today-strip-day small {
-    @apply h-4 text-xs font-semibold leading-4 text-petal;
+  .today-strip-day.today strong {
+    @apply text-petal;
   }
 
-  .today-strip-day.today strong {
+  .today-strip-day.selected strong {
     @apply bg-white text-petal shadow-soft;
+    box-shadow: 0 0 0 3px rgba(117, 97, 213, 0.14), 0 10px 24px rgba(81, 62, 158, 0.18);
   }
 
   .today-strip-day.period strong {
     @apply bg-petal text-white;
+  }
+
+  .today-strip-day.selected.period strong {
+    box-shadow: 0 0 0 3px rgba(217, 108, 135, 0.18), 0 10px 24px rgba(217, 108, 135, 0.2);
+  }
+
+  .day-state-markers {
+    @apply flex h-5 min-w-0 items-center justify-center -space-x-1;
+  }
+
+  .day-state-marker,
+  .day-state-more {
+    @apply relative flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-white bg-white px-0.5 text-[10px] not-italic leading-none shadow-sm;
+  }
+
+  .day-state-marker.period {
+    @apply bg-rose-50;
+  }
+
+  .day-state-marker.mood {
+    @apply bg-amber-50;
+  }
+
+  .day-state-marker.symptom {
+    @apply bg-orange-50;
+  }
+
+  .day-state-marker.neutral {
+    @apply bg-slate-50;
+  }
+
+  .day-state-more {
+    @apply z-10 bg-white text-[9px] font-bold text-rosewood/70;
+  }
+
+  .selected-day-summary,
+  .selected-day-content {
+    animation: selected-day-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .chip {
@@ -333,6 +372,42 @@ button:disabled {
 
   .surface-hero {
     @apply relative overflow-hidden border border-white/80 bg-gradient-to-br from-[#e9e2ff] via-[#eee8ff] to-[#f8eaf2] shadow-soft;
+  }
+
+  .today-phase-bg {
+    transition: background 420ms ease, border-color 420ms ease, box-shadow 420ms ease;
+  }
+
+  .today-phase-neutral {
+    background: linear-gradient(145deg, #eee8ff 0%, #f7ebf3 58%, #fff7f7 100%);
+  }
+
+  .today-phase-menstrual {
+    border-color: rgba(255, 255, 255, 0.88);
+    background:
+      radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.78), transparent 32%),
+      linear-gradient(145deg, #f9dfe8 0%, #f7e8ee 48%, #fff6f4 100%);
+  }
+
+  .today-phase-follicular {
+    border-color: rgba(255, 255, 255, 0.9);
+    background:
+      radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.76), transparent 32%),
+      linear-gradient(145deg, #dff3ec 0%, #e9f7f1 48%, #f8fbef 100%);
+  }
+
+  .today-phase-ovulatory {
+    border-color: rgba(255, 255, 255, 0.9);
+    background:
+      radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.78), transparent 32%),
+      linear-gradient(145deg, #d9f3f4 0%, #dff5f1 48%, #eef9ed 100%);
+  }
+
+  .today-phase-luteal {
+    border-color: rgba(255, 255, 255, 0.88);
+    background:
+      radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.76), transparent 32%),
+      linear-gradient(145deg, #eee4fa 0%, #f5e7f3 50%, #fff0eb 100%);
   }
 
   .insight-card {
@@ -545,6 +620,11 @@ button:disabled {
 
 @keyframes calendar-selection-enter {
   from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes selected-day-enter {
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 

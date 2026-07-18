@@ -1,6 +1,7 @@
 export type WorkoutLevel = 'rest' | 'recovery' | 'light' | 'moderate';
 export type WorkoutStatus = 'planned' | 'in_progress' | 'completed' | 'skipped';
 export type WorkoutFeedback = 'easy' | 'right' | 'hard';
+export type WorkoutVenue = 'home' | 'outdoor' | 'gym';
 
 export type WorkoutExercise = {
   id: string;
@@ -30,6 +31,10 @@ export type AuraWorkoutLog = {
   intensityLabel: string;
   reasons: string[];
   exercises: WorkoutExercise[];
+  venue: WorkoutVenue;
+  completedExerciseIds: string[];
+  weeklyTarget: number;
+  recentCompletedCount: number;
   safety: 'standard' | 'caution' | 'rest';
   status: WorkoutStatus;
   startedAt?: string;
@@ -40,7 +45,44 @@ export type AuraWorkoutLog = {
 
 export type WorkoutContext = Omit<WorkoutSnapshot, 'maxSymptomSeverity' | 'symptomsAffectLife'> & {
   date: string;
+  venue?: WorkoutVenue;
+  recentCompletedCount?: number;
+  consecutiveWorkoutDays?: number;
   symptoms: Array<{ id: string; severity: 1 | 2 | 3; affectsLife: boolean }>;
+};
+
+const venueExerciseOverrides: Partial<Record<WorkoutLevel, Record<WorkoutVenue, WorkoutExercise[]>>> = {
+  light: {
+    home: [],
+    outdoor: [
+      { id: 'outdoor-warmup', title: 'Разминка в движении', amount: '2 минуты', note: 'Спокойно разогрейте плечи, стопы и тазобедренные суставы.' },
+      { id: 'easy-walk', title: 'Спокойная ходьба', amount: '8 минут', note: 'Темп позволяет говорить полными фразами.' },
+      { id: 'bench-squat', title: 'Подъёмы со скамьи', amount: '2 × 8', note: 'Двигайтесь плавно и оставляйте запас сил.' },
+      { id: 'outdoor-cooldown', title: 'Медленная прогулка', amount: '2 минуты', note: 'Снизьте темп и восстановите дыхание.' },
+    ],
+    gym: [
+      { id: 'treadmill-warmup', title: 'Дорожка: разминка', amount: '3 минуты', note: 'Комфортная скорость без наклона.' },
+      { id: 'leg-press-light', title: 'Жим ногами', amount: '2 × 10', note: 'Лёгкий вес, без задержки дыхания.' },
+      { id: 'seated-row-light', title: 'Тяга сидя', amount: '2 × 10', note: 'Плечи опущены, движения плавные.' },
+      { id: 'gym-cooldown', title: 'Спокойная заминка', amount: '3 минуты', note: 'Ходьба и мягкое восстановление дыхания.' },
+    ],
+  },
+  moderate: {
+    home: [],
+    outdoor: [
+      { id: 'outdoor-warmup', title: 'Динамическая разминка', amount: '4 минуты', note: 'Начните с лёгкой ходьбы и подвижности суставов.' },
+      { id: 'brisk-walk', title: 'Быстрая ходьба', amount: '14 минут', note: 'Дышите ровно, сохраняйте разговорный темп.' },
+      { id: 'step-up', title: 'Подъёмы на невысокую ступень', amount: '2 × 8', note: 'Используйте устойчивую опору.' },
+      { id: 'outdoor-cooldown', title: 'Заминка', amount: '4 минуты', note: 'Постепенно снизьте скорость.' },
+    ],
+    gym: [
+      { id: 'cardio-warmup', title: 'Кардио-разминка', amount: '5 минут', note: 'Дорожка или эллипс в лёгком темпе.' },
+      { id: 'leg-press', title: 'Жим ногами', amount: '3 × 10', note: 'Умеренный вес, 2–3 повтора в запасе.' },
+      { id: 'seated-row', title: 'Тяга сидя', amount: '3 × 10', note: 'Не поднимайте плечи к ушам.' },
+      { id: 'chest-press', title: 'Жим от груди', amount: '2 × 10', note: 'Комфортная амплитуда и ровное дыхание.' },
+      { id: 'gym-cooldown', title: 'Заминка', amount: '4 минуты', note: 'Лёгкая ходьба и восстановление дыхания.' },
+    ],
+  },
 };
 
 const plans: Record<WorkoutLevel, Pick<AuraWorkoutLog, 'title' | 'durationMin' | 'intensityLabel' | 'exercises' | 'safety'>> = {
@@ -69,7 +111,7 @@ const plans: Record<WorkoutLevel, Pick<AuraWorkoutLog, 'title' | 'durationMin' |
     ],
   },
   light: {
-    title: 'Лёгкая тренировка без оборудования',
+    title: 'Сегодня можно немного потренироваться',
     durationMin: 12,
     intensityLabel: 'Легко',
     safety: 'standard',
@@ -82,7 +124,7 @@ const plans: Record<WorkoutLevel, Pick<AuraWorkoutLog, 'title' | 'durationMin' |
     ],
   },
   moderate: {
-    title: 'Тренировка всего тела',
+    title: 'Сегодня можно потренироваться',
     durationMin: 20,
     intensityLabel: 'Умеренно',
     safety: 'standard',
@@ -105,6 +147,13 @@ export function chooseWorkoutLevel(context: WorkoutContext): { level: WorkoutLev
   const severePain = context.symptoms.some((item) => ['pain', 'back', 'back-pain', 'joint-pain'].includes(item.id) && item.severity === 3);
   const severeSymptom = maxSymptomSeverity === 3;
   const veryLowReadiness = context.energy === 1 || context.rating === 1 || (context.sleepHours !== undefined && context.sleepHours > 0 && context.sleepHours < 4.5);
+
+  if ((context.consecutiveWorkoutDays ?? 0) >= 2 || (context.recentCompletedCount ?? 0) >= 3) {
+    return {
+      level: 'rest',
+      reasons: ['Нагрузка уже была несколько дней подряд.', 'Сегодня восстановление поможет сохранить устойчивый ритм.'],
+    };
+  }
 
   if (severeSymptom || symptomsAffectLife || veryLowReadiness) {
     return {
@@ -165,6 +214,9 @@ export function chooseWorkoutLevel(context: WorkoutContext): { level: WorkoutLev
 export function generateWorkout(context: WorkoutContext, generatedAt = new Date().toISOString()): AuraWorkoutLog {
   const decision = chooseWorkoutLevel(context);
   const plan = plans[decision.level];
+  const venue: WorkoutVenue = decision.level === 'rest' || decision.level === 'recovery' ? 'home' : context.venue ?? 'home';
+  const venueExercises = venueExerciseOverrides[decision.level]?.[venue];
+  const exercises = venueExercises?.length ? venueExercises : plan.exercises;
   const maxSymptomSeverity = context.symptoms.reduce((max, item) => Math.max(max, item.severity), 0);
   return {
     id: `workout-${context.date}-${generatedAt.slice(11, 19).replace(/:/g, '')}`,
@@ -175,7 +227,11 @@ export function generateWorkout(context: WorkoutContext, generatedAt = new Date(
     durationMin: plan.durationMin,
     intensityLabel: plan.intensityLabel,
     reasons: decision.reasons,
-    exercises: plan.exercises.map((item) => ({ ...item })),
+    exercises: exercises.map((item) => ({ ...item })),
+    venue,
+    completedExerciseIds: [],
+    weeklyTarget: 3,
+    recentCompletedCount: context.recentCompletedCount ?? 0,
     safety: plan.safety,
     status: 'planned',
     snapshot: {

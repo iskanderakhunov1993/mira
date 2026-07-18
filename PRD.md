@@ -204,7 +204,7 @@ Analytics answers: “What changed and what repeats?”
 
 Required structure:
 
-1. Period selector: 3 cycles, 6 cycles, 12 months, all time.
+1. Consistent comparison selector: the last 3, 6, or 12 completed, non-excluded cycles. A single completed cycle may be opened as a factual detail view, not as a comparison period.
 2. Data-sufficiency card.
 3. At most one primary observation above the fold.
 4. Cycle metrics and history.
@@ -222,9 +222,12 @@ Minimum evidence rules:
 |---|---|
 | Current cycle day | One valid start date |
 | Completed cycle length | Two valid start dates |
-| Average cycle length | Two completed cycles |
+| Two-cycle comparison | Two completed cycles, with both facts shown and no personal average or range |
+| Preliminary average cycle length | Three completed cycles |
 | Personal range | Three completed cycles |
-| Regularity language | Preferably three to six cycles |
+| Personal cycle dynamics | Six completed cycles |
+| Longer-history forecast | Twelve completed cycles |
+| Regularity language | At least three completed cycles; stronger language after six |
 | Frequent symptom | Three symptom entries |
 | Cycle-timed symptom | Repetition across at least two cycles |
 | Mood trend | At least ten mood entries |
@@ -366,6 +369,7 @@ As an adult cycle tracker who wants to prepare for her period, I want to see tod
 **Acceptance criteria**
 
 - Given no valid period history, when Today loads, then the product shows a no-forecast state and a period-entry action.
+- Given a past date was previously selected, when the Today tab is opened, then the selected date resets to the actual local calendar day.
 - Given one valid cycle, when Today loads, then the forecast is labeled preliminary.
 - Given three completed cycles, when Today loads, then a date range, confidence, and cycle count are visible.
 
@@ -388,6 +392,16 @@ As an adult who remembers information later, I want to edit a past day so that m
 - Given a past date is selected, when a module is edited and saved, then Today, Diary, and Analytics read the updated value.
 - Given a field was never completed, when Analytics runs, then it is treated as missing rather than zero.
 
+### Story 3a: Confirm a period episode
+
+As an adult tracking bleeding, I want to distinguish the start, continuation, and confirmed end of a period so that the product does not infer duration from missing days.
+
+**Acceptance criteria**
+
+- Given a period start is saved without a confirmed end, when summaries load, then they say “period noted for N days” and “end not confirmed.”
+- Given an end date is explicitly confirmed, when summaries load, then the duration is presented as a completed fact.
+- Given a day has no bleeding entry, when duration is calculated, then the empty day is not interpreted as a confirmed end.
+
 ### Story 4: Understand a pattern
 
 As an adult with several tracked cycles, I want to see a cautious personal observation so that I can prepare for recurring symptoms.
@@ -396,6 +410,8 @@ As an adult with several tracked cycles, I want to see a cautious personal obser
 
 - Given evidence is below the minimum threshold, when Analytics loads, then an empty or preliminary state appears instead of a definitive claim.
 - Given a symptom repeats across sufficient cycles, when the observation appears, then the supporting period and source entries are accessible.
+- Given a cycle is open or excluded, when averages, ranges, patterns, or reports are calculated, then that cycle is not included.
+- Given fewer than three completed cycles exist, when cycle analytics loads, then facts are shown without a personal average or range.
 
 ### Story 5: Control data
 

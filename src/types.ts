@@ -1,5 +1,6 @@
 export type Mood = 'great' | 'calm' | 'sensitive' | 'tired' | 'low';
 export type TrackingModule = 'cycle' | 'wellbeing' | 'sleep' | 'body' | 'personal';
+export type TrackingMode = 'cycle' | 'wellbeing-only';
 export type DailyMetric = 'water' | 'nutrition' | 'steps';
 export type ReportOption = 'cycles' | 'pain' | 'symptoms' | 'wellbeing' | 'sleep' | 'lifestyle' | 'measurements' | 'questions' | 'notes' | 'sex';
 
@@ -11,6 +12,7 @@ export type Profile = {
   cycleLength: number;
   periodLength: number;
   waterGoalMl: number;
+  trackingMode: TrackingMode;
   trackingModules: TrackingModule[];
   dailyMetrics: DailyMetric[];
   showHormonoscope: boolean;
@@ -24,6 +26,7 @@ export type DoctorReportDraft = {
   questions: string;
   included: Record<ReportOption, boolean>;
   updatedAt: string;
+  excludedCycleStarts?: string[];
 };
 
 export type DayEntry = {
@@ -58,6 +61,7 @@ export type AppState = {
   onboardingComplete: boolean;
   profile: Profile;
   periodDays: string[];
+  periodEnds: string[];
   entries: Record<string, DayEntry>;
   savedArticles: string[];
   lastBackupAt?: string;

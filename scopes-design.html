@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mira — Гормоноскоп и Циклоскоп</title>
+  <link rel="stylesheet" href="/scopes-design.css">
+</head>
+<body>
+  <main class="canvas">
+    <aside>
+      <b>Концепт «Мой цикл»</b>
+      <p>Гормоноскоп предполагает.<br>Циклоскоп проверяет по личной истории.</p>
+    </aside>
+    <section class="phone">
+      <div class="status"><b>9:41</b><i></i><span>● ● ▰</span></div>
+      <div class="content">
+        <header><button>🐱</button><div><small>Сегодня</small><h1>16 июля</h1></div><button>▦</button></header>
+        <nav class="week"><span>П<b>13</b></span><span>В<b>14</b></span><span>С<b>15</b></span><span class="active">Сегодня<b>16</b></span><span>П<b>17</b></span><span>С<b>18</b></span><span>В<b>19</b></span></nav>
+        <section class="summary"><span><small>День цикла</small><b>18</b></span><div><strong>Месячные через 10 дней</strong><small>Ориентировочно 26–28 июля</small></div></section>
+
+        <div class="title"><div><small>Личная картина</small><h2>Мой цикл</h2></div><button>•••</button></div>
+        <section class="scope">
+          <div class="tabs">
+            <button class="active" data-tab="hormone"><i>✦</i><span>Сегодня</span><small>Гормоноскоп</small></button>
+            <button data-tab="cycle"><i>∞</i><span>Повторения</span><small>Циклоскоп</small></button>
+          </div>
+
+          <div class="panel active" id="hormone">
+            <div class="panel-head"><span class="icon pink">✦</span><div><small>Календарный ориентир</small><h3>Лютеиновая фаза</h3></div><em>18-й день</em></div>
+            <div class="cycle-chart">
+              <div class="chart-title"><div><small>Условная динамика цикла</small><strong>Сегодня — после предполагаемой овуляции</strong></div><span><i></i> Вы здесь</span></div>
+              <svg viewBox="0 0 340 138" role="img" aria-label="График фаз цикла с отметкой текущего дня">
+                <defs>
+                  <linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d75d99" stop-opacity=".28"/><stop offset="1" stop-color="#d75d99" stop-opacity=".02"/></linearGradient>
+                  <linearGradient id="line" x1="0" x2="1"><stop offset="0" stop-color="#e372a6"/><stop offset=".55" stop-color="#eead55"/><stop offset="1" stop-color="#9471ba"/></linearGradient>
+                </defs>
+                <rect x="8" y="13" width="54" height="95" rx="12" fill="#fff0f5"/><rect x="66" y="13" width="105" height="95" rx="12" fill="#faf3fb"/><rect x="175" y="13" width="45" height="95" rx="12" fill="#fff7e8"/><rect x="224" y="13" width="108" height="95" rx="12" fill="#f5effb"/>
+                <path d="M13 92 C39 84 49 90 70 76 C98 57 119 49 145 44 C170 38 180 20 199 28 C218 37 225 61 246 57 C277 52 299 68 327 88 L327 108 L13 108Z" fill="url(#area)"/>
+                <path d="M13 92 C39 84 49 90 70 76 C98 57 119 49 145 44 C170 38 180 20 199 28 C218 37 225 61 246 57 C277 52 299 68 327 88" fill="none" stroke="url(#line)" stroke-width="4" stroke-linecap="round"/>
+                <line x1="244" y1="16" x2="244" y2="108" stroke="#553346" stroke-width="1.5" stroke-dasharray="3 4"/><circle cx="244" cy="57" r="9" fill="#fff" stroke="#553346" stroke-width="3"/><circle cx="244" cy="57" r="3.5" fill="#d75d99"/>
+                <rect x="218" y="0" width="52" height="19" rx="9.5" fill="#553346"/><text x="244" y="13" fill="#fff" text-anchor="middle" font-size="7" font-weight="700">18-й день</text>
+                <text x="35" y="127" fill="#a5788d" text-anchor="middle" font-size="6">Месячные</text><text x="118" y="127" fill="#8e7a96" text-anchor="middle" font-size="6">Фолликулярная</text><text x="198" y="127" fill="#a57d39" text-anchor="middle" font-size="6">Овуляция*</text><text x="278" y="127" fill="#76608e" text-anchor="middle" font-size="6">Лютеиновая</text>
+              </svg>
+              <p>* Предполагаемая фаза по календарю, не измерение гормонов.</p>
+            </div>
+            <p class="lead chart-lead">Сегодня может хотеться более спокойного темпа</p>
+            <div class="today-advice">
+              <article class="do"><span>✓</span><div><small>Сегодня подойдёт</small><strong>Регулярная еда, небольшие перерывы и привычная мягкая активность</strong></div></article>
+              <article class="avoid"><span>−</span><div><small>Лучше не перегружать</small><strong>Плотное расписание без отдыха, если энергия стала ниже</strong></div></article>
+            </div>
+            <button class="primary" data-open="hormone-sheet">Как это рассчитано <span>›</span></button>
+            <p class="fine">Mira не измеряет гормоны и не подтверждает овуляцию.</p>
+          </div>
+
+          <div class="panel" id="cycle">
+            <div class="panel-head"><span class="icon violet">∞</span><div><small>Ваша личная история</small><h3>Похоже, это повторяется</h3></div><em class="green">3 цикла</em></div>
+            <p class="lead">За 2–4 дня до месячных вы чаще отмечали усталость</p>
+            <div class="cycles">
+              <div><small>Цикл 1</small><span><i></i><i></i><i class="hit"></i><i></i><i></i></span></div>
+              <div><small>Цикл 2</small><span><i></i><i></i><i class="hit"></i><i></i><i></i></span></div>
+              <div><small>Цикл 3</small><span><i></i><i class="hit"></i><i></i><i></i><i></i></span></div>
+            </div>
+            <div class="evidence"><span><small>Симптом</small><b>Усталость</b></span><span><small>Основание</small><b>5 отметок</b></span><span><small>Период</small><b>Дни 25–27</b></span></div>
+            <button class="primary violet-button" data-open="cycle-sheet">Посмотреть историю <span>›</span></button>
+            <p class="fine">Совпадение не гарантирует, что симптом повторится.</p>
+          </div>
+        </section>
+
+        <section class="check">
+          <span>♡</span><div><small>Один вопрос на сегодня</small><strong>Прогноз похож на ваше состояние?</strong></div>
+          <button>Да</button><button>Частично</button><button>Нет</button>
+        </section>
+      </div>
+      <nav class="bottom"><button class="active">⌂<small>Сегодня</small></button><button>▤<small>Дневник</small></button><button>⌁<small>Аналитика</small></button><button>◫<small>Знания</small></button></nav>
+
+      <div class="backdrop"></div>
+      <section class="sheet" id="hormone-sheet"><button class="close">×</button><i class="handle"></i><span class="big-icon pink">✦</span><small>Гормоноскоп</small><h2>Почему такой прогноз?</h2><p>Расчёт основан на 18-м дне предполагаемого 28-дневного цикла. Это общий контекст фазы, а не результат анализа гормонов.</p><div class="sheet-row"><b>Источник</b><span>Даты месячных и календарный расчёт</span></div><div class="sheet-row"><b>Точность</b><span>Предварительный ориентир</span></div><button class="done">Понятно</button></section>
+      <section class="sheet" id="cycle-sheet"><button class="close">×</button><i class="handle"></i><span class="big-icon violet">∞</span><small>Циклоскоп</small><h2>Когда это повторялось</h2><p>Усталость отмечалась в похожие дни трёх прошлых циклов.</p><div class="history"><span><i></i><b>28 мая</b><small>26-й день цикла</small></span><span><i></i><b>29 июня</b><small>27-й день цикла</small></span><span><i></i><b>14 июля</b><small>25-й день цикла</small></span></div><button class="done">Понятно</button></section>
+    </section>
+  </main>
+  <script src="/scopes-design.js"></script>
+</body>
+</html>

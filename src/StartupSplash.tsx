@@ -16,8 +16,8 @@ export function StartupGate({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<SplashPhase>('visible');
 
   useEffect(() => {
-    const leaveTimer = window.setTimeout(() => setPhase('leaving'), 1900);
-    const hideTimer = window.setTimeout(() => setPhase('hidden'), 2300);
+    const leaveTimer = window.setTimeout(() => setPhase('leaving'), 2500);
+    const hideTimer = window.setTimeout(() => setPhase('hidden'), 2940);
     return () => {
       window.clearTimeout(leaveTimer);
       window.clearTimeout(hideTimer);
@@ -43,7 +43,7 @@ export function StartupGate({ children }: { children: ReactNode }) {
                   key={petal.id}
                   className="startup-splash-petal"
                   clipPath={`url(#startup-clip-${petal.id})`}
-                  style={{ '--petal-delay': `${480 + index * 100}ms`, '--petal-twist': petal.twist } as CSSProperties}
+                  style={{ '--petal-delay': `${260 + index * 95}ms`, '--petal-twist': petal.twist } as CSSProperties}
                 >
                   <image href="/mira-logo-transparent.png" width="1254" height="1254" />
                 </g>

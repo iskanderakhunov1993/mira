@@ -9,12 +9,17 @@ import {
   createEmptyAuraState,
   deriveAttentionEvidence,
   getAuraCycleMetrics,
+  getAuraCycleRangeTrend,
+  getAuraDayCoverage,
   getAuraObservationDates,
+  getAuraPeriodEpisodes,
   getAuraSafetyFacts,
   loadAuraState,
   migrateLegacyAppState,
   parseImportedAuraState,
   sanitizeAuraState,
+  setAuraCycleExcluded,
+  setAuraPeriodEnd,
   setAuraPeriodStart,
   shouldShowAttention,
   type AuraState,
@@ -46,11 +51,31 @@ const attentionState = (): AuraState => sanitizeAuraState({
 });
 
 describe('Mira unified state', () => {
+  it('keeps completeness separate by data direction', () => {
+    const today = AURA_TODAY;
+    const yesterday = addDays(today, -1);
+    const twoDaysAgo = addDays(today, -2);
+    const state = sanitizeAuraState({
+      entries: {
+        [today]: { water: 1200 },
+        [yesterday]: { symptoms: [], symptomsChecked: true },
+        [twoDaysAgo]: { symptoms: [{ id: 'pain', label: 'Боль', severity: 2, affectsLife: false }] },
+      },
+    });
+
+    expect(getAuraDayCoverage(state, today)).toMatchObject({ cycle: 'other-only', symptoms: 'other-only', wellbeing: 'other-only', habits: 'recorded' });
+    expect(getAuraDayCoverage(state, yesterday).symptoms).toBe('explicit-none');
+    expect(getAuraDayCoverage(state, twoDaysAgo).symptoms).toBe('recorded');
+    expect(getAuraDayCoverage(state, addDays(today, -3))).toEqual({ cycle: 'empty', symptoms: 'empty', wellbeing: 'empty', habits: 'empty' });
+  });
+
   it('derives pain evidence from actual cycle starts rather than calendar months', () => {
     const evidence = deriveAttentionEvidence(attentionState());
     expect(evidence.eligible).toBe(true);
-    expect(evidence.painDays).toBe(4);
-    expect(evidence.cycles).toBe(3);
+    expect(evidence.painDays).toBe(3);
+    expect(evidence.cycles).toBe(2);
+    expect(evidence.entries[0]).toMatchObject({ date: '2026-05-10', cycleStart: '2026-05-10', value: 2, affectsLife: false });
+    expect(evidence.entries[1]).toMatchObject({ date: '2026-06-08', cycleStart: '2026-06-08', value: 3, affectsLife: true });
   });
 
   it('does not repeat dismissed evidence until the pause ends', () => {
@@ -66,7 +91,9 @@ describe('Mira unified state', () => {
 
   it('repairs settings, dates and unsafe health values', () => {
     const repaired = sanitizeAuraState({
+      avatar: 'turtle',
       modules: { sleep: false },
+      homeCards: { dailyPlan: false },
       onboarding: { goal: 'forecast', focus: ['sleep', 'unknown'] },
       periodStarts: [AURA_TODAY, '2099-01-01', 'bad-date'],
       entries: {
@@ -75,7 +102,10 @@ describe('Mira unified state', () => {
       },
     });
     expect(repaired.modules.sleep).toBe(false);
+    expect(repaired.avatar).toBe('turtle');
     expect(repaired.modules.cycle).toBe(true);
+    expect(repaired.homeCards.dailyPlan).toBe(false);
+    expect(repaired.homeCards.recommendation).toBe(true);
     expect(repaired.privacy.localOnly).toBe(true);
     expect(repaired.onboarding.goal).toBe('forecast');
     expect(repaired.onboarding.focus).toEqual(['sleep']);
@@ -84,6 +114,74 @@ describe('Mira unified state', () => {
     expect(repaired.entries[AURA_TODAY]).toMatchObject({ careItems: ['pads'], moods: [], symptomsChecked: true, water: 0, steps: 100000, intimacyAfter: ['pain'] });
     expect(repaired.entries[AURA_TODAY].temperature).toBe(43);
     expect(repaired.entries[AURA_TODAY].weight).toBe(20);
+  });
+
+  it('keeps configurable Today cards instead of removing them from the product', () => {
+    const customized = sanitizeAuraState({
+      homeCards: {
+        rhythm: false,
+        dailyPlan: false,
+        hormonoscope: false,
+        recommendation: false,
+      },
+    });
+
+    expect(customized.homeCards).toMatchObject({
+      rhythm: false,
+      dailyPlan: false,
+      hormonoscope: false,
+      recommendation: false,
+    });
+  });
+
+  it('keeps a valid period check-in and clamps its numeric answers', () => {
+    const repaired = sanitizeAuraState({
+      entries: {
+        [AURA_TODAY]: {
+          periodCheckin: {
+            bleedingType: 'between-periods',
+            overall: 'harder',
+            flow: 'heavy',
+            changeFrequency: '1-2h',
+            hourlyBleedingHours: 52,
+            largeClots: true,
+            leaksThroughProtection: true,
+            doubleProtection: false,
+            nightChanges: true,
+            durationDays: 44,
+            painImpact: 'disrupts',
+            painScore: 18,
+            painLocations: ['Низ живота', 42],
+            symptoms: ['dizziness', 'nausea', null],
+            pregnancyPossible: false,
+            differentFromUsual: true,
+            result: 'doctor',
+            completedAt: '2026-07-17T09:41:00.000Z',
+          },
+        },
+      },
+    });
+    expect(repaired.entries[AURA_TODAY].periodCheckin).toMatchObject({
+      bleedingType: 'between-periods',
+      overall: 'harder',
+      flow: 'heavy',
+      changeFrequency: '1-2h',
+      hourlyBleedingHours: 24,
+      largeClots: true,
+      leaksThroughProtection: true,
+      nightChanges: true,
+      durationDays: 30,
+      painImpact: 'disrupts',
+      painScore: 10,
+      painLocations: ['Низ живота'],
+      symptoms: ['dizziness', 'nausea'],
+      differentFromUsual: true,
+      result: 'doctor',
+    });
+  });
+
+  it('falls back to the cat avatar when an imported avatar is unknown', () => {
+    expect(sanitizeAuraState({ avatar: 'dragon' }).avatar).toBe('cat');
   });
 
   it('preserves both yes and no intimacy answers as explicit private facts', () => {
@@ -128,6 +226,8 @@ describe('Mira unified state', () => {
     const empty = createEmptyAuraState();
     expect(empty.entries).toEqual({});
     expect(empty.periodStarts).toEqual([]);
+    expect(empty.periodEnds).toEqual([]);
+    expect(empty.excludedCycleStarts).toEqual([]);
     expect(empty.savedArticles).toEqual([]);
     expect(empty.onboarding.completed).toBe(false);
     expect(shouldShowAttention(empty)).toBe(false);
@@ -142,15 +242,60 @@ describe('Mira unified state', () => {
     expect(setAuraPeriodStart(marked, AURA_TODAY, false).periodStarts).toEqual([]);
   });
 
+  it('repairs consecutive legacy starts created by daily period logging', () => {
+    const first = addDays(AURA_TODAY, -30);
+    const repaired = sanitizeAuraState({
+      periodStarts: [first, addDays(first, 1), addDays(first, 2), AURA_TODAY],
+    });
+    expect(repaired.periodStarts).toEqual([first, AURA_TODAY]);
+    expect(getAuraCycleMetrics(repaired).cycleLengths).toEqual([30]);
+  });
+
+  it('stores a period end separately from its cycle start', () => {
+    const start = addDays(AURA_TODAY, -4);
+    const state = setAuraPeriodStart(createEmptyAuraState(), start, true);
+    const ended = setAuraPeriodEnd(state, AURA_TODAY, true);
+    expect(ended.periodStarts).toEqual([start]);
+    expect(ended.periodEnds).toEqual([AURA_TODAY]);
+    expect(setAuraPeriodEnd(ended, AURA_TODAY, false).periodEnds).toEqual([]);
+  });
+
+  it('distinguishes ongoing, confirmed and unknown period episodes', () => {
+    const firstStart = addDays(AURA_TODAY, -60);
+    const secondStart = addDays(AURA_TODAY, -30);
+    const state = sanitizeAuraState({
+      periodStarts: [firstStart, secondStart, AURA_TODAY],
+      periodEnds: [addDays(firstStart, 4)],
+      entries: {
+        [firstStart]: { period: 'medium' },
+        [addDays(firstStart, 1)]: { period: 'medium' },
+        [secondStart]: { period: 'medium' },
+        [addDays(secondStart, 1)]: { period: 'medium' },
+        [AURA_TODAY]: { period: 'medium' },
+      },
+    });
+    expect(getAuraPeriodEpisodes(state)).toEqual([
+      expect.objectContaining({ start: firstStart, status: 'confirmed', duration: 5, observedDays: 2 }),
+      expect.objectContaining({ start: secondStart, status: 'unknown', duration: null, observedDays: 2 }),
+      expect.objectContaining({ start: AURA_TODAY, status: 'ongoing', duration: null, observedDays: 1 }),
+    ]);
+  });
+
+  it('does not save a confirmed end outside a known period episode', () => {
+    const state = createEmptyAuraState();
+    expect(setAuraPeriodEnd(state, AURA_TODAY, true)).toBe(state);
+  });
+
   it('counts cycle starts as observations even without a separate day entry', () => {
     const state = sanitizeAuraState({
       periodStarts: [addDays(AURA_TODAY, -28), AURA_TODAY],
+      periodEnds: [addDays(AURA_TODAY, -24)],
       entries: {
         [AURA_TODAY]: { rating: 4 },
         [addDays(AURA_TODAY, -2)]: { sleepHours: 7.5 },
       },
     });
-    expect(getAuraObservationDates(state)).toEqual([addDays(AURA_TODAY, -28), addDays(AURA_TODAY, -2), AURA_TODAY]);
+    expect(getAuraObservationDates(state)).toEqual([addDays(AURA_TODAY, -28), addDays(AURA_TODAY, -24), addDays(AURA_TODAY, -2), AURA_TODAY]);
   });
 
   it('collects important medical facts and keeps intimate facts opt-in', () => {
@@ -179,15 +324,46 @@ describe('Mira unified state', () => {
     expect(metrics).toMatchObject({
       cycleLengths: [28, 29, 27],
       completedCycles: 3,
+      historyStage: 'preliminary',
+      averageLength: 28,
+      analysisCyclesUsed: 3,
+      forecastCyclesUsed: 3,
       cycleDay: 10,
       personalMin: 27,
       personalMax: 29,
       daysLate: 0,
-      forecast: { start: '2026-08-01', end: '2026-08-03', confidence: 'personal', cyclesUsed: 3 },
+      forecast: { start: '2026-08-01', end: '2026-08-03', confidence: 'growing', cyclesUsed: 3 },
+      periodForecast: { start: '2026-08-02', end: '2026-08-06', confidence: 'growing' },
     });
   });
 
-  it('does not invent a forecast from a single period start', () => {
+  it('keeps the open cycle separate and excludes completed cycles without merging boundaries', () => {
+    const state = sanitizeAuraState({
+      ...createEmptyAuraState(),
+      periodStarts: ['2026-04-12', '2026-05-10', '2026-06-08', '2026-07-05'],
+      excludedCycleStarts: ['2026-05-10', '2026-07-05', 'bad-date'],
+    });
+    const metrics = getAuraCycleMetrics(state, '2026-07-14');
+    expect(metrics.currentStart).toBe('2026-07-05');
+    expect(metrics.completedStarts).toEqual(['2026-04-12', '2026-06-08']);
+    expect(metrics.excludedStarts).toEqual(['2026-05-10']);
+    expect(metrics.cycleLengths).toEqual([28, 27]);
+    expect(metrics.completedCycles).toBe(2);
+    expect(state.excludedCycleStarts).toEqual(['2026-05-10']);
+  });
+
+  it('allows excluding only a completed cycle and restoring it', () => {
+    const state = sanitizeAuraState({
+      ...createEmptyAuraState(),
+      periodStarts: ['2026-05-10', '2026-06-08', '2026-07-05'],
+    });
+    const excluded = setAuraCycleExcluded(state, '2026-06-08', true);
+    expect(excluded.excludedCycleStarts).toEqual(['2026-06-08']);
+    expect(setAuraCycleExcluded(excluded, '2026-07-05', true)).toBe(excluded);
+    expect(setAuraCycleExcluded(excluded, '2026-06-08', false).excludedCycleStarts).toEqual([]);
+  });
+
+  it('uses a deliberately broad preliminary window when only one start is known', () => {
     const state = sanitizeAuraState({
       ...createEmptyAuraState(),
       periodStarts: ['2026-07-05'],
@@ -195,18 +371,93 @@ describe('Mira unified state', () => {
     const metrics = getAuraCycleMetrics(state, '2026-07-14');
     expect(metrics.cycleDay).toBe(10);
     expect(metrics.completedCycles).toBe(0);
-    expect(metrics.forecast).toBeNull();
+    expect(metrics.forecast).toEqual({
+      start: '2026-07-26',
+      end: '2026-08-09',
+      confidence: 'preliminary',
+      cyclesUsed: 0,
+    });
+    expect(metrics.periodForecast).toEqual({ start: '2026-08-02', end: '2026-08-06', confidence: 'preliminary' });
     expect(metrics.daysLate).toBe(0);
   });
 
-  it('keeps an overdue forecast visible instead of rolling it into a virtual future cycle', () => {
+  it('shows a preliminary forecast after one start when onboarding supplied a cycle estimate', () => {
+    const state = sanitizeAuraState({
+      ...createEmptyAuraState(),
+      onboarding: { completed: true, cyclePattern: 'stable', cycleLength: 28 },
+      periodStarts: ['2026-07-15'],
+    });
+    const metrics = getAuraCycleMetrics(state, '2026-07-15');
+    expect(metrics.forecast).toEqual({
+      start: '2026-08-10',
+      end: '2026-08-14',
+      confidence: 'preliminary',
+      cyclesUsed: 0,
+    });
+    expect(metrics.periodForecast).toEqual({ start: '2026-08-12', end: '2026-08-16', confidence: 'preliminary' });
+    expect(metrics.daysLate).toBe(0);
+  });
+
+  it('keeps an early calendar orientation broad and does not label it as a personal delay', () => {
     const state = sanitizeAuraState({
       ...createEmptyAuraState(),
       periodStarts: ['2026-05-10', '2026-06-08'],
     });
     const metrics = getAuraCycleMetrics(state, '2026-07-15');
-    expect(metrics.forecast).toMatchObject({ start: '2026-07-05', end: '2026-07-09', cyclesUsed: 1 });
-    expect(metrics.daysLate).toBe(6);
+    expect(metrics.forecast).toMatchObject({ start: '2026-06-29', end: '2026-07-13', cyclesUsed: 0 });
+    expect(metrics.daysLate).toBe(0);
+  });
+
+  it('does not calculate a personal average or range from two completed cycles', () => {
+    const state = sanitizeAuraState({
+      ...createEmptyAuraState(),
+      periodStarts: ['2026-05-10', '2026-06-08', '2026-07-05'],
+    });
+    const metrics = getAuraCycleMetrics(state, '2026-07-14');
+    expect(metrics.cycleLengths).toEqual([29, 27]);
+    expect(metrics.historyStage).toBe('comparison');
+    expect(metrics.averageLength).toBeNull();
+    expect(metrics.personalMin).toBeNull();
+    expect(metrics.personalMax).toBeNull();
+    expect(metrics.forecastCyclesUsed).toBe(0);
+  });
+
+  it('uses six cycles for averages and up to twelve cycles for a longer forecast', () => {
+    const starts = Array.from({ length: 13 }, (_, index) => addDays('2025-07-01', index * 28));
+    const state = sanitizeAuraState({ ...createEmptyAuraState(), periodStarts: starts });
+    const metrics = getAuraCycleMetrics(state, addDays(starts[starts.length - 1], 5));
+    expect(metrics.historyStage).toBe('long');
+    expect(metrics.analysisCyclesUsed).toBe(6);
+    expect(metrics.forecastCyclesUsed).toBe(12);
+    expect(metrics.averageLength).toBe(28);
+    expect(metrics.forecast).toMatchObject({ confidence: 'personal', cyclesUsed: 12 });
+  });
+
+  it('explains whether the personal cycle range stayed similar or changed', () => {
+    expect(getAuraCycleRangeTrend([28, 29, 28, 27, 29, 28])).toMatchObject({
+      status: 'similar',
+      title: 'Цикл остаётся похожим',
+      previousSpread: 1,
+      recentSpread: 2,
+    });
+    expect(getAuraCycleRangeTrend([28, 29, 28, 26, 30, 28])).toMatchObject({
+      status: 'wider',
+      title: 'Диапазон стал шире',
+      previousSpread: 1,
+      recentSpread: 4,
+    });
+    expect(getAuraCycleRangeTrend([26, 30, 28, 28, 29, 28])).toMatchObject({
+      status: 'narrower',
+      title: 'Диапазон стал уже',
+      previousSpread: 4,
+      recentSpread: 1,
+    });
+    expect(getAuraCycleRangeTrend([26, 30, 28, 29, 27, 28, 28, 29, 28, 28, 29, 28])).toMatchObject({
+      status: 'narrower',
+      previousSpread: 4,
+      recentSpread: 1,
+    });
+    expect(getAuraCycleRangeTrend([28, 29, 28])).toMatchObject({ status: 'insufficient' });
   });
 
   it('migrates the previous AppState without losing daily records', () => {

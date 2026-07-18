@@ -266,7 +266,7 @@ export function getCycleDelayDays(state: AppState, date = todayIso()): number | 
 }
 
 export type HormonoscopePhase = {
-  id: 'menstrual' | 'follicular' | 'ovulatory' | 'luteal';
+  id: 'menstrual' | 'early-follicular' | 'late-follicular' | 'ovulatory' | 'early-luteal' | 'late-luteal';
   label: string;
   eyebrow: string;
   description: string;
@@ -277,6 +277,7 @@ export type HormonoscopePhase = {
 };
 
 export function getHormonoscope(state: AppState, date = todayIso()): HormonoscopePhase | null {
+  if (state.profile.trackingMode === 'wellbeing-only') return null;
   const cycleDay = getCycleDay(state, date);
   if (!cycleDay) return null;
 
@@ -308,18 +309,32 @@ export function getHormonoscope(state: AppState, date = todayIso()): Hormonoscop
     };
   }
 
-  if (cycleDay < estimatedOvulationDay - 1) {
+  const follicularMidpoint = periodLength + Math.max(1, Math.floor((estimatedOvulationDay - periodLength) / 2));
+  const lutealMidpoint = estimatedOvulationDay + Math.max(2, Math.floor((expectedLength - estimatedOvulationDay) / 2));
+
+  if (cycleDay <= follicularMidpoint) {
     return {
-      id: 'follicular',
-      label: 'Фолликулярная фаза',
+      id: 'early-follicular',
+      label: 'Ранняя фолликулярная фаза',
       eyebrow: `${cycleDay}-й день цикла`,
       description: 'После месячных эстроген обычно постепенно растёт, а прогестерон остаётся относительно низким.',
       hormoneNote: 'Эстроген обычно растёт',
-      support: 'Полезно наблюдать энергию, настроение и выделения без ожидания обязательных изменений.',
+      support: 'Возвращайтесь к привычному ритму постепенно и отмечайте энергию без ожидания обязательного подъёма.',
       progress,
       confidence,
     };
   }
+
+  if (cycleDay < estimatedOvulationDay - 1) return {
+    id: 'late-follicular',
+    label: 'Поздняя фолликулярная фаза',
+    eyebrow: `${cycleDay}-й день цикла`,
+    description: 'Фолликул продолжает созревать, а уровень эстрогена перед предполагаемой овуляцией обычно становится выше.',
+    hormoneNote: 'Эстроген может быть выше',
+    support: 'Если есть ресурс, это может быть удобное время для активных задач; ориентируйтесь на свои отметки.',
+    progress,
+    confidence,
+  };
 
   if (cycleDay <= estimatedOvulationDay + 1) {
     return {
@@ -334,15 +349,58 @@ export function getHormonoscope(state: AppState, date = todayIso()): Hormonoscop
     };
   }
 
-  return {
-    id: 'luteal',
-    label: 'Лютеиновая фаза',
+  if (cycleDay <= lutealMidpoint) return {
+    id: 'early-luteal',
+    label: 'Ранняя лютеиновая фаза',
     eyebrow: `${cycleDay}-й день цикла`,
-    description: 'После предполагаемой овуляции прогестерон обычно повышается, а ближе к месячным снова снижается.',
-    hormoneNote: 'Прогестерон обычно выше, затем снижается',
-    support: 'Можно отмечать сон, аппетит, настроение, чувствительность груди и другие личные изменения.',
+    description: 'После предполагаемой овуляции прогестерон обычно повышается и поддерживает вторую половину цикла.',
+    hormoneNote: 'Прогестерон обычно повышается',
+    support: 'Сохраняйте привычный темп и отмечайте сон, аппетит и настроение, если замечаете изменения.',
     progress,
     confidence,
+  };
+
+  return {
+    id: 'late-luteal',
+    label: 'Поздняя лютеиновая фаза',
+    eyebrow: `${cycleDay}-й день цикла`,
+    description: 'Ближе к следующим месячным уровни эстрогена и прогестерона обычно снижаются.',
+    hormoneNote: 'Гормональные уровни обычно снижаются',
+    support: 'Оставьте больше пространства для отдыха и отмечайте повторяющиеся симптомы без самодиагностики.',
+    progress,
+    confidence,
+  };
+}
+
+export type PainRecurrenceInsight = {
+  observedCycles: number;
+  cyclesWithPain: number;
+  typicalDays: string;
+  message: string;
+};
+
+export function getPainRecurrenceInsight(state: AppState): PainRecurrenceInsight | null {
+  const ranges = getPeriodRanges(state.periodDays);
+  if (ranges.length < 4) return null;
+  const completed = ranges.slice(-5, -1);
+  const cycles = completed.map((range, index) => {
+    const nextStart = ranges[ranges.indexOf(range) + 1]?.start;
+    if (!nextStart) return [];
+    return Object.values(state.entries)
+      .filter((entry) => entry.date >= range.start && entry.date < nextStart && ((entry.pain ?? 0) > 0 || entry.symptoms.some((symptom) => /боль|спазм/i.test(symptom))))
+      .map((entry) => daysBetween(range.start, entry.date) + 1);
+  });
+  const withPain = cycles.filter((days) => days.length > 0);
+  if (withPain.length < 3) return null;
+  const allDays = withPain.flat().sort((a, b) => a - b);
+  const start = allDays[Math.floor((allDays.length - 1) * 0.25)];
+  const end = allDays[Math.ceil((allDays.length - 1) * 0.75)];
+  const typicalDays = start === end ? `${start}-й день` : `${start}–${end}-й дни`;
+  return {
+    observedCycles: completed.length,
+    cyclesWithPain: withPain.length,
+    typicalDays,
+    message: `В ${withPain.length} из ${completed.length} последних циклов боль отмечалась примерно на ${typicalDays}. В следующем цикле она может повториться, но это не медицинский прогноз.`,
   };
 }
 

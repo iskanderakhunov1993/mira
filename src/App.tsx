@@ -70,6 +70,7 @@ import {
   getCycleDelayDays,
   getCycloscope,
   getHormonoscope,
+  getPainRecurrenceInsight,
   getMonthDays,
   getPredictedPeriodDays,
   getSymptomSeveritySummary,
@@ -172,6 +173,11 @@ function App() {
     }));
   };
 
+  const togglePeriodEnd = (date: string) => {
+    if (!isValidPastOrTodayIsoDate(date)) return;
+    setState((current) => ({ ...current, periodEnds: current.periodEnds.includes(date) ? current.periodEnds.filter((item) => item !== date) : [...current.periodEnds, date].sort() }));
+  };
+
   const predictedDays = useMemo(() => getPredictedPeriodDays(state), [state]);
 
   if (!state.onboardingComplete) {
@@ -186,25 +192,26 @@ function App() {
             {activeTab === 'today' && (
               <TodayView
                 state={state}
-                entry={state.entries[todayIso()] ?? createDayEntry(todayIso())}
+                selectedDate={selectedDate}
+                entry={selectedEntry}
                 predictedDays={predictedDays}
                 onMood={(mood) =>
-                  updateEntry(todayIso(), (entry) => ({ ...entry, mood }))
+                  updateEntry(selectedDate, (entry) => ({ ...entry, mood }))
                 }
-                onTogglePeriod={() => togglePeriodDay(todayIso())}
+                onTogglePeriod={() => togglePeriodDay(selectedDate)}
+                onTogglePeriodEnd={() => togglePeriodEnd(selectedDate)}
                 onOpenTrack={() => {
-                  setSelectedDate(todayIso());
                   setDiaryReturnToCalendar(false);
                   setDiaryInitialSection(null);
                   setActiveTab('diary');
                 }}
                 onEditPeriod={() => {
-                  setSelectedDate(todayIso());
                   setDiaryReturnToCalendar(false);
                   setDiaryInitialSection('cycle');
                   setActiveTab('diary');
                 }}
                 onOpenSymptoms={() => setSymptomsOpen(true)}
+                onSelectDate={setSelectedDate}
                 onOpenProfile={() => { setProfileReturnTab('today'); setActiveTab('profile'); }}
                 onOpenAnalytics={() => setActiveTab('insights')}
                 onOpenCalendar={(date = todayIso()) => {
@@ -274,10 +281,10 @@ function App() {
       </main>
       {symptomsOpen && (
         <SymptomsModal
-          entry={state.entries[todayIso()] ?? createDayEntry(todayIso())}
+          entry={selectedEntry}
           onClose={() => setSymptomsOpen(false)}
           onSave={(nextEntry) => {
-            updateEntry(todayIso(), () => nextEntry);
+            updateEntry(selectedDate, () => nextEntry);
             setSymptomsOpen(false);
           }}
         />
@@ -428,36 +435,45 @@ function OnboardingView({
 
 function TodayView({
   state,
+  selectedDate,
   entry,
   predictedDays,
   onMood,
   onTogglePeriod,
+  onTogglePeriodEnd,
   onOpenTrack,
   onEditPeriod,
   onOpenSymptoms,
+  onSelectDate,
   onOpenProfile,
   onOpenAnalytics,
   onOpenCalendar,
 }: {
   state: AppState;
+  selectedDate: string;
   entry: DayEntry;
   predictedDays: string[];
   onMood: (mood: Mood) => void;
   onTogglePeriod: () => void;
+  onTogglePeriodEnd: () => void;
   onOpenTrack: () => void;
   onEditPeriod: () => void;
   onOpenSymptoms: () => void;
+  onSelectDate: (date: string) => void;
   onOpenProfile: () => void;
   onOpenAnalytics: () => void;
   onOpenCalendar: (date?: string) => void;
 }) {
-  const cycleDay = getCycleDay(state);
-  const delayDays = getCycleDelayDays(state);
-  const cycleStats = getCycleStats(state);
   const today = todayIso();
+  const isViewingToday = selectedDate === today;
+  const cycleDay = getCycleDay(state, selectedDate);
+  const delayDays = getCycleDelayDays(state, selectedDate);
+  const selectedPhase = getHormonoscope(state, selectedDate);
+  const tracksCycle = state.profile.trackingMode === 'cycle';
+  const cycleStats = getCycleStats(state);
   const nextPeriod = predictedDays[0];
   const trackedCycleCount = cycleStats.cycleLengths.length;
-  const daysToPeriod = nextPeriod ? Math.max(0, daysBetween(today, nextPeriod)) : null;
+  const daysToPeriod = nextPeriod ? Math.max(0, daysBetween(selectedDate, nextPeriod)) : null;
   const lastRange = cycleStats.ranges[cycleStats.ranges.length - 1];
   const predictionStart = lastRange && cycleStats.cycleLengths.length >= 2
     ? addDays(lastRange.start, cycleStats.minCycleLength)
@@ -469,13 +485,14 @@ function TodayView({
     : nextPeriod
       ? addDays(nextPeriod, 2)
       : undefined;
-  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(today, index - 3));
+  const weekDays = Array.from({ length: 7 }, (_, index) => addDays(selectedDate, index - 3));
+  const selectedMarkers = getDayStateMarkers(entry, state.periodDays.includes(selectedDate));
   const weekdayLabels = ['В', 'П', 'В', 'С', 'Ч', 'П', 'С'];
-  const showInAppReminder = state.profile.reminderEnabled && new Date().toTimeString().slice(0, 5) >= state.profile.reminderTime && !hasTrackedData(entry) && !state.periodDays.includes(today);
+  const showInAppReminder = isViewingToday && state.profile.reminderEnabled && new Date().toTimeString().slice(0, 5) >= state.profile.reminderTime && !hasTrackedData(entry) && !state.periodDays.includes(selectedDate);
   const nextStep = cycleStats.ranges.length === 0
     ? null
-    : !hasTrackedData(entry) && !state.periodDays.includes(today)
-      ? { title: 'Короткой отметки достаточно', text: 'Выберите только то, что действительно важно сегодня. Остальные поля можно оставить пустыми.', label: 'Открыть дневник', action: onOpenTrack }
+    : !hasTrackedData(entry) && !state.periodDays.includes(selectedDate)
+      ? { title: 'Короткой отметки достаточно', text: `Выберите только то, что действительно важно ${isViewingToday ? 'сегодня' : 'в этот день'}. Остальные поля можно оставить пустыми.`, label: 'Открыть дневник', action: onOpenTrack }
       : (entry.symptoms.length > 0 || (entry.pain ?? 0) > 0) && trackedCycleCount >= 1
         ? { title: 'Отметка сохранена в историю', text: 'После повторения в разных циклах приложение покажет исходные даты и надёжность наблюдения.', label: 'Посмотреть аналитику', action: onOpenAnalytics }
         : trackedCycleCount >= 2
@@ -484,7 +501,7 @@ function TodayView({
 
   return (
     <div className="space-y-4">
-      <section className="surface-hero relative overflow-hidden rounded-[32px] p-4 sm:p-6">
+      <section className={`surface-hero today-phase-bg today-phase-${selectedPhase?.id ?? 'neutral'} relative overflow-hidden rounded-[32px] p-4 sm:p-6`}>
 
         <div className="relative flex items-center justify-between">
           <button
@@ -496,11 +513,11 @@ function TodayView({
           </button>
           <div className="text-center">
             <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-rosewood/60"><MiraMark className="h-6 w-6" />Mira</p>
-            <h2 className="text-2xl font-semibold">{formatRuDate(today)}</h2>
+            <h2 className="text-2xl font-semibold">{formatRuDate(selectedDate)}</h2>
           </div>
           <button
             className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-ink shadow-sm sm:h-12 sm:w-12"
-            onClick={() => onOpenCalendar()}
+            onClick={() => onOpenCalendar(selectedDate)}
             aria-label="Открыть календарь"
           >
             <CalendarRange className="h-6 w-6" />
@@ -511,28 +528,44 @@ function TodayView({
           {weekDays.map((date) => {
             const parsed = parseIsoDate(date);
             const isToday = date === today;
+            const isSelected = date === selectedDate;
             const isPeriod = state.periodDays.includes(date);
-            const hasEntry = state.entries[date] ? hasTrackedData(state.entries[date]) : false;
+            const dayEntry = state.entries[date];
+            const hasEntry = dayEntry ? hasTrackedData(dayEntry) : false;
+            const markers = getDayStateMarkers(dayEntry, isPeriod);
             const labelIndex = (parsed.getDay() + 6) % 7;
             return (
               <button
                 key={date}
-                className={`today-strip-day ${isToday ? 'today' : ''} ${isPeriod ? 'period' : ''}`}
-                onClick={date === today ? onOpenTrack : () => onOpenCalendar(date)}
+                className={`today-strip-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${isPeriod ? 'period' : ''}`}
+                aria-current={isSelected ? 'date' : undefined}
+                aria-label={`${formatRuDate(date)}${isToday ? ', сегодня' : ''}${hasEntry || isPeriod ? ', есть отметки' : ''}`}
+                onClick={date <= today ? () => onSelectDate(date) : () => onOpenCalendar(date)}
               >
                 <span className="text-xs font-semibold text-rosewood/55">
-                  {weekdayLabels[labelIndex]}
+                  {isToday ? 'Сегодня' : weekdayLabels[labelIndex]}
                 </span>
                 <strong>{parsed.getDate()}</strong>
-                <small>{isPeriod ? '♥' : hasEntry ? '•' : ''}</small>
+                <DayStateMarkers markers={markers} />
               </button>
             );
           })}
         </div>
 
-        <div className="relative mx-auto mt-3 max-w-md text-center">
+        <div key={`summary-${selectedDate}`} className="selected-day-summary relative mx-auto mt-2 flex min-h-7 max-w-md flex-wrap items-center justify-center gap-1.5" aria-live="polite">
+          {selectedMarkers.length ? selectedMarkers.map((marker, index) => (
+            <span key={`${marker.label}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-white/75 px-2.5 py-1 text-[11px] font-semibold text-rosewood/70 shadow-sm">
+              <span aria-hidden="true">{marker.icon}</span>
+              {marker.label}
+            </span>
+          )) : (
+            <span className="text-xs font-medium text-rosewood/45">За этот день пока нет отметок</span>
+          )}
+        </div>
+
+        {tracksCycle ? <div key={`details-${selectedDate}`} className="selected-day-content relative mx-auto mt-3 max-w-md text-center">
           <span className="inline-flex rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-rosewood/65">
-            {state.periodDays.includes(today) ? 'Сегодня отмечены месячные' : delayDays ? `Задержка: ${delayDays} ${pluralDays(delayDays)}` : cycleDay ? `День цикла: ${cycleDay}` : 'Цикл пока не отмечен'}
+            {state.periodDays.includes(selectedDate) ? `${isViewingToday ? 'Сегодня' : 'В этот день'} отмечены месячные` : delayDays ? `Задержка: ${delayDays} ${pluralDays(delayDays)}` : cycleDay ? `День цикла: ${cycleDay}` : 'Цикл пока не отмечен'}
           </span>
           <p className="mt-3 text-xl font-semibold">
             {delayDays
@@ -570,15 +603,15 @@ function TodayView({
           {Boolean(delayDays) && (
             <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-rosewood/65">Цикл не начинается автоматически. Отметьте первый день месячных, когда они начнутся.</p>
           )}
-        </div>
+        </div> : <div className="selected-day-content relative mx-auto mt-4 max-w-md rounded-[24px] bg-white/65 p-4 text-center"><span className="text-xs font-semibold uppercase tracking-[0.14em] text-petal">Режим без месячных</span><h3 className="mt-2 text-xl font-semibold">Наблюдайте самочувствие без прогнозов цикла</h3><p className="mt-2 text-sm leading-6 text-rosewood/60">Симптомы, настроение, энергия и выбранные показатели сохраняются как обычно.</p></div>}
 
-        <div className="quick-actions relative mt-5 grid grid-cols-3 gap-2 text-center">
-          <QuickAction
-            active={state.periodDays.includes(today)}
+        <div className={`quick-actions relative mt-5 grid ${tracksCycle ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
+          {tracksCycle && <QuickAction
+            active={state.periodDays.includes(selectedDate)}
             icon={<Droplet className="h-8 w-8" />}
-            label={state.periodDays.includes(today) ? 'Месячные отмечены' : 'Отметить месячные'}
-            onClick={state.periodDays.includes(today) ? onEditPeriod : onTogglePeriod}
-          />
+            label={state.periodDays.includes(selectedDate) ? 'Месячные отмечены' : 'Отметить месячные'}
+            onClick={state.periodDays.includes(selectedDate) ? onEditPeriod : onTogglePeriod}
+          />}
           <QuickAction
             active={Boolean(entry.symptomsChecked || entry.symptoms.length || entry.moods?.length || entry.discharge?.length || entry.digestion?.length)}
             icon={<ScanHeart className="h-8 w-8" />}
@@ -587,10 +620,11 @@ function TodayView({
           />
           <QuickAction active={Boolean(entry.pain || entry.dayRating)} icon={<Smile className="h-8 w-8" />} label="Оценить день" onClick={onOpenTrack} />
         </div>
+        {tracksCycle && state.periodDays.includes(selectedDate) && <button type="button" className={`relative mx-auto mt-3 flex min-h-10 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold ${state.periodEnds.includes(selectedDate) ? 'bg-emerald-50 text-emerald-700' : 'bg-white/70 text-rosewood/65'}`} onClick={onTogglePeriodEnd}><Check className="h-4 w-4" />{state.periodEnds.includes(selectedDate) ? 'Окончание месячных подтверждено' : 'Месячные закончились сегодня'}</button>}
       </section>
 
-      {state.profile.showHormonoscope && <HormonoscopeCard state={state} onOpenTrack={onOpenTrack} />}
-      {state.profile.showCycloscope && <CycloscopeCard state={state} />}
+      {tracksCycle && state.profile.showHormonoscope && <HormonoscopeCard state={state} date={selectedDate} onOpenTrack={onOpenTrack} />}
+      {tracksCycle && state.profile.showCycloscope && <CycloscopeCard state={state} date={selectedDate} />}
 
       <div className="bento-grid">
       {showInAppReminder && <section className="bento-card bento-peach flex items-center justify-between gap-4 p-4 md:col-span-12"><div><p className="text-sm font-semibold">Небольшое напоминание</p><p className="mt-1 text-xs leading-5 text-rosewood/55">Если хотите, добавьте короткую запись о сегодняшнем дне.</p></div><button className="pill-button shrink-0" onClick={onOpenTrack}>Открыть</button></section>}
@@ -599,7 +633,7 @@ function TodayView({
 
       {!showInAppReminder && nextStep && <section className="bento-card bento-violet flex min-h-40 flex-col justify-between gap-4 p-5 md:col-span-7"><div className="relative"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Следующий шаг</p><h2 className="mt-2 text-xl font-semibold">{nextStep.title}</h2><p className="mt-2 max-w-lg text-sm leading-6 text-white/70">{nextStep.text}</p></div><button className="relative self-start rounded-full bg-white px-4 py-2 text-sm font-semibold text-petal shadow-sm" onClick={nextStep.action}>{nextStep.label}</button></section>}
 
-      <div className={nextStep && !showInAppReminder ? 'md:col-span-5' : 'md:col-span-12'}><DiaryProgressCard entry={entry} isPeriod={state.periodDays.includes(today)} trackingModules={state.profile.trackingModules} onOpen={onOpenTrack} /></div>
+      <div className={nextStep && !showInAppReminder ? 'md:col-span-5' : 'md:col-span-12'}><DiaryProgressCard entry={entry} isPeriod={state.periodDays.includes(selectedDate)} trackingModules={state.profile.trackingModules} onOpen={onOpenTrack} /></div>
 
       <div className="md:col-span-12"><CycleOverviewCard state={state} onOpenAnalytics={onOpenAnalytics} /></div>
       </div>
@@ -608,17 +642,19 @@ function TodayView({
   );
 }
 
-function HormonoscopeCard({ state, onOpenTrack }: { state: AppState; onOpenTrack: () => void }) {
-  const phase = getHormonoscope(state);
+function HormonoscopeCard({ state, date, onOpenTrack }: { state: AppState; date: string; onOpenTrack: () => void }) {
+  const phase = getHormonoscope(state, date);
   const phases = [
     { id: 'menstrual', label: 'Месячные' },
-    { id: 'follicular', label: 'Рост' },
+    { id: 'early-follicular', label: 'После' },
+    { id: 'late-follicular', label: 'Рост' },
     { id: 'ovulatory', label: 'Окно' },
-    { id: 'luteal', label: 'После' },
+    { id: 'early-luteal', label: 'После' },
+    { id: 'late-luteal', label: 'Перед' },
   ] as const;
   const tone = phase?.id === 'menstrual'
     ? 'from-rose-100 via-pink-50 to-white'
-    : phase?.id === 'follicular'
+    : phase?.id.includes('follicular')
       ? 'from-emerald-100 via-teal-50 to-white'
       : phase?.id === 'ovulatory'
         ? 'from-amber-100 via-orange-50 to-white'
@@ -642,7 +678,7 @@ function HormonoscopeCard({ state, onOpenTrack }: { state: AppState; onOpenTrack
         </div>
 
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/80"><div className="h-full rounded-full bg-gradient-to-r from-petal to-fuchsia-400 transition-all" style={{ width: `${phase.progress}%` }} /></div>
-        <div className="mt-2 grid grid-cols-4 gap-1">{phases.map((item) => <span key={item.id} className={`text-center text-[10px] font-semibold ${phase.id === item.id ? 'text-petal' : 'text-rosewood/35'}`}>{item.label}</span>)}</div>
+        <div className="mt-2 grid grid-cols-6 gap-1">{phases.map((item) => <span key={item.id} className={`text-center text-[9px] font-semibold ${phase.id === item.id ? 'text-petal' : 'text-rosewood/35'}`}>{item.label}</span>)}</div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-[1.15fr_0.85fr]">
           <div className="rounded-[24px] bg-white/75 p-4">
@@ -664,8 +700,8 @@ function HormonoscopeCard({ state, onOpenTrack }: { state: AppState; onOpenTrack
   );
 }
 
-function CycloscopeCard({ state }: { state: AppState }) {
-  const reading = getCycloscope(state);
+function CycloscopeCard({ state, date }: { state: AppState; date: string }) {
+  const reading = getCycloscope(state, date);
 
   return (
     <section className="relative overflow-hidden rounded-[30px] bg-gradient-to-br from-[#251d3d] via-[#493766] to-[#87659f] p-5 text-white shadow-soft sm:p-6">
@@ -1842,6 +1878,7 @@ function AnalyticsView({ state, onChange, onOpenDiary, onOpenReport }: { state: 
   const [wellbeingView, setWellbeingView] = useState<'summary' | 'symptoms' | 'sleep' | 'lifestyle'>(() => readAnalyticsPreference('wellbeing', ['summary', 'symptoms', 'sleep', 'lifestyle'], 'summary'));
   const [historyFilter, setHistoryFilter] = useState<'all' | 'cycle' | 'symptoms' | 'wellbeing' | 'sleep'>(() => readAnalyticsPreference('history', ['all', 'cycle', 'symptoms', 'wellbeing', 'sleep'], 'all'));
   const stats = getCycleStats(state);
+  const painRecurrence = getPainRecurrenceInsight(state);
   const today = todayIso();
   const hasCycleHistory = stats.cycleLengths.length >= 2;
   const selectedRanges = filterPeriodRangesForAnalytics(stats.ranges, periodFilter, today);
@@ -2005,6 +2042,7 @@ function AnalyticsView({ state, onChange, onOpenDiary, onOpenReport }: { state: 
             <div className="md:col-span-5"><AnalyticsCyclePreview currentDay={currentCycleDay} lastStart={lastRange?.start} cycleLengths={selectedCycleLengths} periodLength={averagePeriodLength} onOpen={() => setSection('cycle')} /></div>
             <div className="md:col-span-7"><TrackingRhythmChart dates={overviewDates} entries={state.entries} periodDays={state.periodDays} onOpen={() => setSection('wellbeing')} /></div>
           </div>
+          {painRecurrence && <section className="bento-card border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-5"><div className="flex items-start gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-petal shadow-sm"><ChartSpline className="h-5 w-5" /></span><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-petal">Mira заметила · осторожный прогноз</p><h2 className="mt-1 text-xl font-semibold">Боль может повторяться около {painRecurrence.typicalDays}</h2><p className="mt-2 text-sm leading-6 text-rosewood/65">{painRecurrence.message}</p><p className="mt-2 text-xs font-semibold text-rosewood/45">Основание: {painRecurrence.cyclesWithPain} из {painRecurrence.observedCycles} завершённых циклов.</p></div></div></section>}
         </div>
       )}
 
@@ -2165,10 +2203,10 @@ function TrackingRhythmChart({ dates, entries, periodDays, onOpen }: { dates: st
         ))}
       </div>
 
-      <div className="mt-4 flex items-start gap-3 rounded-2xl bg-violet-50/70 px-4 py-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-petal" />
-        <p className="text-sm leading-6 text-rosewood/65">{latestSignalDay ? `Последняя заполненная дата — ${formatRuDate(latestSignalDay.date)}. Пустая карточка означает, что в этот день вы ничего не сохраняли.` : 'Добавьте первую отметку — она сразу появится на этой ленте.'}</p>
-      </div>
+      <AnalyticsInterpretation
+        title={latestSignalDay ? `Последняя запись — ${formatRuDate(latestSignalDay.date)}` : 'История пока не началась'}
+        explanation={latestSignalDay ? 'Пустая карточка означает отсутствие сохранённой записи, а не отсутствие симптомов.' : 'Добавьте первую отметку — она сразу появится на этой ленте.'}
+      />
       {onOpen && <button className="mt-4 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-petal" onClick={onOpen}>Открыть самочувствие <ChevronRight className="h-4 w-4" /></button>}
     </section>
   );
@@ -2179,6 +2217,52 @@ function hasTrackedData(entry: DayEntry) {
     entry.dayRating || entry.waterMl > 0 || entry.mood || entry.moods?.length || (entry.sleepHours ?? 0) > 0 || entry.sleepQuality || entry.appetite ||
     (entry.steps ?? 0) > 0 || (entry.calories ?? 0) > 0 || entry.activity || entry.pain !== undefined || entry.flow !== undefined || entry.energy ||
     entry.hadSex || entry.symptomsChecked || entry.symptoms?.length || entry.discharge?.length || entry.digestion?.length || entry.contextTags?.length || entry.basalTemperature || entry.weightKg || entry.note.trim()
+  );
+}
+
+type DayStateMarker = {
+  icon: string;
+  label: string;
+  tone: 'period' | 'mood' | 'symptom' | 'neutral';
+};
+
+function getDayStateMarkers(entry: DayEntry | undefined, isPeriod: boolean): DayStateMarker[] {
+  const markers: DayStateMarker[] = [];
+  if (isPeriod) markers.push({ icon: '🩸', label: 'месячные', tone: 'period' });
+  if (!entry) return markers;
+
+  if (entry.mood) {
+    markers.push({ icon: moodIcons[entry.mood], label: moodLabels[entry.mood], tone: 'mood' });
+  } else if (entry.moods?.length) {
+    markers.push({ icon: '🙂', label: entry.moods[0], tone: 'mood' });
+  }
+
+  if (entry.symptoms.length || (entry.pain ?? 0) > 0) {
+    markers.push({ icon: '🤕', label: entry.symptoms[0] ?? 'боль', tone: 'symptom' });
+  }
+  if (entry.hadSex) markers.push({ icon: '♥', label: 'интимная жизнь', tone: 'period' });
+  if (entry.sleepHours !== undefined || entry.sleepQuality) markers.push({ icon: '🌙', label: 'сон', tone: 'neutral' });
+  if (entry.energy || entry.dayRating) markers.push({ icon: '⚡', label: 'оценка состояния', tone: 'mood' });
+  if (entry.discharge?.length || entry.digestion?.length || entry.contextTags?.length) {
+    markers.push({ icon: '●', label: 'другие отметки', tone: 'neutral' });
+  }
+
+  return markers;
+}
+
+function DayStateMarkers({ markers }: { markers: DayStateMarker[] }) {
+  if (!markers.length) return <span className="day-state-markers" aria-hidden="true" />;
+  const visible = markers.slice(0, 2);
+  const hiddenCount = markers.length - visible.length;
+  return (
+    <span className="day-state-markers" aria-label={markers.map(({ label }) => label).join(', ')}>
+      {visible.map((marker, index) => (
+        <i key={`${marker.label}-${index}`} className={`day-state-marker ${marker.tone}`} title={marker.label}>
+          {marker.icon}
+        </i>
+      ))}
+      {hiddenCount > 0 && <i className="day-state-more">+{hiddenCount}</i>}
+    </span>
   );
 }
 
@@ -2246,17 +2330,20 @@ function ReportView({ state, onChange, onBack }: { state: AppState; onChange: (s
     notes: false,
     sex: false,
   };
-  const draft = state.doctorReportDraft ?? { period: '3' as const, questions: '', included: defaultIncluded, updatedAt: todayIso() };
+  const draft = state.doctorReportDraft ?? { period: '3' as const, questions: '', included: defaultIncluded, updatedAt: todayIso(), excludedCycleStarts: [] };
   const period = draft.period;
   const questions = draft.questions;
   const included = { ...defaultIncluded, ...draft.included };
   const updateDraft = (updates: Partial<typeof draft>) => onChange({ ...state, doctorReportDraft: { ...draft, ...updates, updatedAt: todayIso() } });
   const stats = getCycleStats(state);
   const cycleLimit = period === 'all' ? null : Number(period);
-  const selectedRanges = cycleLimit ? stats.ranges.slice(-(cycleLimit + 1)) : stats.ranges;
+  const availableRanges = cycleLimit ? stats.ranges.slice(-(cycleLimit + 1)) : stats.ranges;
+  const excludedCycleStarts = draft.excludedCycleStarts ?? [];
+  const selectedRanges = availableRanges.filter((range) => !excludedCycleStarts.includes(range.start));
   const cutoff = selectedRanges[0]?.start;
+  const excludedWindows = availableRanges.flatMap((range, index) => excludedCycleStarts.includes(range.start) ? [{ start: range.start, end: availableRanges[index + 1]?.start ?? todayIso() }] : []);
   const entries = Object.values(state.entries)
-    .filter((entry) => entry.date <= todayIso() && (!cutoff || entry.date >= cutoff) && hasTrackedData(entry))
+    .filter((entry) => entry.date <= todayIso() && (!cutoff || entry.date >= cutoff) && !excludedWindows.some((window) => entry.date >= window.start && entry.date < window.end) && hasTrackedData(entry))
     .sort((left, right) => left.date.localeCompare(right.date));
   const cycleLengths = selectedRanges.slice(1).map((range, index) => daysBetween(selectedRanges[index].start, range.start));
   const symptomCounts = countTags(entries.flatMap((entry) => entry.symptoms ?? []));
@@ -2282,6 +2369,7 @@ function ReportView({ state, onChange, onBack }: { state: AppState; onChange: (s
   const hasReportContent = entries.length > 0 || selectedRanges.length > 0 || questions.trim().length > 0;
 
   const toggle = (option: ReportOption) => updateDraft({ included: { ...included, [option]: !included[option] } });
+  const toggleCycle = (start: string) => updateDraft({ excludedCycleStarts: excludedCycleStarts.includes(start) ? excludedCycleStarts.filter((item) => item !== start) : [...excludedCycleStarts, start] });
   const downloadTextCopy = () => {
     if (!hasReportContent) return;
     const preview = document.getElementById('doctor-report-preview');
@@ -2307,6 +2395,7 @@ function ReportView({ state, onChange, onBack }: { state: AppState; onChange: (s
 
       <section className="print-hide bento-card p-5">
         <div className="flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">Период отчёта</h2><p className="mt-1 text-sm text-rosewood/55">{entries.length} {pluralDays(entries.length)} с записями · черновик сохранён</p></div><select className="rounded-2xl bg-blush px-3 py-2 text-sm font-semibold outline-none" value={period} onChange={(event) => updateDraft({ period: event.target.value as typeof period })}><option value="3">3 цикла</option><option value="6">6 циклов</option><option value="all">Всё время</option></select></div>
+        {availableRanges.length > 1 && <div className="mt-4 border-t border-rosewood/10 pt-4"><p className="text-sm font-semibold">Циклы в отчёте</p><p className="mt-1 text-xs leading-5 text-rosewood/50">Исключённый цикл останется в истории, но не попадёт в расчёты и PDF.</p><div className="mt-3 flex flex-wrap gap-2">{availableRanges.slice(0, -1).reverse().map((range) => { const active = !excludedCycleStarts.includes(range.start); return <button key={range.start} type="button" aria-pressed={active} onClick={() => toggleCycle(range.start)} className={`rounded-full border px-3 py-2 text-xs font-semibold ${active ? 'border-petal bg-rose-50 text-petal' : 'border-rosewood/10 bg-white text-rosewood/45 line-through'}`}>{formatRuDate(range.start)}</button>; })}</div></div>}
       </section>
 
       <section className="print-hide bento-card p-5">
@@ -2442,7 +2531,7 @@ function CycleDynamicsChart({ cycles, periodLength, cycleStarted }: { cycles: Ar
           })}
         </svg> : <div className="flex h-full flex-col items-center justify-center text-center"><svg viewBox="0 0 100 42" className="h-24 w-full max-w-md" aria-hidden="true"><path d="M8 30 C22 30, 24 13, 38 18 S58 32, 68 19 S82 12, 92 22" fill="none" stroke="#DDD8E7" strokeWidth="2.5" strokeDasharray="4 4" />{[8, 38, 68, 92].map((x, index) => <circle key={x} cx={x} cy={[30, 18, 19, 22][index]} r="3" fill="#fff" stroke="#DDD8E7" strokeWidth="2" />)}</svg><p className="mt-2 max-w-sm text-sm font-semibold">Линия появится после двух завершённых циклов</p><p className="mt-1 max-w-sm text-xs leading-5 text-rosewood/50">{cycleStarted ? 'Отметьте начало следующих месячных — так завершится первый цикл.' : 'Сначала отметьте первый день месячных — так начнётся история цикла.'}</p></div>}
       </div>
-      {selectedCycle ? <div className="analytics-panel mt-4 flex items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-white p-3 shadow-sm" role="status" aria-live="polite"><div><p className="text-xs font-semibold uppercase tracking-wide text-petal">Цикл {selectedIndex! + 1}</p><p className="mt-1 font-semibold">{formatRuDate(selectedCycle.start)} — {formatRuDate(selectedCycle.end)}</p><p className="mt-1 text-xs text-rosewood/50">Выбранная точка графика</p></div><strong className="shrink-0 text-xl">{selectedCycle.length} дней</strong></div> : hasPoint && !ready ? <div className="mt-4 rounded-2xl bg-white/75 p-3 text-sm leading-6 text-rosewood/65">Первый завершённый цикл: {lengths[0]} дней. После следующего завершённого цикла точки соединятся линией.</div> : ready && <div className="mt-4 flex items-start gap-3 rounded-2xl bg-white/75 p-3"><span className={`mt-0.5 h-3 w-3 shrink-0 rounded-full ${latestOutsidePrevious ? 'bg-amber-400' : 'bg-emerald-400'}`} /><p className="text-sm leading-6 text-rosewood/65">{latestOutsidePrevious ? 'Последний цикл вышел за диапазон предыдущих записей. Это изменение вашей истории, а не медицинская оценка.' : hasPersonalRange ? `Ваш сохранённый диапазон: ${personalMin}–${personalMax} дней.` : 'Нажмите на точку, чтобы посмотреть даты. После третьего цикла появится личный диапазон.'}</p></div>}
+      {selectedCycle ? <div className="analytics-panel mt-4 flex items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-white p-3 shadow-sm" role="status" aria-live="polite"><div><p className="text-xs font-semibold uppercase tracking-wide text-petal">Цикл {selectedIndex! + 1}</p><p className="mt-1 font-semibold">{formatRuDate(selectedCycle.start)} — {formatRuDate(selectedCycle.end)}</p><p className="mt-1 text-xs text-rosewood/50">Выбранная точка графика</p></div><strong className="shrink-0 text-xl">{selectedCycle.length} дней</strong></div> : hasPoint && !ready ? <AnalyticsInterpretation title={`Первый цикл — ${lengths[0]} дней`} explanation="После следующего завершённого цикла точки соединятся линией и появится первое сравнение." /> : ready && <AnalyticsInterpretation tone={latestOutsidePrevious ? 'attention' : 'positive'} title={latestOutsidePrevious ? 'Последний цикл отличается от предыдущих' : hasPersonalRange ? 'Длина циклов остаётся в вашем диапазоне' : 'Появилось первое сравнение'} explanation={latestOutsidePrevious ? 'Он вышел за диапазон предыдущих записей. Это изменение личной истории, а не медицинская оценка.' : hasPersonalRange ? `По сохранённым данным ваш личный диапазон составляет ${personalMin}–${personalMax} дней.` : 'После третьего завершённого цикла Mira рассчитает ваш личный диапазон.'} />}
     </div>
   );
 }
@@ -2511,7 +2600,15 @@ function CyclePatternChart({ state, ranges }: { state: AppState; ranges: Array<{
   const hasData = recentRanges.length >= 2 && points.some((point) => point.samples > 0);
   const peak = points.reduce((best, point) => point.value > best.value ? point : best, points[0]);
 
-  return <section className="bento-card p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-petal">По дням цикла</p><h2 className="mt-2 text-xl font-semibold">Повторяемость</h2><p className="mt-1 text-sm leading-6 text-rosewood/55">Сравнение последних {recentRanges.length || 0} {pluralCycles(recentRanges.length || 0)} по одинаковым дням.</p></div><div className="flex rounded-xl bg-blush p-1">{([['symptoms', 'Симптомы'], ['wellbeing', 'Самочувствие']] as const).map(([id, label]) => <button key={id} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${mode === id ? 'bg-white text-petal shadow-sm' : 'text-rosewood/50'}`} onClick={() => setMode(id)}>{label}</button>)}</div></div>{hasData ? <><div className="mt-5 overflow-x-auto pb-2"><div className="min-w-[42rem]"><div className="grid h-7 overflow-hidden rounded-full text-[9px] font-semibold text-rosewood/55" style={{ gridTemplateColumns: `${state.profile.periodLength}fr ${Math.max(1, 14 - state.profile.periodLength)}fr ${Math.max(1, dayCount - 14)}fr` }}><span className="flex items-center justify-center bg-rose-100">Месячные</span><span className="flex items-center justify-center bg-violet-100">Первая половина</span><span className="flex items-center justify-center bg-indigo-100">Вторая половина</span></div><div className="mt-4 space-y-2">{recentRanges.map((range, rangeIndex) => <div key={range.start} className="grid grid-cols-[5.5rem_1fr] items-center gap-3"><span className="text-xs font-semibold text-rosewood/55">{formatRuDate(range.start)}</span><div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>{Array.from({ length: dayCount }, (_, index) => { const entry = state.entries[addDays(range.start, index)]; const raw = mode === 'symptoms' ? entry?.symptoms.length ? Math.max(1, ...Object.values(entry.symptomSeverity ?? {})) / 3 : 0 : entry ? average([entry.dayRating, entry.energy].map(Number).filter(Number.isFinite)) / 5 : 0; return <span key={`${rangeIndex}-${index}`} className={`h-5 rounded-full ${mode === 'symptoms' ? 'bg-rose-400' : 'bg-violet-500'} ${raw ? 'opacity-100' : 'opacity-10'}`} style={{ transform: `scaleY(${raw ? Math.max(0.35, raw) : 0.2})` }} title={`${index + 1}-й день: ${raw ? 'есть отметка' : 'нет данных'}`} />; })}</div></div>)}</div></div></div><div className="mt-5 overflow-x-auto pb-2"><div className="grid min-w-[42rem] gap-1" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>{points.map((point) => <div key={point.cycleDay} className="flex flex-col items-center gap-2"><div className="flex h-24 w-full items-end rounded-full bg-blush/70 p-0.5"><span className={`w-full rounded-full ${mode === 'symptoms' ? 'bg-gradient-to-t from-rose-400 to-pink-300' : 'bg-gradient-to-t from-violet-500 to-indigo-300'} ${point.samples ? 'opacity-100' : 'opacity-10'}`} style={{ height: `${point.samples ? Math.max(10, point.value * 100) : 5}%` }} title={`День ${point.cycleDay}: ${point.samples} отметок`} /></div><span className="text-[9px] font-medium text-rosewood/40">{[1, 7, 14, 21, 28, 35].includes(point.cycleDay) ? point.cycleDay : ''}</span></div>)}</div></div><div className="mt-3 rounded-2xl bg-blush p-3 text-sm leading-6 text-rosewood/65">{mode === 'symptoms' ? `Больше всего сопоставимых симптомов отмечено около ${peak.cycleDay}-го дня цикла.` : `Наиболее выраженные отметки самочувствия находятся около ${peak.cycleDay}-го дня цикла.`} Фазы показаны ориентировочно по календарным дням; это наблюдение, а не медицинский вывод.</div></> : <div className="mt-5 rounded-2xl bg-blush p-4 text-sm leading-6 text-rosewood/60">Для сравнения нужны отметки минимум в двух циклах. Продолжайте добавлять симптомы или оценку самочувствия — пропуски не считаются отсутствием симптомов.</div>}</section>;
+  return <section className="bento-card p-5"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-petal">По дням цикла</p><h2 className="mt-2 text-xl font-semibold">Повторяемость</h2><p className="mt-1 text-sm leading-6 text-rosewood/55">Сравнение последних {recentRanges.length || 0} {pluralCycles(recentRanges.length || 0)} по одинаковым дням.</p></div><div className="flex rounded-xl bg-blush p-1">{([['symptoms', 'Симптомы'], ['wellbeing', 'Самочувствие']] as const).map(([id, label]) => <button key={id} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${mode === id ? 'bg-white text-petal shadow-sm' : 'text-rosewood/50'}`} onClick={() => setMode(id)}>{label}</button>)}</div></div>{hasData ? <><div className="mt-5 overflow-x-auto pb-2"><div className="min-w-[42rem]"><div className="grid h-7 overflow-hidden rounded-full text-[9px] font-semibold text-rosewood/55" style={{ gridTemplateColumns: `${state.profile.periodLength}fr ${Math.max(1, 14 - state.profile.periodLength)}fr ${Math.max(1, dayCount - 14)}fr` }}><span className="flex items-center justify-center bg-rose-100">Месячные</span><span className="flex items-center justify-center bg-violet-100">Первая половина</span><span className="flex items-center justify-center bg-indigo-100">Вторая половина</span></div><div className="mt-4 space-y-2">{recentRanges.map((range, rangeIndex) => <div key={range.start} className="grid grid-cols-[5.5rem_1fr] items-center gap-3"><span className="text-xs font-semibold text-rosewood/55">{formatRuDate(range.start)}</span><div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>{Array.from({ length: dayCount }, (_, index) => { const entry = state.entries[addDays(range.start, index)]; const raw = mode === 'symptoms' ? entry?.symptoms.length ? Math.max(1, ...Object.values(entry.symptomSeverity ?? {})) / 3 : 0 : entry ? average([entry.dayRating, entry.energy].map(Number).filter(Number.isFinite)) / 5 : 0; return <span key={`${rangeIndex}-${index}`} className={`h-5 rounded-full ${mode === 'symptoms' ? 'bg-rose-400' : 'bg-violet-500'} ${raw ? 'opacity-100' : 'opacity-10'}`} style={{ transform: `scaleY(${raw ? Math.max(0.35, raw) : 0.2})` }} title={`${index + 1}-й день: ${raw ? 'есть отметка' : 'нет данных'}`} />; })}</div></div>)}</div></div></div><div className="mt-5 overflow-x-auto pb-2"><div className="grid min-w-[42rem] gap-1" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>{points.map((point) => <div key={point.cycleDay} className="flex flex-col items-center gap-2"><div className="flex h-24 w-full items-end rounded-full bg-blush/70 p-0.5"><span className={`w-full rounded-full ${mode === 'symptoms' ? 'bg-gradient-to-t from-rose-400 to-pink-300' : 'bg-gradient-to-t from-violet-500 to-indigo-300'} ${point.samples ? 'opacity-100' : 'opacity-10'}`} style={{ height: `${point.samples ? Math.max(10, point.value * 100) : 5}%` }} title={`День ${point.cycleDay}: ${point.samples} отметок`} /></div><span className="text-[9px] font-medium text-rosewood/40">{[1, 7, 14, 21, 28, 35].includes(point.cycleDay) ? point.cycleDay : ''}</span></div>)}</div></div><AnalyticsInterpretation title={mode === 'symptoms' ? `Симптомы чаще отмечены около ${peak.cycleDay}-го дня` : `Самочувствие сильнее меняется около ${peak.cycleDay}-го дня`} explanation="Сравниваются одинаковые дни сохранённых циклов. Фазы определены ориентировочно; это личное наблюдение, а не медицинский вывод." /></> : <div className="mt-5 rounded-2xl bg-blush p-4 text-sm leading-6 text-rosewood/60">Для сравнения нужны отметки минимум в двух циклах. Продолжайте добавлять симптомы или оценку самочувствия — пропуски не считаются отсутствием симптомов.</div>}</section>;
+}
+
+function AnalyticsInterpretation({ title, explanation, tone = 'neutral' }: { title: string; explanation: string; tone?: 'neutral' | 'positive' | 'attention' }) {
+  const toneClass = tone === 'positive' ? 'border-emerald-100 bg-emerald-50/70 text-emerald-700' : tone === 'attention' ? 'border-amber-100 bg-amber-50/80 text-amber-700' : 'border-violet-100 bg-violet-50/70 text-petal';
+  return <aside className={`mt-4 flex items-start gap-3 rounded-2xl border px-4 py-3 ${toneClass}`}>
+    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/80 shadow-sm"><Sparkles className="h-4 w-4" /></span>
+    <div><p className="text-[10px] font-semibold uppercase tracking-[0.1em] opacity-70">Что это значит</p><strong className="mt-1 block text-sm text-rosewood">{title}</strong><p className="mt-1 text-xs leading-5 text-rosewood/60">{explanation}</p></div>
+  </aside>;
 }
 
 function ChartSection({ title, points, color, empty }: { title: string; points: Array<{ date: string; value: number; label: string }>; color: string; empty: string }) {
@@ -2710,6 +2807,13 @@ function ProfileView({
       </>}
 
       {profileSection === 'cycle' && <><section className="bento-card p-5">
+      <div className="mb-5 rounded-[24px] bg-blush p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-petal">Режим наблюдения</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <button type="button" className={`rounded-2xl border p-4 text-left ${state.profile.trackingMode === 'cycle' ? 'border-petal bg-white shadow-sm' : 'border-transparent bg-white/55'}`} onClick={() => updateProfile('trackingMode', 'cycle')}><strong className="block text-sm">Цикл и самочувствие</strong><small className="mt-1 block text-xs leading-5 text-rosewood/55">Прогноз месячных, фазы и календарная аналитика.</small></button>
+          <button type="button" className={`rounded-2xl border p-4 text-left ${state.profile.trackingMode === 'wellbeing-only' ? 'border-petal bg-white shadow-sm' : 'border-transparent bg-white/55'}`} onClick={() => updateProfile('trackingMode', 'wellbeing-only')}><strong className="block text-sm">Только самочувствие</strong><small className="mt-1 block text-xs leading-5 text-rosewood/55">Без прогнозов месячных и овуляции. История циклов сохранится.</small></button>
+        </div>
+      </div>
       <div className="mb-5 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blush">
           <Settings2 className="h-5 w-5 text-petal" />
@@ -2728,7 +2832,7 @@ function ProfileView({
             placeholder="Например, Анна"
           />
         </Field>
-        <Field label="Средняя длина цикла">
+        {state.profile.trackingMode === 'cycle' && <Field label="Средняя длина цикла">
           <input
             type="number"
             min={18}
@@ -2737,8 +2841,8 @@ function ProfileView({
             value={state.profile.cycleLength}
             onChange={(event) => updateProfileNumber('cycleLength', event.target.value, 18, 60)}
           />
-        </Field>
-        <Field label="Длительность месячных">
+        </Field>}
+        {state.profile.trackingMode === 'cycle' && <Field label="Длительность месячных">
           <input
             type="number"
             min={1}
@@ -2747,7 +2851,7 @@ function ProfileView({
             value={state.profile.periodLength}
             onChange={(event) => updateProfileNumber('periodLength', event.target.value, 1, 14)}
           />
-        </Field>
+        </Field>}
       </div>
       <p className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><Check className="h-4 w-4" />Настройки сохраняются автоматически</p>
       </section><ProfileSectionReset section="cycle" armed={settingsReset === 'cycle'} onArm={() => setSettingsReset('cycle')} onCancel={() => setSettingsReset(null)} onConfirm={() => resetProfileSection('cycle')} /></>}

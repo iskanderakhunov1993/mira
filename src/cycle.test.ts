@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createDayEntry, defaultProfile } from './data';
-import { dischargeOptions, filterPeriodRangesForAnalytics, getCycleAnalyticsEmptyGuidance, getCycleStats, getCycloscope, getHormonoscope, getPeriodRanges, getPredictedPeriodDays, getSymptomSeveritySummary, getWeekSummary, getZodiacSign, quickSymptomOptions, symptomGroups, symptomOptions } from './cycle';
+import { dischargeOptions, filterPeriodRangesForAnalytics, getCycleAnalyticsEmptyGuidance, getCycleStats, getCycloscope, getHormonoscope, getPainRecurrenceInsight, getPeriodRanges, getPredictedPeriodDays, getSymptomSeveritySummary, getWeekSummary, getZodiacSign, quickSymptomOptions, symptomGroups, symptomOptions } from './cycle';
 import type { AppState } from './types';
 
 const stateWithPeriods = (periodDays: string[]): AppState => ({
   onboardingComplete: true,
   profile: { ...defaultProfile },
   periodDays,
+  periodEnds: [],
   entries: {},
   savedArticles: [],
 });
@@ -152,14 +153,20 @@ describe('cycle calculations', () => {
       label: 'Менструальная фаза',
     });
     expect(getHormonoscope(state, '2026-07-24')).toMatchObject({
-      id: 'follicular',
+      id: 'late-follicular',
     });
     expect(getHormonoscope(state, '2026-07-27')).toMatchObject({
       id: 'ovulatory',
     });
     expect(getHormonoscope(state, '2026-08-02')).toMatchObject({
-      id: 'luteal',
+      id: 'early-luteal',
     });
+  });
+
+  it('shows a pain recurrence insight only after repeated observations in completed cycles', () => {
+    const state = stateWithPeriods(['2026-03-01', '2026-04-01', '2026-05-01', '2026-06-01', '2026-07-01']);
+    state.entries = Object.fromEntries(['2026-03-02', '2026-04-03', '2026-05-02'].map((date) => [date, { ...createDayEntry(date), pain: 2 }]));
+    expect(getPainRecurrenceInsight(state)).toMatchObject({ observedCycles: 4, cyclesWithPain: 3 });
   });
 
   it('does not show hormonoscope before the first recorded cycle start', () => {
