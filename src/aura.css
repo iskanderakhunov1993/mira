@@ -1138,6 +1138,64 @@ svg { display: block; fill: none; stroke-linecap: round; stroke-linejoin: round;
 .personal-cycle-symptoms button small { color: #9a8e97; font-size: 4.8px; text-align: right; }
 .personal-cycle-no-symptoms { margin: 9px 0 0; color: #9a8e97; font-size: 5.3px; }
 .personal-cycle-comparison .symptom-compare-rows > button { grid-template-columns: 34px minmax(0,1fr) auto 78px 12px; }
+
+/* Today: Flo-inspired orientation, adapted to Mira's cautious forecast contract. */
+.flo-inspired-today {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 100%;
+  color: #151718;
+  background: linear-gradient(155deg,#e9f9f8 0%,#c9f0ee 46%,#d8f6f3 100%);
+}
+.flo-inspired-today::before,
+.flo-inspired-today::after {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+.flo-inspired-today::before { width: 520px; height: 260px; left: -210px; top: 365px; background: rgba(255,255,255,.42); transform: rotate(18deg); }
+.flo-inspired-today::after { width: 500px; height: 250px; right: -270px; top: 520px; background: rgba(122,220,215,.2); transform: rotate(-16deg); }
+.flo-inspired-today .app-header { min-height: 64px; }
+.flo-inspired-today .app-header h1 { color: #17191a; font-size: 20px; font-weight: 600; }
+.flo-inspired-today .avatar-button { width: 44px; height: 44px; border-radius: 50%; color: #fff; background: #12a66f; }
+.flo-inspired-today .avatar-button svg { width: 31px; height: 31px; }
+.flo-inspired-today .header-calendar-button { color: #111; }
+.flo-inspired-today .header-calendar-button svg { width: 25px; height: 25px; stroke-width: 2.2; }
+.flo-inspired-today .date-strip { gap: 1px; margin: 2px -7px 8px; }
+.flo-inspired-today .date-strip button { height: 88px; border-radius: 50%; color: #182b2b; }
+.flo-inspired-today .date-strip small { color: #536666; font-size: 8px; font-weight: 650; }
+.flo-inspired-today .date-strip strong { margin-top: 7px; color: #159e9a; font-size: 17px; font-weight: 600; }
+.flo-inspired-today .date-strip button.active { width: 58px; height: 58px; justify-self: center; align-self: center; color: #139d98; border-radius: 50%; background: #fff !important; box-shadow: 0 8px 22px rgba(54,116,113,.1); }
+.flo-inspired-today .date-strip button.active small { color: #58706f; font-size: 6px; }
+.flo-inspired-today .date-strip button.active strong { color: #159e9a; }
+.flo-inspired-today .date-strip-markers { position: absolute; top: 68px; min-height: 12px; }
+.flo-inspired-today .cycle-status-card { overflow: visible; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.flo-inspired-today .cycle-status-card::after { display: none; }
+.flo-forecast-focus { min-height: 310px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 8px 20px; text-align: center; }
+.flo-forecast-focus > span { font-size: 16px; font-weight: 700; }
+.flo-forecast-focus h2 { max-width: 360px; margin: 20px 0 0; font-size: clamp(42px,12vw,58px); line-height: .98; letter-spacing: -.055em; }
+.flo-forecast-focus p { margin: 36px 0 0; color: #172323; font-size: 15px; line-height: 1.35; }
+.flo-forecast-focus small { margin-top: 10px; color: #66817f; font-size: 8px; font-weight: 650; }
+.flo-inspired-today .cycle-empty-action { width: max-content; margin: -26px auto 24px; border-color: transparent; background: rgba(255,255,255,.78); }
+.flo-inspired-today .cycle-inline-actions { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 0 0 33px; padding: 0 2px; }
+.flo-inspired-today .cycle-inline-actions button { gap: 10px; }
+.flo-inspired-today .cycle-action-icon { width: 68px; height: 68px; color: #111; background: #fff; box-shadow: 0 8px 20px rgba(48,108,106,.08); }
+.flo-inspired-today .cycle-action-icon svg { width: 29px; height: 29px; stroke-width: 2; }
+.flo-inspired-today .cycle-inline-actions strong { max-width: 100px; color: #111; font-size: 9px; line-height: 1.35; }
+.flo-inspired-today .cycle-inline-actions .period-action .cycle-action-icon,
+.flo-inspired-today .cycle-inline-actions .period-action.active .cycle-action-icon { color: white; background: #ff4f82; box-shadow: 0 10px 25px rgba(255,79,130,.25); }
+.flo-inspired-today .cycle-inline-actions .symptom-action.active .cycle-action-icon { color: #111; background: #fff; box-shadow: 0 8px 20px rgba(48,108,106,.08); }
+.flo-inspired-today .combined-home-surface,
+.flo-inspired-today .scopes-module,
+.flo-inspired-today .cycloscope-mini-card { border-color: rgba(255,255,255,.7); background: rgba(255,255,255,.78); box-shadow: 0 12px 30px rgba(46,112,108,.08); backdrop-filter: blur(12px); }
+@media (max-width: 360px) {
+  .flo-forecast-focus { min-height: 285px; }
+  .flo-inspired-today .cycle-action-icon { width: 60px; height: 60px; }
+  .flo-inspired-today .cycle-inline-actions strong { font-size: 8px; }
+}
 @media (max-width: 480px) {
   .personal-cycle-comparison .symptom-comparison-header { display: grid; }
   .personal-cycle-comparison .symptom-range-switch { justify-self: stretch; }

@@ -96,7 +96,12 @@ import {
 } from 'lucide-react';
 import './aura.css';
 import { StartupGate } from './StartupSplash';
-import { clearAuraDatabaseState, loadAuraDatabaseState, persistAuraDatabaseState } from './auraDb';
+import {
+  clearAuraServerState,
+  loadAuraServerState,
+  MiraApiError,
+  persistAuraServerState,
+} from './auraApi';
 import { deliverFeedback, type FeedbackCategory, type FeedbackPayload } from './feedback';
 import { knowledgeArticles as medicalKnowledgeArticles, type KnowledgeArticle } from './knowledge';
 import { evaluatePeriodCheckin } from './periodCheckin';
@@ -317,10 +322,10 @@ function App({ initialData }: { initialData: AuraState }) {
     setPersistStatus('saving');
     let active = true;
     const timer = window.setTimeout(() => {
-      void persistAuraDatabaseState(data).then((saved) => {
+      void persistAuraServerState(data).then((saved) => {
         if (!active) return;
         setPersistStatus(saved ? 'saved' : 'error');
-        if (!saved) setToast('Не удалось сохранить локально. Проверьте доступ к хранилищу.');
+        if (!saved) setToast('Не удалось сохранить на сервере. Проверьте подключение.');
       });
     }, 260);
     return () => {
@@ -466,7 +471,7 @@ function App({ initialData }: { initialData: AuraState }) {
   };
 
   const deleteAllData = async () => {
-    const deleted = await clearAuraDatabaseState();
+    const deleted = await clearAuraServerState();
     if (!deleted) {
       setOverlay('data-controls');
       setToast('Не удалось полностью удалить данные. Попробуйте ещё раз.');
@@ -476,7 +481,7 @@ function App({ initialData }: { initialData: AuraState }) {
     setOnboardingStep(0);
     setScreen('onboarding');
     setOverlay(null);
-    setToast('Локальные данные удалены');
+    setToast('Данные аккаунта удалены');
   };
 
   const openArticle = (articleId: string) => {
@@ -618,7 +623,7 @@ function App({ initialData }: { initialData: AuraState }) {
           />}
           {overlay === 'quick-symptoms' && <QuickSymptomsSheet date={data.selectedDate} day={data.entries[data.selectedDate] ?? emptyAuraEntry(data.selectedDate)} showIntimate={data.modules.intimate} onClose={() => setOverlay(null)} onSave={(patch) => { changeData((current) => ({ ...current, modules: { ...current.modules, cycle: true }, entries: { ...current.entries, [current.selectedDate]: { ...(current.entries[current.selectedDate] ?? emptyAuraEntry(current.selectedDate)), ...patch, completionQuality: current.entries[current.selectedDate]?.completionQuality === 'full' ? 'full' : 'focused', updatedAt: new Date().toISOString() } } })); setOverlay('symptom-saved'); }} />}
           {overlay === 'symptom-saved' && <SymptomSavedSheet day={data.entries[data.selectedDate] ?? emptyAuraEntry()} onClose={() => setOverlay(null)} onOpenDiary={() => { setOverlay(null); open('diary'); }} onOpenAnalytics={() => { setAnalyticsSection('wellbeing'); setWellbeingMode('symptoms'); setOverlay(null); open('analytics'); }} />}
-          {!online && <div className="offline-banner" role="status"><CloudMoon />Нет сети · записи продолжат сохраняться на устройстве</div>}
+          {!online && <div className="offline-banner" role="status"><CloudMoon />Нет сети · для загрузки и сохранения истории требуется подключение</div>}
           {toast && <div className="aura-toast" role="status"><Check />{toast}</div>}
           {!['onboarding', 'article', 'cycle-report', 'report', 'profile', 'calendar'].includes(screen) && <BottomNav screen={screen} onOpen={open} />}
         </div>
@@ -691,10 +696,10 @@ function Onboarding({ step, setStep, initial, onFinish }: { step: number; setSte
           <p>Короткие отметки помогут увидеть вашу личную картину — постепенно и без диагнозов.</p>
         </div>
         <button className={`onboarding-privacy-card ${showPrivacyDetails ? 'open' : ''}`} onClick={() => setShowPrivacyDetails((value) => !value)} aria-expanded={showPrivacyDetails}>
-          <span><LockKeyhole /></span><p><strong>Ваши записи остаются на этом устройстве</strong><small>Как Mira хранит данные</small></p><ChevronDown />
+          <span><LockKeyhole /></span><p><strong>Ваши записи защищены в аккаунте</strong><small>Как Mira хранит данные</small></p><ChevronDown />
         </button>
         {showPrivacyDetails && <div className="onboarding-privacy-details">
-          <span><ShieldCheck /><p><strong>Локальное хранение</strong><small>Записи сохраняются в базе этого браузера и не отправляются на сервер.</small></p></span>
+          <span><ShieldCheck /><p><strong>Защищённое хранение</strong><small>История сохраняется в зашифрованной базе Mira и доступна только после входа.</small></p></span>
           <span><FileDown /><p><strong>Экспорт под вашим контролем</strong><small>Копию можно скачать самостоятельно; личные заметки выключены по умолчанию.</small></p></span>
           <span><Trash2 /><p><strong>Удаление в любой момент</strong><small>Управление данными всегда доступно в профиле.</small></p></span>
         </div>}
@@ -780,7 +785,7 @@ function Onboarding({ step, setStep, initial, onFinish }: { step: number; setSte
         <div className="onboarding-reminder is-unavailable">
           <span className="choice-icon"><Bell /></span><span><strong>Напоминания появятся позже</strong><small>В веб-версии они пока недоступны, поэтому Mira не будет обещать уведомление.</small></span>
         </div>
-        <div className="onboarding-privacy-row"><LockKeyhole />Записи хранятся локально · их можно экспортировать или удалить</div>
+        <div className="onboarding-privacy-row"><LockKeyhole />Зашифрованная история · её можно экспортировать или удалить</div>
         <p className="onboarding-disclaimer">Mira помогает наблюдать за самочувствием, но не ставит диагноз и не заменяет врача.</p>
       </>}
     </main>
@@ -856,7 +861,7 @@ function DateWheelPicker({ value, onChange }: { value?: string; onChange: (value
     <DateWheelColumn label="День" items={days} selected={day} onSelect={(nextDay) => setDate(year, month, nextDay)} />
     <DateWheelColumn label="Месяц" items={months} selected={month} onSelect={(nextMonth) => setDate(year, nextMonth, day)} />
     <DateWheelColumn label="Год" items={years} selected={year} onSelect={(nextYear) => setDate(nextYear, month, day)} />
-    <span className="date-confirm"><Check /> {day} {dateWheelMonthsGenitive[month - 1]} {year} · только на устройстве</span>
+    <span className="date-confirm"><Check /> {day} {dateWheelMonthsGenitive[month - 1]} {year} · сохранится в аккаунте</span>
   </div>;
 }
 
@@ -884,7 +889,7 @@ function DateStrip({ data, onSelectDate }: { data: AuraState; onSelectDate: (dat
       entry?.workout || entry?.activity ? '🏃' : '',
     ].filter(Boolean);
     return <button key={value} className={active ? 'active' : ''} disabled={value > AURA_TODAY} onClick={() => onSelectDate(value)} aria-current={active ? 'date' : undefined} aria-label={`${formatRuDate(value)}${isToday ? ', сегодня' : ''}${markers.length ? `, отметок: ${markers.length}` : ''}`}>
-      <small>{isToday ? 'Сегодня' : ruWeekdays[date.getDay()].slice(0, 1)}</small>
+      <small>{ruWeekdays[date.getDay()].slice(0, 1)}</small>
       <strong>{date.getDate()}</strong>
       <span className="date-strip-markers" aria-hidden="true">
         {markers.slice(0, 3).map((marker, index) => <i key={`${marker}-${index}`}>{marker}</i>)}
@@ -903,33 +908,29 @@ function Today({ data, scenario, onOpen, onOpenArticle, onSelectDate, onShowAtte
   const metrics = getAuraCycleMetrics(data, selectedDate);
   const range = formatRuRange(metrics.forecast?.start, metrics.forecast?.end);
   const daysUntilPeriod = metrics.forecast ? Math.max(0, daysBetween(selectedDate, metrics.forecast.start)) : null;
-  const contextArticle = medicalKnowledgeArticles.find((article) => article.id === (periodLogged ? 'cramps-care' : 'forecast-confidence')) ?? medicalKnowledgeArticles[0];
-  const confidenceLabel = metrics.forecast?.confidence === 'personal'
-    ? `Личный диапазон по ${metrics.forecast.cyclesUsed} ${pluralRu(metrics.forecast.cyclesUsed, 'циклу', 'циклам', 'циклам')}`
-    : metrics.forecast?.confidence === 'growing'
-      ? `Диапазон уточняется по ${metrics.forecast.cyclesUsed} ${pluralRu(metrics.forecast.cyclesUsed, 'циклу', 'циклам', 'циклам')}`
-      : 'Предварительный календарный ориентир';
-  const forecast = scenario === 'empty'
-    ? { title: 'Когда начались месячные?', text: 'После первой даты появится день цикла. Прогноз потребует больше истории.' }
-    : metrics.daysLate > 0
-      ? { title: `Задержка ${metrics.daysLate} ${pluralRu(metrics.daysLate, 'день', 'дня', 'дней')}`, text: `Ожидаемое окно ${range} прошло. Это календарный расчёт, а не диагноз.` }
-      : scenario === 'first'
-        ? metrics.forecast ? { title: `Начало возможно ${range}`, text: 'Пока это широкий календарный диапазон. Следующая фактическая дата поможет сделать его личнее.' } : { title: 'Первый цикл продолжается', text: 'Отметьте следующую дату начала — после этого появится первый личный прогноз.' }
-        : { title: daysUntilPeriod === 0 ? 'Окно возможного начала — сегодня' : `До начала окна около ${daysUntilPeriod} ${pluralRu(daysUntilPeriod ?? 0, 'дня', 'дней', 'дней')}`, text: `Начало возможно ${range}. Это диапазон, а не точная дата.` };
-  return <div className="screen today-screen">
+  return <div className="screen today-screen flo-inspired-today">
     <AppHeader avatar={data.avatar} title={formatRuDate(selectedDate)} onProfile={() => onOpen('profile')} onCalendar={() => onOpen('calendar')} />
     <DateStrip data={data} onSelectDate={onSelectDate} />
     <section className="cycle-status-card">
-      <div className="cycle-status-main"><div className="cycle-day-value"><strong>{metrics.cycleDay ?? '—'}</strong><span>{metrics.cycleDay ? 'день цикла' : 'день пока неизвестен'}</span></div><div className="cycle-status-copy"><h2>{forecast.title}</h2><p>{forecast.text}</p></div></div>
-      {scenario !== 'empty' ? <div className="cycle-timeline">
-        <div className="cycle-timeline-head"><span>Основание прогноза</span><strong>{confidenceLabel}</strong></div>
-        {data.homeCards.knowledge && <button className="cycle-context-article" onClick={() => onOpenArticle(contextArticle.id)} aria-label={`Открыть статью: ${contextArticle.title}`}><span><BookOpenText /></span><div><small>По теме · {contextArticle.readingMinutes} {pluralRu(contextArticle.readingMinutes, 'минута', 'минуты', 'минут')}</small><strong>{contextArticle.title}</strong></div><ChevronRight /></button>}
-      </div> : <button className="cycle-empty-action" onClick={onOpenPeriodStart}><Plus /> Добавить первый день месячных</button>}
-      <div className="cycle-inline-actions"><button className={periodLogged ? 'active period-action' : 'period-action'} aria-pressed={periodLogged} onClick={onOpenPeriodStart}><span className="cycle-action-icon"><Droplet /></span><strong>{periodLogged ? 'Кровотечение отмечено' : 'Отметить кровотечение'}</strong></button><button className={day.symptoms.length || day.moods.length || day.energy ? 'active symptom-action' : 'symptom-action'} aria-pressed={Boolean(day.symptoms.length || day.moods.length || day.energy)} onClick={onOpenQuickSymptoms}><span className="cycle-action-icon"><Plus /></span><strong>{day.symptoms.length || day.moods.length || day.energy ? 'Состояние отмечено' : 'Симптомы'}</strong></button></div>
+      <div className="flo-forecast-focus">
+        <span>{scenario === 'empty' ? 'Первый ориентир' : metrics.daysLate > 0 ? 'Ожидаемое окно прошло' : 'Месячные могут начаться через'}</span>
+        {scenario === 'empty'
+          ? <h2>Добавьте дату</h2>
+          : metrics.daysLate > 0
+            ? <h2>{metrics.daysLate} {pluralRu(metrics.daysLate, 'день', 'дня', 'дней')} задержки</h2>
+            : <h2>{daysUntilPeriod} {pluralRu(daysUntilPeriod ?? 0, 'день', 'дня', 'дней')}</h2>}
+        <p>{scenario === 'empty' ? 'После первой даты появится день цикла' : `Возможное начало: ${range}`}</p>
+        {metrics.cycleDay && <small>{metrics.cycleDay} день цикла · календарный ориентир</small>}
+      </div>
+      <div className="cycle-inline-actions">
+        <button className={periodLogged ? 'active period-action' : 'period-action'} aria-pressed={periodLogged} onClick={onOpenPeriodStart}><span className="cycle-action-icon"><Droplet /></span><strong>{periodLogged ? 'Месячные отмечены' : 'Отметить месячные'}</strong></button>
+        <button className={day.symptoms.length || day.moods.length || day.energy ? 'active symptom-action' : 'symptom-action'} aria-pressed={Boolean(day.symptoms.length || day.moods.length || day.energy)} onClick={onOpenQuickSymptoms}><span className="cycle-action-icon"><Plus /></span><strong>{day.symptoms.length || day.moods.length || day.energy ? 'Состояние отмечено' : 'Симптомы'}</strong></button>
+        <button className="diary-action" onClick={() => onOpen('diary')}><span className="cycle-action-icon"><Heart /></span><strong>Дневник</strong></button>
+      </div>
     </section>
     {(data.homeCards.rhythm || data.homeCards.dailyPlan) && <section className="surface combined-home-surface">
       {data.homeCards.rhythm && <><div className="section-heading"><div><span className="eyebrow">{selectedIsToday ? 'Сегодня' : formatRuDate(selectedDate)}</span><h2>Ваш ритм</h2></div><button className="mini-link" onClick={onOpenHomeSettings}>Настроить</button></div><div className="metric-row rhythm-metric-row"><MetricCard icon={Moon} illustration="/mira-icons/rhythm-sleep.png?v=2" tone="indigo" label="Сон" value={day.sleepHours ? `${day.sleepHours} ч` : 'Добавить'} note={day.sleepQuality ?? 'Как прошла ночь?'} progress={day.sleepHours ? Math.min(100, day.sleepHours / 8 * 100) : 0} /><MetricCard icon={GlassWater} illustration="/mira-icons/rhythm-water.png?v=2" tone="cyan" label="Вода" value={day.water ? `${day.water.toLocaleString('ru-RU')} мл` : 'Добавить'} note={day.water ? 'За выбранный день' : 'Сколько выпили?'} progress={day.water ? Math.min(100, day.water / 2000 * 100) : 0} /><MetricCard icon={Footprints} illustration="/mira-icons/rhythm-steps.png?v=2" tone="sage" label="Шаги" value={day.steps ? day.steps.toLocaleString('ru-RU') : 'Добавить'} note={day.steps ? 'За выбранный день' : 'Отметить активность'} progress={day.steps ? Math.min(100, day.steps / 8000 * 100) : 0} /></div></>}
-      {data.homeCards.dailyPlan && <div className={`today-plan-preview ${data.homeCards.rhythm ? '' : 'is-first'}`}><div className="today-plan-title"><div><h2>Что может пригодиться</h2></div></div><div className="today-plan-grid"><button className="kit care-kit-card" onClick={onOpenDailyPlan} aria-label="Открыть аптечку"><img className="plan-3d-icon" src="/mira-icons/first-aid-kit.png" alt="" /><strong>Аптечка</strong></button><button className="movement" onClick={onOpenWorkout} aria-label="Открыть тренировку"><img className="plan-3d-icon" src="/mira-icons/workout.png" alt="" /><strong>Тренировка</strong></button><button className="vitamins support-options-card" onClick={onOpenSupportOptions} aria-label="Открыть возможные варианты поддержки"><img className="plan-3d-icon" src="/mira-icons/vitamins.png" alt="" /><strong>Что может помочь</strong><small>{day.symptoms.length ? `${day.symptoms.length} ${pluralRu(day.symptoms.length, 'отметка', 'отметки', 'отметок')}` : 'По симптомам'}</small></button></div></div>}
+      {data.homeCards.dailyPlan && <div className={`today-plan-preview ${data.homeCards.rhythm ? '' : 'is-first'}`}><div className="today-plan-title"><div><h2>Советы на каждый день</h2></div></div><div className="today-plan-grid"><button className="kit care-kit-card" onClick={onOpenDailyPlan} aria-label="Открыть аптечку"><img className="plan-3d-icon" src="/mira-icons/first-aid-kit.png" alt="" /><strong>Аптечка</strong></button><button className="movement" onClick={onOpenWorkout} aria-label="Открыть тренировку"><img className="plan-3d-icon" src="/mira-icons/workout.png" alt="" /><strong>Тренировка</strong></button><button className="vitamins support-options-card" onClick={onOpenSupportOptions} aria-label="Открыть возможные варианты поддержки"><img className="plan-3d-icon" src="/mira-icons/vitamins.png" alt="" /><strong>Что может помочь</strong><small>{day.symptoms.length ? `${day.symptoms.length} ${pluralRu(day.symptoms.length, 'отметка', 'отметки', 'отметок')}` : 'По симптомам'}</small></button></div></div>}
     </section>}
     {data.homeCards.hormonoscope && <ScopesModule data={data} date={selectedDate} onFeedback={onHormonoscopeFeedback} />}
     {data.homeCards.cycloscope && <CycloscopeMiniCard data={data} date={selectedDate} onFeedback={onCycloscopeFeedback} />}
@@ -2067,7 +2068,7 @@ function IntimacyEditor({ day, onChange }: { day: AuraDayEntry; onChange: (patch
   const clear = () => onChange({ intimate: undefined, intimacyComfort: undefined, intimacyAfter: [], intimacyDesire: undefined, intimacyNote: undefined });
 
   return <div className="intimacy-editor">
-    <p className="privacy-inline"><ShieldCheck /> Хранится на этом устройстве. В экспорт попадёт только с вашего разрешения.</p>
+    <p className="privacy-inline"><ShieldCheck /> Хранится в зашифрованной истории. В экспорт попадёт только с вашего разрешения.</p>
     {day.intimate !== true ? <div className="intimacy-start"><span className="intimacy-start-icon"><Heart /></span><div><strong>Добавляйте только когда близость была</strong><p>Пустой день не означает «не было» и не попадёт в аналитику.</p></div><button onClick={() => onChange({ intimate: true })}><Plus /> Отметить близость</button></div> : <>
       <div className="intimacy-question"><strong>Как прошло?</strong><span>Один вариант</span></div>
       <div className="intimacy-comfort-grid">{([
@@ -2616,7 +2617,7 @@ function CycleReport({ data, onBack, onOpenDoctorReport }: { data: AuraState; on
       : 'Длина циклов менялась — это видно в вашей истории';
   const firstName = data.profile.fullName.trim().split(/\s+/)[0];
   return <div className="screen cycle-report-screen">
-    <TopBack title="Отчёт о цикле" onBack={onBack} action={<span className="secure-badge"><ShieldCheck /> Локально</span>} />
+    <TopBack title="Отчёт о цикле" onBack={onBack} action={<span className="secure-badge"><ShieldCheck /> Защищено</span>} />
     <section className="cycle-report-selector" aria-label="Выберите цикл">
       <div><span className="eyebrow">История циклов</span><strong>{cycleOptions.length} {pluralRu(cycleOptions.length, 'цикл', 'цикла', 'циклов')}</strong></div>
       <div>{cycleOptions.map((cycle, index) => <button key={cycle.start} className={selectedStart === cycle.start ? 'active' : ''} onClick={() => setSelectedStart(cycle.start)}>
@@ -2785,7 +2786,7 @@ function Report({ data, onBack, onNotify }: { data: AuraState; onBack: () => voi
     return Boolean(cycleStart && reportStartSet.has(cycleStart) && (fact.category !== 'intimate' || intimate));
   }).slice(0, 12);
   return <div className="screen report-screen">
-    <TopBack title="Отчёт для врача" onBack={onBack} action={<span className="secure-badge"><ShieldCheck /> Локально</span>} />
+    <TopBack title="Отчёт для врача" onBack={onBack} action={<span className="secure-badge"><ShieldCheck /> Защищено</span>} />
     <section className="aura-hero report-hero"><span className="glass-label"><FileHeart /> Факты для консультации</span><h2>Подготовьте понятную историю</h2><p>Выберите только те данные, которыми готовы поделиться.</p></section>
     <section className="surface"><div className="section-heading"><div><span className="eyebrow">Период</span><h2>{metrics.completedCycles ? `Последние ${Math.min(reportRange, metrics.completedCycles)} ${pluralRu(Math.min(reportRange, metrics.completedCycles), 'цикл', 'цикла', 'циклов')}` : 'С начала наблюдений'}</h2></div></div>{metrics.completedCycles >= 3 ? <div className="analytics-range-tabs report-range-tabs" aria-label="Период отчёта">{([3,6,12] as const).map((value) => <button key={value} className={reportRange === value ? 'active' : ''} disabled={metrics.completedCycles < value} onClick={() => setReportRange(value)}>{value} циклов</button>)}</div> : <p className="chart-caption">Сейчас доступны факты по {metrics.completedCycles} {pluralRu(metrics.completedCycles, 'завершённому циклу', 'завершённым циклам', 'завершённым циклам')}. Сравнение появится после третьего.</p>}<div className="report-summary"><span><strong>{reportDays}</strong><small>{pluralRu(reportDays, 'день периода', 'дня периода', 'дней периода')}</small></span><span><strong>{metrics.completedCycles}</strong><small>{pluralRu(metrics.completedCycles, 'завершённый цикл', 'завершённых цикла', 'завершённых циклов')}</small></span><span><strong>{symptomDayCount}</strong><small>{pluralRu(symptomDayCount, 'день с симптомами', 'дня с симптомами', 'дней с симптомами')}</small></span></div></section>
     <section className="surface report-options"><div className="section-heading"><div><span className="eyebrow">Дополнительно</span><h2>Добавить в отчёт</h2></div>{optionalSections > 0 && <span className="soft-status">{optionalSections} {pluralRu(optionalSections, 'раздел', 'раздела', 'разделов')}</span>}</div>{([['sleep','Сон','Длительность и качество'],['water','Вода','Среднее количество по дням'],['activity','Шаги','История ежедневной активности'],['nutrition','Питание','Калорийность по сохранённым дням']] as const).map(([id,title,note])=><ToggleRow key={id} title={title} note={note} checked={sections[id]} onClick={() => setSections((current) => ({ ...current, [id]: !current[id] }))}/>)}<div className="sensitive-label"><LockKeyhole /> Чувствительные данные выключены</div><ToggleRow title="Личные заметки" note={`${noteCount} ${pluralRu(noteCount, 'заметка', 'заметки', 'заметок')}`} checked={notes} onClick={()=>setNotes(!notes)} sensitive/><ToggleRow title="Интимная жизнь" note={`${intimateCount} ${pluralRu(intimateCount, 'отметка', 'отметки', 'отметок')}`} checked={intimate} onClick={()=>setIntimate(!intimate)} sensitive/></section>
@@ -2837,7 +2838,7 @@ function Profile({ data, onOpenPersonalData, onOpenHealthContext, onBack, onOpen
   return <div className="screen profile-screen">
     <TopBack title="Профиль" onBack={onBack} />
     <button className="profile-person" onClick={onOpenPersonalData}><span className="profile-avatar"><AnimalAvatarIcon avatar={data.avatar} /></span><div><h2>{data.profile.fullName || 'Личные данные'}</h2><p>{data.profile.birthDate ? 'Имя, возраст и аватар' : 'Добавить имя, возраст и аватар'}</p></div><ChevronRight /></button>
-    <section className="privacy-aura"><span><ShieldCheck /></span><div><small>Приватность</small><h2>Данные остаются на этом устройстве</h2><p>Локальная база и резервная копия в браузере. Ничего не отправляется на сервер.</p><button onClick={onOpenData}>Управлять данными <ChevronRight /></button></div></section>
+    <section className="privacy-aura"><span><ShieldCheck /></span><div><small>Приватность</small><h2>История защищена в аккаунте</h2><p>Записи шифруются перед сохранением в базе Mira и не остаются в хранилище браузера.</p><button onClick={onOpenData}>Управлять данными <ChevronRight /></button></div></section>
     <section className="profile-group"><span className="eyebrow">Настройки</span><ProfileRow icon={Droplet} tone="rose" title="Цикл и прогноз" note={cycleNote}/><ProfileRow icon={Stethoscope} tone="sage" title="Контрацепция и препараты" note={healthContextCount ? `${healthContextCount} ${pluralRu(healthContextCount, 'факт', 'факта', 'фактов')} · добровольно` : 'Не заполнено · добровольно'} onClick={onOpenHealthContext}/><ProfileRow icon={NotebookTabs} tone="violet" title="Дневник" note={`${Object.values(data.modules).filter(Boolean).length} разделов включено`} onClick={onOpenDiarySettings}/><ProfileRow icon={House} tone="coral" title="Главная страница" note={`${Object.values(data.homeCards).filter(Boolean).length} карточек`} onClick={onOpenHomeSettings}/><div className="profile-toggle-row is-unavailable"><span className="metric-icon indigo"><Bell /></span><span><strong>Напоминания</strong><small>Пока недоступны в веб-версии</small></span><i className="soft-status">Позже</i></div></section>
     <section className="profile-group"><span className="eyebrow">Ваши данные</span><ProfileRow icon={FileDown} tone="sage" title="Экспорт и резервная копия" note="Создать или восстановить копию" onClick={onOpenData}/><ProfileRow icon={LockKeyhole} tone="violet" title="Данные и приватность" note="Хранение, перенос и удаление" onClick={onOpenData}/><a className="profile-row profile-link" href="/privacy.html" target="_blank" rel="noreferrer"><span className="metric-icon violet"><ShieldCheck /></span><span><strong>Политика конфиденциальности</strong><small>Какие данные хранит Mira и как ими управлять</small></span><ChevronRight /></a><ProfileRow icon={BookOpenText} tone="coral" title="Сохранённые материалы" note={`${data.savedArticles.length} ${pluralRu(data.savedArticles.length, 'статья', 'статьи', 'статей')}`} onClick={onOpenSaved}/></section>
     <section className="community-card">
@@ -2997,13 +2998,13 @@ function DataControlsSheet({ data, onChangeData, onExport, onImport, onDelete, o
   return <div className="attention-overlay settings-overlay" onClick={onClose}>
     <section className="settings-sheet data-controls-sheet" role="dialog" aria-modal="true" aria-label="Данные и приватность" onClick={(event) => event.stopPropagation()}>
       <div className="attention-handle" /><button className="attention-close" onClick={onClose} aria-label="Закрыть"><X /></button>
-      <span className="eyebrow">Локально и под вашим контролем</span><h2>Данные и приватность</h2><p>Записи хранятся в этом браузере. Mira не отправляет их на сервер.</p>
-      <div className="data-trust-card"><ShieldCheck /><div><strong>Локальная база защищает историю</strong><small>IndexedDB + резервная копия · {observationCount} {pluralRu(observationCount, 'отметка', 'отметки', 'отметок')}</small></div></div>
+      <span className="eyebrow">Защищено и под вашим контролем</span><h2>Данные и приватность</h2><p>Записи хранятся в зашифрованной базе Mira и доступны после входа в аккаунт.</p>
+      <div className="data-trust-card"><ShieldCheck /><div><strong>Серверная база защищает историю</strong><small>Зашифрованное хранение · {observationCount} {pluralRu(observationCount, 'отметка', 'отметки', 'отметок')}</small></div></div>
       <button className="data-action" onClick={onExport}><FileDown /><span><strong>Сохранить копию</strong><small>Файл JSON для переноса и резервного хранения</small></span><ChevronRight /></button>
       <label className="data-action import-action"><Upload /><span><strong>Восстановить из копии</strong><small>Перед заменой файл будет проверен</small></span><ChevronRight /><input type="file" accept="application/json,.json" onChange={onImport}/></label>
       <ToggleRow title="Включать личные заметки" note="По умолчанию заметки и интимные данные исключены" checked={data.privacy.sensitiveExport} sensitive onClick={() => onChangeData((current) => ({ ...current, privacy: { ...current.privacy, sensitiveExport: !current.privacy.sensitiveExport } }))}/>
       <button className="data-action" onClick={() => onChangeData((current) => ({ ...current, attention: { showCount: 0 } }))}><Bell /><span><strong>Сбросить паузу рекомендаций</strong><small>Новая подходящая рекомендация появится снова</small></span><ChevronRight /></button>
-      <button className="delete-action" onClick={onDelete}><Trash2 /> Удалить все локальные данные</button>
+      <button className="delete-action" onClick={onDelete}><Trash2 /> Удалить всю историю</button>
     </section>
   </div>;
 }
@@ -3011,7 +3012,7 @@ function DataControlsSheet({ data, onChangeData, onExport, onImport, onDelete, o
 function ConfirmDelete({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return <div className="attention-overlay confirm-overlay">
     <section className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
-      <span className="confirm-icon"><Trash2 /></span><span className="eyebrow">Необратимое действие</span><h2 id="delete-title">Удалить всю историю?</h2><p>Будут удалены записи, настройки и сохранённые материалы из этого браузера. Сначала можно сохранить копию.</p>
+      <span className="confirm-icon"><Trash2 /></span><span className="eyebrow">Необратимое действие</span><h2 id="delete-title">Удалить всю историю?</h2><p>Будут удалены записи, настройки и сохранённые материалы из аккаунта Mira. Сначала можно сохранить копию.</p>
       <button className="danger-button" onClick={onConfirm}>Да, удалить данные</button><button className="secondary-button" onClick={onCancel}>Отмена</button>
     </section>
   </div>;
@@ -3030,13 +3031,25 @@ const auraGlobal = globalThis as typeof globalThis & { __lunaAuraRoot?: ReturnTy
 
 function AuraDatabaseBootstrap() {
   const [initialData, setInitialData] = useState<AuraState | null>(null);
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
-    void loadAuraDatabaseState().then((stored) => {
-      if (active) setInitialData(stored);
-    });
+    setError('');
+    void loadAuraServerState()
+      .then((stored) => {
+        if (active) setInitialData(stored);
+      })
+      .catch((reason: unknown) => {
+        if (!active) return;
+        const code = reason instanceof MiraApiError ? reason.code : 'SERVER_UNAVAILABLE';
+        setError(code === 'TELEGRAM_AUTH_REQUIRED'
+          ? 'Откройте Mira через Telegram, чтобы войти в аккаунт.'
+          : 'Не удалось загрузить историю. Проверьте подключение и попробуйте ещё раз.');
+      });
     return () => { active = false; };
-  }, []);
+  }, [attempt]);
+  if (error) return <div className="database-loading" role="alert"><span>{error}</span><button className="primary-button" onClick={() => setAttempt((current) => current + 1)}><RefreshCw /> Повторить</button></div>;
   if (!initialData) return <div className="database-loading" role="status" aria-live="polite">Открываем вашу историю…</div>;
   return <App initialData={initialData} />;
 }

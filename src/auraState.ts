@@ -1,9 +1,5 @@
 import type { AuraWorkoutLog, WorkoutFeedback, WorkoutLevel, WorkoutStatus, WorkoutVenue } from './workoutEngine';
 
-export const AURA_STORAGE_KEY = 'mira-state-v3';
-export const LEGACY_AURA_STORAGE_KEY = 'luna-flow-aura-v2';
-export const LEGACY_APP_STORAGE_KEY = 'luna-flow-state-v1';
-
 export const toIsoDate = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -717,45 +713,6 @@ export function migrateLegacyAppState(value: unknown): AuraState | null {
       reminders: profile.reminderEnabled === true,
     },
   });
-}
-
-export function loadAuraState(): AuraState {
-  try {
-    const current = localStorage.getItem(AURA_STORAGE_KEY);
-    if (current) return sanitizeAuraState(JSON.parse(current));
-    const oldAura = localStorage.getItem(LEGACY_AURA_STORAGE_KEY);
-    if (oldAura) {
-      const migrated = sanitizeAuraState(JSON.parse(oldAura));
-      persistAuraState(migrated);
-      return migrated;
-    }
-    const oldApp = localStorage.getItem(LEGACY_APP_STORAGE_KEY);
-    if (oldApp) {
-      const migrated = migrateLegacyAppState(JSON.parse(oldApp));
-      if (migrated) {
-        persistAuraState(migrated);
-        return migrated;
-      }
-    }
-  } catch {
-    // Fall through to a genuinely empty, safe state.
-  }
-  return structuredClone(defaultAuraState);
-}
-
-export function persistAuraState(state: AuraState): boolean {
-  try {
-    localStorage.setItem(AURA_STORAGE_KEY, JSON.stringify(sanitizeAuraState(state)));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function clearAllMiraStorage(): void {
-  localStorage.removeItem(AURA_STORAGE_KEY);
-  localStorage.removeItem(LEGACY_AURA_STORAGE_KEY);
-  localStorage.removeItem(LEGACY_APP_STORAGE_KEY);
 }
 
 export function emptyAuraEntry(date = AURA_TODAY): AuraDayEntry {

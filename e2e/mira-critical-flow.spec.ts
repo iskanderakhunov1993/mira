@@ -1,6 +1,60 @@
 import { expect, type Page, test } from '@playwright/test';
 
+async function mockMiraApi(page: Page) {
+  let state: unknown = null;
+  let revision = 0;
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'Telegram', {
+      configurable: true,
+      value: { WebApp: { initData: 'e2e-signed-by-route-mock', ready: () => undefined } },
+    });
+  });
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === '/api/v1/auth/telegram') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: 'e2e-token' }) });
+      return;
+    }
+    if (path === '/api/v1/state' && request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ state, revision, updatedAt: new Date().toISOString() }),
+      });
+      return;
+    }
+    if (path === '/api/v1/state' && request.method() === 'PUT') {
+      const payload = request.postDataJSON() as { state: unknown; revision: number };
+      if (payload.revision !== revision) {
+        await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'REVISION_CONFLICT' }) });
+        return;
+      }
+      state = payload.state;
+      revision += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ revision, updatedAt: new Date().toISOString() }),
+      });
+      return;
+    }
+    if (path === '/api/v1/state' && request.method() === 'DELETE') {
+      state = null;
+      revision += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ revision, updatedAt: new Date().toISOString() }),
+      });
+      return;
+    }
+    await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'NOT_FOUND' }) });
+  });
+}
+
 async function finishOnboarding(page: Page) {
+  await mockMiraApi(page);
   await page.goto('/');
   await page.getByRole('button', { name: /Настроить под себя/ }).click();
   await page.getByRole('button', { name: /Что происходит сегодня/ }).click();
@@ -68,7 +122,7 @@ test('безопасный экспорт и подтверждённое уда
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('mira-aura-backup.json');
 
-  await page.getByRole('button', { name: /Удалить все локальные данные/ }).click();
+  await page.getByRole('button', { name: /Удалить всю историю/ }).click();
   await expect(page.getByRole('alertdialog', { name: /Удалить всю историю/ })).toBeVisible();
   await page.getByRole('button', { name: /Да, удалить данные/ }).click();
   await expect(page.getByRole('button', { name: /Настроить под себя/ })).toBeVisible();

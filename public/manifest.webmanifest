@@ -2,7 +2,7 @@
   "name": "Mira",
   "short_name": "Mira",
   "id": "/",
-  "description": "Приватный local-first трекер цикла и самочувствия",
+  "description": "Приватный трекер цикла и самочувствия с защищённой синхронизацией",
   "start_url": "/",
   "scope": "/",
   "lang": "ru",

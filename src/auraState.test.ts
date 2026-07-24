@@ -1,11 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  AURA_STORAGE_KEY,
   AURA_TODAY,
-  LEGACY_APP_STORAGE_KEY,
-  LEGACY_AURA_STORAGE_KEY,
   addDays,
-  clearAllMiraStorage,
   createAuraExportState,
   createEmptyAuraState,
   deriveAttentionEvidence,
@@ -15,7 +11,6 @@ import {
   getAuraObservationDates,
   getAuraPeriodEpisodes,
   getAuraSafetyFacts,
-  loadAuraState,
   migrateLegacyAppState,
   parseImportedAuraState,
   sanitizeAuraState,
@@ -25,20 +20,6 @@ import {
   shouldShowAttention,
   type AuraState,
 } from './auraState';
-
-const storage = new Map<string, string>();
-
-beforeEach(() => {
-  storage.clear();
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => storage.set(key, value),
-      removeItem: (key: string) => storage.delete(key),
-    },
-  });
-});
 
 const attentionState = (): AuraState => sanitizeAuraState({
   ...createEmptyAuraState(),
@@ -515,19 +496,4 @@ describe('Mira unified state', () => {
     expect(createAuraExportState(state, true).entries[AURA_TODAY].periodCheckin?.pregnancyTest).toBe('positive');
   });
 
-  it('migrates old storage once and clears every historical Mira key', () => {
-    storage.set(LEGACY_APP_STORAGE_KEY, JSON.stringify({
-      onboardingComplete: true,
-      profile: { cycleLength: 28, periodLength: 5 },
-      periodDays: [AURA_TODAY],
-      entries: {},
-      savedArticles: [],
-    }));
-    const loaded = loadAuraState();
-    expect(loaded.periodStarts).toEqual([AURA_TODAY]);
-    expect(storage.has(AURA_STORAGE_KEY)).toBe(true);
-    storage.set(LEGACY_AURA_STORAGE_KEY, '{}');
-    clearAllMiraStorage();
-    expect(storage.size).toBe(0);
-  });
 });
